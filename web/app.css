@@ -1370,7 +1370,7 @@ body {
 .text-cyan { color: var(--brand-cyan); }
 
 /* ==========================================================================
-   Invite Gate Screen Styles
+   Invite Gate Screen Styles (Compact & Native-Feeling)
    ========================================================================== */
 
 .gate-container {
@@ -1378,113 +1378,104 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px 16px;
-  background: radial-gradient(circle at 50% 30%, var(--bg-surface-elevated) 0%, var(--bg-canvas) 100%);
+  padding: 16px;
+  background: var(--bg-canvas);
 }
 
 .gate-card {
   background: var(--bg-surface);
   border: 1px solid var(--border-prominent);
   border-radius: var(--radius-lg);
-  max-width: 440px;
+  max-width: 360px;
   width: 100%;
-  padding: 32px 24px;
-  box-shadow: var(--shadow-lg);
-  text-align: center;
+  padding: 20px;
+  box-shadow: var(--shadow-md);
 }
 
-.gate-header {
-  margin-bottom: 20px;
+.gate-brand-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
 .gate-logo {
-  width: 64px;
-  height: 64px;
-  border-radius: var(--radius-md);
-  margin-bottom: 12px;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
 }
 
-.gate-app-title {
-  font-size: 26px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
+.gate-title {
+  font-size: 17px;
+  font-weight: 700;
   color: var(--text-primary);
+  line-height: 1.2;
+  margin: 0;
 }
 
-.gate-app-tagline {
+.gate-subtitle {
+  font-size: 12px;
+  color: var(--brand-cyan);
+  font-weight: 600;
+  margin: 2px 0 0 0;
+}
+
+.gate-lead {
   font-size: 13px;
   color: var(--text-secondary);
-  margin-top: 4px;
-}
-
-.gate-title-badge {
-  display: inline-block;
-  padding: 4px 12px;
-  background: var(--bg-surface-subtle);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-pill);
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--brand-cyan);
-  margin-bottom: 12px;
-}
-
-.gate-description {
-  font-size: 14px;
-  color: var(--text-secondary);
-  line-height: 1.5;
-  margin-bottom: 20px;
-}
-
-.gate-notice {
-  background: var(--bg-surface-subtle);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  padding: 12px;
-  text-align: left;
-  margin-bottom: 20px;
+  line-height: 1.45;
+  margin: 0 0 14px 0;
 }
 
 .gate-form {
+  margin-bottom: 0;
+}
+
+.gate-input-row {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 8px;
 }
 
 .gate-code-input {
+  flex: 1;
   text-align: center;
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 700;
-  letter-spacing: 0.1em;
-  padding: 12px;
-  border-radius: var(--radius-md);
+  letter-spacing: 0.08em;
+  padding: 9px 10px;
+  text-transform: uppercase;
+  min-width: 0;
 }
 
 .gate-submit-btn {
-  width: 100%;
-  padding: 12px;
-  font-size: 15px;
-  font-weight: 700;
-  border-radius: var(--radius-md);
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .gate-error {
   background: var(--health-risk-bg);
   border: 1px solid var(--health-risk-border);
   color: var(--health-risk);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
-  padding: 10px 12px;
+  padding: 8px 10px;
   border-radius: var(--radius-sm);
-  margin-bottom: 14px;
+  margin-top: 10px;
+  text-align: center;
 }
 
-.gate-footer-hint {
+.gate-notice {
+  background: var(--bg-surface-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
   font-size: 11px;
-  color: var(--text-tertiary);
-  margin-top: 14px;
-  border-top: 1px solid var(--border-subtle);
-  padding-top: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-top: 12px;
 }
 
