@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </linearGradient>
+    <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10B981"/>
+      <stop offset="100%" stop-color="#06B6D4"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDE047"/>
+      <stop offset="100%" stop-color="#F59E0B"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="12" flood-color="#10B981" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Background Canvas -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
+
+  <!-- Outer Subtle Ring -->
+  <circle cx="256" cy="256" r="190" fill="none" stroke="#1E293B" stroke-width="8"/>
+
+  <!-- Glowing Health Ring -->
+  <circle cx="256" cy="256" r="190" fill="none" stroke="url(#ringGrad)" stroke-width="16" stroke-linecap="round" stroke-dasharray="900 1200" transform="rotate(-90 256 256)" filter="url(#glow)"/>
+
+  <!-- Center Shield / Top Hat / Moat Emblem -->
+  <g transform="translate(136, 126)">
+    <!-- Top Hat Brim -->
+    <ellipse cx="120" cy="190" rx="90" ry="18" fill="#1E293B" stroke="#334155" stroke-width="4"/>
+    
+    <!-- Hat Crown / Fort Tower -->
+    <path d="M 60,185 L 75,70 C 75,60 85,55 95,55 L 145,55 C 155,55 165,60 165,70 L 180,185 Z" fill="#0F172A" stroke="url(#ringGrad)" stroke-width="6"/>
+
+    <!-- Hat Ribbon / Emerald Bar -->
+    <path d="M 67,145 L 173,145 L 177,175 L 63,175 Z" fill="url(#ringGrad)"/>
+
+    <!-- Golden Sigma / Moat Value Symbol inside Ribbon -->
+    <path d="M 105,152 L 135,152 L 118,160 L 135,168 L 105,168" fill="none" stroke="#0F172A" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- Upward Momentum Spark -->
+    <polygon points="120,15 128,35 148,43 128,51 120,71 112,51 92,43 112,35" fill="url(#goldGrad)"/>
+  </g>
+</svg>
