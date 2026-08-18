@@ -33,24 +33,30 @@ const state = {
 async function initApp() {
   initTheme();
   registerServiceWorker();
-  initEventListeners();
-  initNetworkListeners();
   initGateForm();
+
+  try {
+    initEventListeners();
+    initNetworkListeners();
+  } catch (e) {
+    console.warn('Non-fatal event listener warning:', e);
+  }
 
   // Check device registration / invite session
   const isAuthed = await checkAuthSession();
   if (isAuthed) {
-    // Load initial data
-    await loadWatchlists();
-    await loadWatchlistData(state.activeWatchlistId);
+    try {
+      await loadWatchlists();
+      await loadWatchlistData(state.activeWatchlistId);
 
-    // Check first run onboarding
-    if (!localStorage.getItem('omaha_onboarded')) {
-      openModal('onboardingModal');
+      if (!localStorage.getItem('omaha_onboarded')) {
+        openModal('onboardingModal');
+      }
+
+      handleUrlParams();
+    } catch (e) {
+      console.warn('Non-fatal initial data load warning:', e);
     }
-
-    // Handle URL deep links e.g. ?ticker=AAPL&tab=checklist
-    handleUrlParams();
   }
 }
 
@@ -85,7 +91,6 @@ async function checkAuthSession() {
 
       const success = await redeemInviteCode(cleanCode, true);
       if (success) {
-        // Clean URL to prevent re-submitting spent code on refresh
         try {
           window.history.replaceState({}, document.title, window.location.pathname);
         } catch (e) {}
@@ -175,26 +180,53 @@ async function redeemInviteCode(code, isAuto = false) {
 
 function initGateForm() {
   const form = document.getElementById('gateForm');
-  if (!form) return;
+  const input = document.getElementById('gateCodeInput');
+  const submitBtn = document.getElementById('gateSubmitBtn');
 
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const codeInput = document.getElementById('gateCodeInput');
-    const code = (codeInput?.value || '').trim().toUpperCase();
+  async function triggerRedemption() {
+    const code = (input?.value || '').trim().toUpperCase();
     if (!code) return;
 
     const success = await redeemInviteCode(code, false);
     if (success) {
-      await loadWatchlists();
-      await loadWatchlistData(state.activeWatchlistId);
+      try {
+        await loadWatchlists();
+        await loadWatchlistData(state.activeWatchlistId);
 
-      if (!localStorage.getItem('omaha_onboarded')) {
-        openModal('onboardingModal');
+        if (!localStorage.getItem('omaha_onboarded')) {
+          openModal('onboardingModal');
+        }
+
+        handleUrlParams();
+      } catch (e) {
+        console.warn('Non-fatal post-activation load error:', e);
       }
-
-      handleUrlParams();
     }
-  });
+  }
+
+  if (form) {
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      triggerRedemption();
+      return false;
+    };
+  }
+
+  if (submitBtn) {
+    submitBtn.onclick = (e) => {
+      e.preventDefault();
+      triggerRedemption();
+    };
+  }
+
+  if (input) {
+    input.onkeydown = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        triggerRedemption();
+      }
+    };
+  }
 }
 
 function getAuthHeaders() {

@@ -39,12 +39,12 @@
         Introdu codul de invitație pentru a înregistra acest dispozitiv.
       </p>
 
-      <form id="gateForm" class="gate-form">
+      <form id="gateForm" class="gate-form" action="javascript:void(0);" onsubmit="return false;">
         <div class="gate-input-row">
           <input type="text" id="gateCodeInput" class="form-input mono gate-code-input" 
                  placeholder="OMAHA-XXXX" autocomplete="off" autocapitalize="characters" 
                  spellcheck="false" required>
-          <button type="submit" class="btn-primary gate-submit-btn" id="gateSubmitBtn">
+          <button type="button" class="btn-primary gate-submit-btn" id="gateSubmitBtn">
             Activează
           </button>
         </div>
