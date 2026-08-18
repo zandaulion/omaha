@@ -24,49 +24,36 @@
 </head>
 <body>
 
-  <!-- ==================== INVITE GATE SCREEN (When not authenticated) ==================== -->
+  <!-- ==================== INVITE GATE SCREEN ==================== -->
   <div id="gateScreen" class="gate-container">
     <div class="gate-card">
-      <div class="gate-header">
-        <img src="/icons/icon.svg" alt="Pocket Omaha Logo" class="gate-logo">
-        <h1 class="gate-app-title">Pocket Omaha</h1>
-        <p class="gate-app-tagline">Stock Health, Moats & Fundamental Rigor</p>
+      <div class="gate-brand-row">
+        <img src="/icons/icon.svg" alt="Logo" class="gate-logo" width="36" height="36">
+        <div>
+          <h1 class="gate-title">Pocket Omaha</h1>
+          <p class="gate-subtitle">Acces pe bază de invitație</p>
+        </div>
       </div>
 
-      <div class="gate-body">
-        <div class="gate-title-badge">🔒 Acces pe bază de invitație</div>
-        <p class="gate-description">
-          Aplicația este privată și necesită un cod de invitație pentru a înregistra și securiza acest dispozitiv.
-        </p>
+      <p class="gate-lead">
+        Introdu codul de invitație pentru a înregistra acest dispozitiv.
+      </p>
 
-        <!-- In-app Browser Warning (WhatsApp / Safari browser before install) -->
-        <div id="gateInAppNotice" class="gate-notice hidden">
-          <div style="font-weight: 700; color: var(--brand-cyan); margin-bottom: 4px;">💡 Sfat pentru instalare pe telefon:</div>
-          <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.4;">
-            Pentru o experiență PWA completă și notificări push:
-            <ol style="margin: 6px 0 6px 16px; padding: 0;">
-              <li>Apasă butonul de partajare (Safari: <strong>Share</strong> / Chrome: <strong>⋮</strong>)</li>
-              <li>Alege <strong>„Add to Home Screen”</strong> (Adaugă la ecranul principal)</li>
-              <li>Deschide aplicația de pe ecranul principal și apasă <strong>Activează</strong>.</li>
-            </ol>
-          </div>
-        </div>
-
-        <form id="gateForm" class="gate-form">
-          <div class="form-group">
-            <label class="form-label" for="gateCodeInput">Cod de invitație</label>
-            <input type="text" id="gateCodeInput" class="form-input mono gate-code-input" placeholder="OMAHA-XXXX" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
-          </div>
+      <form id="gateForm" class="gate-form">
+        <div class="gate-input-row">
+          <input type="text" id="gateCodeInput" class="form-input mono gate-code-input" 
+                 placeholder="OMAHA-XXXX" autocomplete="off" autocapitalize="characters" 
+                 spellcheck="false" required>
           <button type="submit" class="btn-primary gate-submit-btn" id="gateSubmitBtn">
-            Activează Dispozitivul
+            Activează
           </button>
-        </form>
-
-        <div id="gateErrorText" class="gate-error hidden"></div>
-
-        <div class="gate-footer-hint">
-          <span>Codul este valabil 7 zile și înregistrează un singur telefon.</span>
         </div>
+      </form>
+
+      <div id="gateErrorText" class="gate-error hidden"></div>
+
+      <div id="gateInAppNotice" class="gate-notice hidden">
+        <strong>💡 Pe iPhone / Android:</strong> adaugă întâi pagina pe ecranul principal (<em>Add to Home Screen</em>), apoi deschide-o și activează codul.
       </div>
     </div>
   </div>
