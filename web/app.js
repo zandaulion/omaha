@@ -64,10 +64,6 @@ if (document.readyState === 'loading') {
 async function checkAuthSession() {
   const params = new URLSearchParams(window.location.search);
   const inviteParam = params.get('invite') || params.get('code');
-  if (inviteParam) {
-    const input = document.getElementById('gateCodeInput');
-    if (input) input.value = inviteParam.trim().toUpperCase();
-  }
 
   try {
     const res = await fetch('/api/auth/session', {
@@ -79,10 +75,26 @@ async function checkAuthSession() {
       document.getElementById('gateScreen')?.classList.add('hidden');
       document.getElementById('appShell')?.classList.remove('hidden');
       return true;
-    } else {
-      showGateScreen();
-      return false;
     }
+
+    // If not yet authenticated and invite code is in URL, auto-activate immediately
+    if (inviteParam) {
+      const cleanCode = inviteParam.trim().toUpperCase();
+      const input = document.getElementById('gateCodeInput');
+      if (input) input.value = cleanCode;
+
+      const success = await redeemInviteCode(cleanCode, true);
+      if (success) {
+        // Clean URL to prevent re-submitting spent code on refresh
+        try {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        } catch (e) {}
+        return true;
+      }
+    }
+
+    showGateScreen();
+    return false;
   } catch (err) {
     console.warn('Session check error:', err);
     showGateScreen();
@@ -106,6 +118,61 @@ function showGateScreen() {
   }
 }
 
+async function redeemInviteCode(code, isAuto = false) {
+  const errEl = document.getElementById('gateErrorText');
+  const submitBtn = document.getElementById('gateSubmitBtn');
+
+  if (errEl) errEl.classList.add('hidden');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Se activează…';
+  }
+
+  try {
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    const deviceLabel = isIOS ? 'iPhone' : isAndroid ? 'Android' : 'Web Browser';
+
+    const res = await fetch('/api/auth/redeem', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code,
+        device_label: `${deviceLabel} (${new Date().toLocaleDateString('ro-RO', { month: 'short', day: 'numeric' })})`
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Cod de invitație invalid sau expirat.');
+    }
+
+    // Store device token
+    if (data.token) {
+      localStorage.setItem('omaha_token', data.token);
+    }
+
+    // Smooth transition into app
+    document.getElementById('gateScreen')?.classList.add('hidden');
+    document.getElementById('appShell')?.classList.remove('hidden');
+    document.getElementById('appShell')?.classList.add('fade-in');
+
+    return true;
+  } catch (err) {
+    if (errEl) {
+      errEl.textContent = err.message || 'Eroare la activare. Verifică codul.';
+      errEl.classList.remove('hidden');
+    }
+    showGateScreen();
+    return false;
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Activează';
+    }
+  }
+}
+
 function initGateForm() {
   const form = document.getElementById('gateForm');
   if (!form) return;
@@ -113,46 +180,11 @@ function initGateForm() {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const codeInput = document.getElementById('gateCodeInput');
-    const errEl = document.getElementById('gateErrorText');
-    const submitBtn = document.getElementById('gateSubmitBtn');
-
     const code = (codeInput?.value || '').trim().toUpperCase();
     if (!code) return;
 
-    errEl.classList.add('hidden');
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Se verifică…';
-
-    try {
-      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-      const isAndroid = /Android/i.test(navigator.userAgent);
-      const deviceLabel = isIOS ? 'iPhone' : isAndroid ? 'Android' : 'Web Browser';
-
-      const res = await fetch('/api/auth/redeem', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          code,
-          device_label: `${deviceLabel} (${new Date().toLocaleDateString('ro-RO', { month: 'short', day: 'numeric' })})`
-        })
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Cod de invitație invalid sau expirat.');
-      }
-
-      // Store device token
-      if (data.token) {
-        localStorage.setItem('omaha_token', data.token);
-      }
-
-      // Smooth transition into app
-      document.getElementById('gateScreen')?.classList.add('hidden');
-      document.getElementById('appShell')?.classList.remove('hidden');
-      document.getElementById('appShell')?.classList.add('fade-in');
-
-      // Load data
+    const success = await redeemInviteCode(code, false);
+    if (success) {
       await loadWatchlists();
       await loadWatchlistData(state.activeWatchlistId);
 
@@ -161,12 +193,6 @@ function initGateForm() {
       }
 
       handleUrlParams();
-    } catch (err) {
-      errEl.textContent = err.message || 'Eroare la activare. Verifică codul.';
-      errEl.classList.remove('hidden');
-    } finally {
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Activează Dispozitivul';
     }
   });
 }
