@@ -24,648 +24,687 @@
 </head>
 <body>
 
-  <!-- App Header -->
-  <header class="app-header">
-    <div class="header-inner">
-      <div class="brand-wrapper" id="headerBrand">
-        <img src="/icons/icon.svg" alt="Pocket Omaha Logo" class="brand-icon">
-        <h1 class="brand-title">Pocket Omaha</h1>
+  <!-- ==================== INVITE GATE SCREEN (When not authenticated) ==================== -->
+  <div id="gateScreen" class="gate-container hidden">
+    <div class="gate-card">
+      <div class="gate-header">
+        <img src="/icons/icon.svg" alt="Pocket Omaha Logo" class="gate-logo">
+        <h1 class="gate-app-title">Pocket Omaha</h1>
+        <p class="gate-app-tagline">Stock Health, Moats & Fundamental Rigor</p>
       </div>
-      <div class="header-actions">
-        <button class="icon-btn" id="searchTriggerBtn" title="Search Tickers" aria-label="Search">
-          🔍
-        </button>
-        <button class="icon-btn" id="themeToggleBtn" title="Toggle Light/Dark Theme" aria-label="Toggle Theme">
-          🌓
-        </button>
-        <button class="icon-btn" id="settingsTriggerBtn" title="Settings & Activation" aria-label="Settings">
-          ⚙️
-        </button>
+
+      <div class="gate-body">
+        <div class="gate-title-badge">🔒 Acces pe bază de invitație</div>
+        <p class="gate-description">
+          Aplicația este privată și necesită un cod de invitație pentru a înregistra și securiza acest dispozitiv.
+        </p>
+
+        <!-- In-app Browser Warning (WhatsApp / Safari browser before install) -->
+        <div id="gateInAppNotice" class="gate-notice hidden">
+          <div style="font-weight: 700; color: var(--brand-cyan); margin-bottom: 4px;">💡 Sfat pentru instalare pe telefon:</div>
+          <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.4;">
+            Pentru o experiență PWA completă și notificări push:
+            <ol style="margin: 6px 0 6px 16px; padding: 0;">
+              <li>Apasă butonul de partajare (Safari: <strong>Share</strong> / Chrome: <strong>⋮</strong>)</li>
+              <li>Alege <strong>„Add to Home Screen”</strong> (Adaugă la ecranul principal)</li>
+              <li>Deschide aplicația de pe ecranul principal și apasă <strong>Activează</strong>.</li>
+            </ol>
+          </div>
+        </div>
+
+        <form id="gateForm" class="gate-form">
+          <div class="form-group">
+            <label class="form-label" for="gateCodeInput">Cod de invitație</label>
+            <input type="text" id="gateCodeInput" class="form-input mono gate-code-input" placeholder="OMAHA-XXXX" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
+          </div>
+          <button type="submit" class="btn-primary gate-submit-btn" id="gateSubmitBtn">
+            Activează Dispozitivul
+          </button>
+        </form>
+
+        <div id="gateErrorText" class="gate-error hidden"></div>
+
+        <div class="gate-footer-hint">
+          <span>Codul este valabil 7 zile și înregistrează un singur telefon.</span>
+        </div>
       </div>
     </div>
-  </header>
-
-  <!-- Offline Status Banner -->
-  <div id="offlineBanner" class="hidden" style="background: rgba(245, 158, 11, 0.15); border-bottom: 1px solid rgba(245, 158, 11, 0.3); color: #FBBF24; font-size: 12px; font-weight: 600; text-align: center; padding: 6px 12px;">
-    ⚡ Offline Mode · Viewing cached financial statements
   </div>
 
-  <!-- Main View Router Container -->
-  <main class="app-container" id="mainContent">
+  <!-- ==================== MAIN AUTHENTICATED APP SHELL ==================== -->
+  <div id="appShell" class="hidden">
 
-    <!-- ==================== VIEW 1: WATCHLIST & PORTFOLIO HEALTH ==================== -->
-    <section id="viewWatchlist" class="view-panel fade-in">
-      
-      <!-- Portfolio Health Composite Banner -->
-      <div class="portfolio-hero" id="portfolioHero">
-        <div class="hero-top">
-          <div class="hero-title-group">
-            <h2 id="heroWatchlistName">The Compounders</h2>
-            <p id="heroStockCount">5 companies in portfolio</p>
-          </div>
-          <div class="hero-grade-badge pristine" id="heroGradeBadge">
-            EXCELLENT (88/100)
-          </div>
+    <!-- App Header -->
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="brand-wrapper" id="headerBrand">
+          <img src="/icons/icon.svg" alt="Pocket Omaha Logo" class="brand-icon">
+          <h1 class="brand-title">Pocket Omaha</h1>
         </div>
-
-        <!-- 5-Pillar Mini Horizontal Meters -->
-        <div class="pillar-meters" id="heroPillars">
-          <!-- Populated by JS -->
-        </div>
-
-        <!-- Checklist Mini Summary -->
-        <div style="margin-top: 14px; display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--text-secondary); border-top: 1px solid var(--border-subtle); padding-top: 10px;">
-          <span id="heroChecklistText">🟢 48 Pass · 🟡 8 Watch · 🔴 4 Risk Flags</span>
-          <span class="mono" style="color: var(--brand-cyan);">Composite Moat: Strong</span>
+        <div class="header-actions">
+          <button class="icon-btn" id="searchTriggerBtn" title="Search Tickers" aria-label="Search">
+            🔍
+          </button>
+          <button class="icon-btn" id="themeToggleBtn" title="Toggle Light/Dark Theme" aria-label="Toggle Theme">
+            🌓
+          </button>
+          <button class="icon-btn" id="settingsTriggerBtn" title="Settings & Activation" aria-label="Settings">
+            ⚙️
+          </button>
         </div>
       </div>
+    </header>
 
-      <!-- Watchlist Selector & Controls -->
-      <div class="section-header">
-        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-          <select id="watchlistSelect" class="form-select" style="padding: 6px 12px; font-size: 13px; font-weight: 600;">
-            <!-- Watchlists populated by JS -->
-          </select>
-          <button class="btn-secondary" id="newListBtn" style="padding: 6px 10px; font-size: 12px;">+ New</button>
-        </div>
+    <!-- Offline Status Banner -->
+    <div id="offlineBanner" class="hidden" style="background: rgba(245, 158, 11, 0.15); border-bottom: 1px solid rgba(245, 158, 11, 0.3); color: #FBBF24; font-size: 12px; font-weight: 600; text-align: center; padding: 6px 12px;">
+      ⚡ Offline Mode · Viewing cached financial statements
+    </div>
 
-        <div style="display: flex; align-items: center; gap: 6px;">
-          <span style="font-size: 11px; color: var(--text-tertiary);">Sort:</span>
-          <select id="sortSelect" class="form-select" style="padding: 4px 8px; font-size: 12px;">
-            <option value="health">Health Score</option>
-            <option value="change">Price Change</option>
-            <option value="roic">ROIC (Moat)</option>
-            <option value="pe">P/E Ratio</option>
-          </select>
-        </div>
-      </div>
+    <!-- Main View Router Container -->
+    <main class="app-container" id="mainContent">
 
-      <!-- Stock Cards Container -->
-      <div id="stockCardsList">
-        <!-- Stock cards rendered by JS -->
-      </div>
-
-      <!-- Empty State Container -->
-      <div id="watchlistEmptyState" class="card hidden" style="text-align: center; padding: 36px 16px;">
-        <div style="font-size: 40px; margin-bottom: 8px;">🏰</div>
-        <h3 style="font-size: 17px; font-weight: 700; margin-bottom: 6px;">No Stocks in this Watchlist</h3>
-        <p style="font-size: 13px; color: var(--text-secondary); max-width: 320px; margin: 0 auto 16px auto;">
-          Add companies with strong financial health and durable moats to calculate your composite score.
-        </p>
-        <button class="btn-primary" id="emptyAddStockBtn">🔍 Add Stocks</button>
-      </div>
-
-    </section>
-
-    <!-- ==================== VIEW 2: STOCK DEEP DIVE & HEALTH SCORECARD ==================== -->
-    <section id="viewDeepDive" class="view-panel hidden">
-      
-      <!-- Deep Dive Top Bar -->
-      <div style="display: flex; align-items: center; justify-content: space-between; margin: 12px 0 16px 0;">
-        <button class="btn-secondary" id="deepDiveBackBtn" style="display: flex; align-items: center; gap: 4px; padding: 6px 10px;">
-          ← Back
-        </button>
-        <div style="text-align: center;">
-          <h2 id="deepDiveTicker" class="mono" style="font-size: 20px; font-weight: 800; letter-spacing: -0.01em;">NVDA</h2>
-          <p id="deepDiveName" style="font-size: 12px; color: var(--text-secondary);">NVIDIA Corporation</p>
-        </div>
-        <button class="icon-btn" id="bookmarkBtn" title="Bookmark to Watchlist">
-          ⭐
-        </button>
-      </div>
-
-      <!-- Price & Change Row -->
-      <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 16px; padding: 0 4px;">
-        <div>
-          <span id="deepDivePrice" class="mono" style="font-size: 28px; font-weight: 800;">$128.60</span>
-          <span id="deepDiveCurrency" style="font-size: 12px; color: var(--text-tertiary); margin-left: 4px;">USD</span>
-        </div>
-        <div id="deepDiveChange" class="mono stock-change positive" style="font-size: 15px; font-weight: 700;">
-          +$3.20 (+2.62%)
-        </div>
-      </div>
-
-      <!-- Hero Scorecard Ring Card -->
-      <div class="card card-elevated" style="margin-bottom: 16px;">
-        <div class="score-ring-container">
-          <div class="score-ring-wrapper">
-            <svg class="score-ring-svg" viewBox="0 0 120 120">
-              <circle class="score-ring-bg" cx="60" cy="60" r="50"/>
-              <circle class="score-ring-progress" id="scoreRingProgress" cx="60" cy="60" r="50"
-                      stroke="#10B981" stroke-dasharray="314.15" stroke-dashoffset="31.4"/>
-            </svg>
-            <div class="score-ring-center">
-              <div class="score-ring-value mono" id="deepDiveScoreVal">94</div>
-              <div class="score-ring-max">/ 100</div>
+      <!-- ==================== VIEW 1: WATCHLIST & PORTFOLIO HEALTH ==================== -->
+      <section id="viewWatchlist" class="view-panel fade-in">
+        
+        <!-- Portfolio Health Composite Banner -->
+        <div class="portfolio-hero" id="portfolioHero">
+          <div class="hero-top">
+            <div class="hero-title-group">
+              <h2 id="heroWatchlistName">The Compounders</h2>
+              <p id="heroStockCount">5 companies in portfolio</p>
+            </div>
+            <div class="hero-grade-badge pristine" id="heroGradeBadge">
+              EXCELLENT (88/100)
             </div>
           </div>
-          <div class="score-ring-label" id="deepDiveScoreLabel" style="color: var(--health-pristine);">
-            Pristine Financial Health
-          </div>
-          <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;" id="deepDiveSectorInfo">
-            Technology · Semiconductors
-          </p>
-        </div>
 
-        <!-- 5 Pillar Breakdown Horizontal Bars -->
-        <div class="pillar-meters" id="deepDivePillars" style="margin-top: 16px;">
-          <!-- Populated by JS -->
-        </div>
-      </div>
-
-      <!-- Segmented Sub-Tabs -->
-      <div class="segmented-tabs" id="deepDiveSubtabs">
-        <button class="tab-pill active" data-subtab="overview">Overview</button>
-        <button class="tab-pill" data-subtab="checklist">12-Pt Checklist</button>
-        <button class="tab-pill" data-subtab="trends">5Y Trends</button>
-        <button class="tab-pill" data-subtab="dcf">DCF Sandbox</button>
-        <button class="tab-pill" data-subtab="thesis">My Thesis & Log</button>
-      </div>
-
-      <!-- Subtab Panel 1: Overview -->
-      <div id="subtabOverview" class="subtab-panel">
-        
-        <!-- Catalysts & Moats Card -->
-        <div class="card">
-          <div class="section-title" style="margin-bottom: 12px; color: var(--health-pristine);">
-            ⚡ Key Moat Catalysts & Strengths
-          </div>
-          <div id="catalystsList" style="display: flex; flex-direction: column; gap: 10px;">
-            <!-- Rendered by JS -->
-          </div>
-        </div>
-
-        <!-- Risk Flags Card -->
-        <div class="card">
-          <div class="section-title" style="margin-bottom: 12px; color: var(--health-moderate);">
-            ⚠️ Caution & Risk Watchpoints
-          </div>
-          <div id="risksList" style="display: flex; flex-direction: column; gap: 10px;">
-            <!-- Rendered by JS -->
-          </div>
-        </div>
-
-        <!-- Key Financial Multiples Matrix -->
-        <div class="card">
-          <div class="section-title" style="margin-bottom: 12px;">
-            📊 Key Fundamental Ratios
-          </div>
-          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;" id="multiplesGrid">
-            <!-- Rendered by JS -->
-          </div>
-        </div>
-
-      </div>
-
-      <!-- Subtab Panel 2: 12-Pt Checklist -->
-      <div id="subtabChecklist" class="subtab-panel hidden">
-        <div class="card">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-            <div class="section-title">🚦 Traffic-Light Health Tests</div>
-            <span id="checklistScoreBadge" class="score-badge pristine">10 Pass · 2 Watch</span>
-          </div>
-          <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 14px;">
-            Tap any rule to view benchmark targets and economic moat explanation.
-          </p>
-          <div class="checklist-container" id="checklistFullList">
-            <!-- Rendered by JS -->
-          </div>
-        </div>
-      </div>
-
-      <!-- Subtab Panel 3: 5Y Trends -->
-      <div id="subtabTrends" class="subtab-panel hidden">
-        
-        <!-- Chart 1: Revenue vs Free Cash Flow -->
-        <div class="card chart-card">
-          <div class="chart-header">
-            <span class="chart-title">1. Revenue vs. Free Cash Flow ($B)</span>
-            <div class="chart-legend">
-              <div class="legend-item"><span class="legend-color" style="background: #38BDF8;"></span> Rev</div>
-              <div class="legend-item"><span class="legend-color" style="background: #10B981;"></span> FCF</div>
-            </div>
-          </div>
-          <div class="bar-chart-container" id="revFcfChart">
-            <!-- Dual bars rendered by JS -->
-          </div>
-          <div style="margin-top: 10px; font-size: 12px; color: var(--text-secondary);" id="revFcfSummaryText">
-            5Y Revenue CAGR: +74.2% · FCF Conversion: 108%
-          </div>
-        </div>
-
-        <!-- Chart 2: Balance Sheet Cushion Stack -->
-        <div class="card chart-card">
-          <div class="chart-header">
-            <span class="chart-title">2. Balance Sheet Liquidity & Debt Stack</span>
-          </div>
-          <div class="cushion-stack" id="balanceSheetStack">
+          <!-- 5-Pillar Mini Horizontal Meters -->
+          <div class="pillar-meters" id="heroPillars">
             <!-- Populated by JS -->
           </div>
-        </div>
 
-        <!-- Chart 3: Margin Trajectory -->
-        <div class="card chart-card">
-          <div class="chart-header">
-            <span class="chart-title">3. Margin Expansion & Pricing Power (%)</span>
-          </div>
-          <div id="marginTrendContainer" style="display: flex; flex-direction: column; gap: 8px; margin-top: 6px;">
-            <!-- Populated by JS -->
+          <!-- Checklist Mini Summary -->
+          <div style="margin-top: 14px; display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--text-secondary); border-top: 1px solid var(--border-subtle); padding-top: 10px;">
+            <span id="heroChecklistText">🟢 48 Pass · 🟡 8 Watch · 🔴 4 Risk Flags</span>
+            <span class="mono" style="color: var(--brand-cyan);">Composite Moat: Strong</span>
           </div>
         </div>
 
-        <!-- Chart 4: Share Count Dilution / Buyback -->
-        <div class="card chart-card">
-          <div class="chart-header">
-            <span class="chart-title">4. Shares Outstanding Trajectory (Billion)</span>
-          </div>
-          <div id="sharesTrendContainer" style="margin-top: 6px; font-size: 13px;">
-            <!-- Populated by JS -->
-          </div>
-        </div>
-
-      </div>
-
-      <!-- Subtab Panel 4: DCF Fair Value Sandbox -->
-      <div id="subtabDcf" class="subtab-panel hidden">
-        
-        <div class="dcf-summary-card">
-          <div class="dcf-values-row">
-            <div class="dcf-val-item">
-              <span>Estimated Fair Value</span>
-              <h3 class="mono text-cyan" id="dcfFairValueText">$144.50</h3>
-            </div>
-            <div class="dcf-val-item">
-              <span>Current Price</span>
-              <h3 class="mono" id="dcfCurrentPriceText">$128.60</h3>
-            </div>
+        <!-- Watchlist Selector & Controls -->
+        <div class="section-header">
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <select id="watchlistSelect" class="form-select" style="padding: 6px 12px; font-size: 13px; font-weight: 600;">
+              <!-- Watchlists populated by JS -->
+            </select>
+            <button class="btn-secondary" id="newListBtn" style="padding: 6px 10px; font-size: 12px;">+ New</button>
           </div>
 
-          <div class="margin-of-safety-meter undervalued" id="dcfMarginBadge">
-            🟢 MARGIN OF SAFETY: +12.4% Undervalued
-          </div>
-        </div>
-
-        <!-- Scenario Presets -->
-        <div class="preset-buttons">
-          <button class="preset-btn" id="dcfBearPreset">🐻 Bear Case</button>
-          <button class="preset-btn active" id="dcfBasePreset">⚖️ Base Case</button>
-          <button class="preset-btn" id="dcfBullPreset">🐂 Bull Case</button>
-        </div>
-
-        <!-- Interactive Sliders Card -->
-        <div class="card">
-          <div class="section-title" style="margin-bottom: 14px;">🎛️ Interactive Valuation Assumptions</div>
-          
-          <div class="slider-group">
-            <div class="slider-label">
-              <span>1. 5-Year Annual FCF Growth:</span>
-              <span class="slider-val mono" id="dcfGrowthVal">18%</span>
-            </div>
-            <input type="range" class="range-slider" id="dcfGrowthSlider" min="2" max="45" value="18" step="1">
-          </div>
-
-          <div class="slider-group">
-            <div class="slider-label">
-              <span>2. Terminal Exit Multiple (Year 5):</span>
-              <span class="slider-val mono" id="dcfMultipleVal">24.0x</span>
-            </div>
-            <input type="range" class="range-slider" id="dcfMultipleSlider" min="8" max="45" value="24" step="1">
-          </div>
-
-          <div class="slider-group">
-            <div class="slider-label">
-              <span>3. Required Discount Rate (Hurdle):</span>
-              <span class="slider-val mono" id="dcfDiscountVal">9.5%</span>
-            </div>
-            <input type="range" class="range-slider" id="dcfDiscountSlider" min="6" max="16" value="9.5" step="0.5">
-          </div>
-
-          <!-- Detailed DCF Breakdown Table -->
-          <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-subtle); font-size: 12px;" id="dcfBreakdownTable">
-            <!-- Rendered by JS -->
-          </div>
-        </div>
-
-      </div>
-
-      <!-- Subtab Panel 5: Thesis & Journal -->
-      <div id="subtabThesis" class="subtab-panel hidden">
-        
-        <!-- Buy Thesis & Conviction Card -->
-        <div class="card thesis-card">
-          <div class="section-title">📝 Core Investment Thesis</div>
-          
-          <div class="form-group">
-            <label class="form-label">Conviction Level</label>
-            <select id="thesisConvictionSelect" class="form-select">
-              <option value="fortress">⭐⭐⭐⭐⭐ Fortress Moat (Buffett Tier)</option>
-              <option value="high" selected>⭐⭐⭐⭐ High Conviction</option>
-              <option value="medium">⭐⭐⭐ Moderate / Valuation Dependent</option>
-              <option value="speculative">⭐⭐ Speculative Turnaround</option>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="font-size: 11px; color: var(--text-tertiary);">Sort:</span>
+            <select id="sortSelect" class="form-select" style="padding: 4px 8px; font-size: 12px;">
+              <option value="health">Health Score</option>
+              <option value="change">Price Change</option>
+              <option value="roic">ROIC (Moat)</option>
+              <option value="pe">P/E Ratio</option>
             </select>
           </div>
-
-          <div class="form-group">
-            <label class="form-label">Target Entry Buy Price ($)</label>
-            <input type="number" id="thesisTargetPrice" class="form-input mono" placeholder="e.g. 115.00" step="0.01">
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Core Moat Rationale</label>
-            <textarea id="thesisRationale" class="form-textarea" placeholder="Why do you believe this company has a durable moat, pricing power, and fortress balance sheet?"></textarea>
-          </div>
-
-          <button class="btn-primary" id="saveThesisBtn">💾 Save Investment Thesis</button>
         </div>
 
-        <!-- Pre-Committed Sell Guardrails -->
-        <div class="card">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <div class="section-title">🛡️ Pre-Committed Exit Guardrails</div>
-            <button class="btn-secondary" id="addGuardrailBtn" style="padding: 4px 8px; font-size: 11px;">+ Add</button>
-          </div>
-          <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px;">
-            Objective conditions that invalidate your thesis if triggered.
+        <!-- Stock Cards Container -->
+        <div id="stockCardsList">
+          <!-- Stock cards rendered by JS -->
+        </div>
+
+        <!-- Empty State Container -->
+        <div id="watchlistEmptyState" class="card hidden" style="text-align: center; padding: 36px 16px;">
+          <div style="font-size: 40px; margin-bottom: 8px;">🏰</div>
+          <h3 style="font-size: 17px; font-weight: 700; margin-bottom: 6px;">No Stocks in this Watchlist</h3>
+          <p style="font-size: 13px; color: var(--text-secondary); max-width: 320px; margin: 0 auto 16px auto;">
+            Add companies with strong financial health and durable moats to calculate your composite score.
           </p>
-          <div class="trigger-list" id="sellTriggersList">
-            <!-- Rendered by JS -->
+          <button class="btn-primary" id="emptyAddStockBtn">🔍 Add Stocks</button>
+        </div>
+
+      </section>
+
+      <!-- ==================== VIEW 2: STOCK DEEP DIVE & HEALTH SCORECARD ==================== -->
+      <section id="viewDeepDive" class="view-panel hidden">
+        
+        <!-- Deep Dive Top Bar -->
+        <div style="display: flex; align-items: center; justify-content: space-between; margin: 12px 0 16px 0;">
+          <button class="btn-secondary" id="deepDiveBackBtn" style="display: flex; align-items: gap: 4px; padding: 6px 10px;">
+            ← Back
+          </button>
+          <div style="text-align: center;">
+            <h2 id="deepDiveTicker" class="mono" style="font-size: 20px; font-weight: 800; letter-spacing: -0.01em;">NVDA</h2>
+            <p id="deepDiveName" style="font-size: 12px; color: var(--text-secondary);">NVIDIA Corporation</p>
           </div>
+          <button class="icon-btn" id="bookmarkBtn" title="Bookmark to Watchlist">
+            ⭐
+          </button>
         </div>
 
-        <!-- Chronological Journal Activity Log -->
-        <div class="card">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <div class="section-title">📅 Journal & Activity Log</div>
-            <button class="btn-secondary" id="addJournalNoteBtn" style="padding: 4px 8px; font-size: 11px;">+ Write Note</button>
-          </div>
-          <div class="journal-log" id="journalEntriesList">
-            <!-- Rendered by JS -->
-          </div>
-        </div>
-
-      </div>
-
-    </section>
-
-    <!-- ==================== VIEW 3: FUNDAMENTAL SCREENER ==================== -->
-    <section id="viewScreener" class="view-panel hidden">
-      
-      <div class="section-header">
-        <div class="section-title">🔍 Fundamental Moat Screener</div>
-        <span id="screenerCountBadge" class="score-badge pristine">6 Matches</span>
-      </div>
-
-      <!-- Quick Preset Pills -->
-      <div style="display: flex; gap: 6px; overflow-x: auto; margin-bottom: 14px; scrollbar-width: none;">
-        <button class="btn-secondary active" id="presetAllBtn" style="font-size: 12px; padding: 6px 10px;">All</button>
-        <button class="btn-secondary" id="presetFortressBtn" style="font-size: 12px; padding: 6px 10px;">👑 Fortress (Score ≥ 85)</button>
-        <button class="btn-secondary" id="presetRoicBtn" style="font-size: 12px; padding: 6px 10px;">🚀 ROIC ≥ 20%</button>
-        <button class="btn-secondary" id="presetCashBtn" style="font-size: 12px; padding: 6px 10px;">💎 Net Cash Only</button>
-      </div>
-
-      <!-- Filter Controls Grid -->
-      <div class="card screener-filters">
-        <div class="form-group">
-          <label class="form-label">Min Health Score: <span id="filterHealthVal" class="text-cyan mono">70</span></label>
-          <input type="range" class="range-slider" id="filterHealthSlider" min="0" max="95" value="70" step="5">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Min Piotroski F-Score: <span id="filterPiotroskiVal" class="text-cyan mono">6</span>/9</label>
-          <input type="range" class="range-slider" id="filterPiotroskiSlider" min="0" max="9" value="6" step="1">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Min ROIC %: <span id="filterRoicVal" class="text-cyan mono">12%</span></label>
-          <input type="range" class="range-slider" id="filterRoicSlider" min="0" max="40" value="12" step="2">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Sector</label>
-          <select id="filterSectorSelect" class="form-select" style="padding: 6px 10px;">
-            <option value="all">All Sectors</option>
-            <option value="Technology">Technology</option>
-            <option value="Communication Services">Communication Services</option>
-            <option value="Consumer Defensive">Consumer Defensive</option>
-            <option value="Financial Services">Financial Services</option>
-            <option value="Healthcare">Healthcare</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Screener Results Table -->
-      <div class="stock-table-container">
-        <table class="stock-table">
-          <thead>
-            <tr>
-              <th>Ticker</th>
-              <th>Price</th>
-              <th>Health</th>
-              <th>Piotroski</th>
-              <th>ROIC</th>
-              <th>Net Cash</th>
-            </tr>
-          </thead>
-          <tbody id="screenerTableBody">
-            <!-- Rendered by JS -->
-          </tbody>
-        </table>
-      </div>
-
-    </section>
-
-    <!-- ==================== VIEW 4: PEER COMPARE MATRIX ==================== -->
-    <section id="viewCompare" class="view-panel hidden">
-      
-      <div class="section-header">
-        <div class="section-title">⚔️ Side-by-Side Peer Comparison</div>
-      </div>
-
-      <div class="card" style="margin-bottom: 16px;">
-        <div class="form-group">
-          <label class="form-label">Compare Tickers (up to 4, comma separated)</label>
-          <div style="display: flex; gap: 8px;">
-            <input type="text" id="compareInput" class="form-input mono" value="AAPL, MSFT, NVDA, GOOGL" placeholder="e.g. AAPL, MSFT, GOOGL">
-            <button class="btn-primary" id="compareRunBtn">Compare</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Comparison Matrix Container -->
-      <div id="compareMatrixContainer">
-        <!-- Rendered by JS -->
-      </div>
-
-    </section>
-
-  </main>
-
-  <!-- Bottom Navigation Bar -->
-  <nav class="bottom-nav">
-    <div class="bottom-nav-inner">
-      <button class="nav-tab active" data-view="viewWatchlist" id="tabWatchlist">
-        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-        <span>Watchlist</span>
-      </button>
-
-      <button class="nav-tab" data-view="viewDeepDive" id="tabDeepDive">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-        <span>Scorecard</span>
-      </button>
-
-      <button class="nav-tab" data-view="viewScreener" id="tabScreener">
-        <svg viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-        <span>Screener</span>
-      </button>
-
-      <button class="nav-tab" data-view="viewCompare" id="tabCompare">
-        <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-        <span>Compare</span>
-      </button>
-    </div>
-  </nav>
-
-  <!-- ==================== MODALS ==================== -->
-
-  <!-- Modal 1: Search & Command Palette -->
-  <div class="modal-backdrop" id="searchModal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 class="modal-title">🔍 Search Companies & Tickers</h3>
-        <button class="icon-btn" id="closeSearchModalBtn">✕</button>
-      </div>
-      <div class="form-group" style="margin-bottom: 12px;">
-        <input type="text" id="searchInput" class="form-input mono" placeholder="Search by symbol (e.g. NVDA, MSFT, BRK-B)..." autocomplete="off" autofocus>
-      </div>
-      <div id="searchResultsList" style="display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto;">
-        <!-- Search suggestions rendered by JS -->
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal 2: Settings & Invite Activation -->
-  <div class="modal-backdrop" id="settingsModal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 class="modal-title">⚙️ App Settings & Device Activation</h3>
-        <button class="icon-btn" id="closeSettingsModalBtn">✕</button>
-      </div>
-
-      <!-- Invite Code Activation Section -->
-      <div class="card" style="margin-bottom: 14px;">
-        <div class="section-title" style="margin-bottom: 8px;">🔑 Device Invite Activation</div>
-        <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px;">
-          Enter the invite code from <a href="https://github.com/marinmda/pwa-invite-console" target="_blank" style="color: var(--brand-cyan);">pwa-invite-console</a> to bind this device.
-        </p>
-        <div style="display: flex; gap: 8px;">
-          <input type="text" id="inviteCodeInput" class="form-input mono" placeholder="OMAHA-XXXX" style="text-transform: uppercase;">
-          <button class="btn-primary" id="redeemInviteBtn">Activate</button>
-        </div>
-        <div id="activationStatusText" style="margin-top: 8px; font-size: 12px;"></div>
-      </div>
-
-      <!-- Push Notifications Toggle -->
-      <div class="card" style="margin-bottom: 14px;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
+        <!-- Price & Change Row -->
+        <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 16px; padding: 0 4px;">
           <div>
-            <div class="section-title">🔔 Web Push Notifications</div>
-            <p style="font-size: 12px; color: var(--text-secondary);">Alerts on health score shifts & filings</p>
+            <span id="deepDivePrice" class="mono" style="font-size: 28px; font-weight: 800;">$128.60</span>
+            <span id="deepDiveCurrency" style="font-size: 12px; color: var(--text-tertiary); margin-left: 4px;">USD</span>
           </div>
-          <button class="btn-secondary" id="enablePushBtn">Enable</button>
+          <div id="deepDiveChange" class="mono stock-change positive" style="font-size: 15px; font-weight: 700;">
+            +$3.20 (+2.62%)
+          </div>
+        </div>
+
+        <!-- Hero Scorecard Ring Card -->
+        <div class="card card-elevated" style="margin-bottom: 16px;">
+          <div class="score-ring-container">
+            <div class="score-ring-wrapper">
+              <svg class="score-ring-svg" viewBox="0 0 120 120">
+                <circle class="score-ring-bg" cx="60" cy="60" r="50"/>
+                <circle class="score-ring-progress" id="scoreRingProgress" cx="60" cy="60" r="50"
+                        stroke="#10B981" stroke-dasharray="314.15" stroke-dashoffset="31.4"/>
+              </svg>
+              <div class="score-ring-center">
+                <div class="score-ring-value mono" id="deepDiveScoreVal">94</div>
+                <div class="score-ring-max">/ 100</div>
+              </div>
+            </div>
+            <div class="score-ring-label" id="deepDiveScoreLabel" style="color: var(--health-pristine);">
+              Pristine Financial Health
+            </div>
+            <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;" id="deepDiveSectorInfo">
+              Technology · Semiconductors
+            </p>
+          </div>
+
+          <!-- 5 Pillar Breakdown Horizontal Bars -->
+          <div class="pillar-meters" id="deepDivePillars" style="margin-top: 16px;">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Segmented Sub-Tabs -->
+        <div class="segmented-tabs" id="deepDiveSubtabs">
+          <button class="tab-pill active" data-subtab="overview">Overview</button>
+          <button class="tab-pill" data-subtab="checklist">12-Pt Checklist</button>
+          <button class="tab-pill" data-subtab="trends">5Y Trends</button>
+          <button class="tab-pill" data-subtab="dcf">DCF Sandbox</button>
+          <button class="tab-pill" data-subtab="thesis">My Thesis & Log</button>
+        </div>
+
+        <!-- Subtab Panel 1: Overview -->
+        <div id="subtabOverview" class="subtab-panel">
+          
+          <!-- Catalysts & Moats Card -->
+          <div class="card">
+            <div class="section-title" style="margin-bottom: 12px; color: var(--health-pristine);">
+              ⚡ Key Moat Catalysts & Strengths
+            </div>
+            <div id="catalystsList" style="display: flex; flex-direction: column; gap: 10px;">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
+
+          <!-- Risk Flags Card -->
+          <div class="card">
+            <div class="section-title" style="margin-bottom: 12px; color: var(--health-moderate);">
+              ⚠️ Caution & Risk Watchpoints
+            </div>
+            <div id="risksList" style="display: flex; flex-direction: column; gap: 10px;">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
+
+          <!-- Key Financial Multiples Matrix -->
+          <div class="card">
+            <div class="section-title" style="margin-bottom: 12px;">
+              📊 Key Fundamental Ratios
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;" id="multiplesGrid">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Subtab Panel 2: 12-Pt Checklist -->
+        <div id="subtabChecklist" class="subtab-panel hidden">
+          <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+              <div class="section-title">🚦 Traffic-Light Health Tests</div>
+              <span id="checklistScoreBadge" class="score-badge pristine">10 Pass · 2 Watch</span>
+            </div>
+            <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 14px;">
+              Tap any rule to view benchmark targets and economic moat explanation.
+            </p>
+            <div class="checklist-container" id="checklistFullList">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Subtab Panel 3: 5Y Trends -->
+        <div id="subtabTrends" class="subtab-panel hidden">
+          
+          <!-- Chart 1: Revenue vs Free Cash Flow -->
+          <div class="card chart-card">
+            <div class="chart-header">
+              <span class="chart-title">1. Revenue vs. Free Cash Flow ($B)</span>
+              <div class="chart-legend">
+                <div class="legend-item"><span class="legend-color" style="background: #38BDF8;"></span> Rev</div>
+                <div class="legend-item"><span class="legend-color" style="background: #10B981;"></span> FCF</div>
+              </div>
+            </div>
+            <div class="bar-chart-container" id="revFcfChart">
+              <!-- Dual bars rendered by JS -->
+            </div>
+            <div style="margin-top: 10px; font-size: 12px; color: var(--text-secondary);" id="revFcfSummaryText">
+              5Y Revenue CAGR: +74.2% · FCF Conversion: 108%
+            </div>
+          </div>
+
+          <!-- Chart 2: Balance Sheet Cushion Stack -->
+          <div class="card chart-card">
+            <div class="chart-header">
+              <span class="chart-title">2. Balance Sheet Liquidity & Debt Stack</span>
+            </div>
+            <div class="cushion-stack" id="balanceSheetStack">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <!-- Chart 3: Margin Trajectory -->
+          <div class="card chart-card">
+            <div class="chart-header">
+              <span class="chart-title">3. Margin Expansion & Pricing Power (%)</span>
+            </div>
+            <div id="marginTrendContainer" style="display: flex; flex-direction: column; gap: 8px; margin-top: 6px;">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <!-- Chart 4: Share Count Dilution / Buyback -->
+          <div class="card chart-card">
+            <div class="chart-header">
+              <span class="chart-title">4. Shares Outstanding Trajectory (Billion)</span>
+            </div>
+            <div id="sharesTrendContainer" style="margin-top: 6px; font-size: 13px;">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Subtab Panel 4: DCF Fair Value Sandbox -->
+        <div id="subtabDcf" class="subtab-panel hidden">
+          
+          <div class="dcf-summary-card">
+            <div class="dcf-values-row">
+              <div class="dcf-val-item">
+                <span>Estimated Fair Value</span>
+                <h3 class="mono text-cyan" id="dcfFairValueText">$144.50</h3>
+              </div>
+              <div class="dcf-val-item">
+                <span>Current Price</span>
+                <h3 class="mono" id="dcfCurrentPriceText">$128.60</h3>
+              </div>
+            </div>
+
+            <div class="margin-of-safety-meter undervalued" id="dcfMarginBadge">
+              🟢 MARGIN OF SAFETY: +12.4% Undervalued
+            </div>
+          </div>
+
+          <!-- Scenario Presets -->
+          <div class="preset-buttons">
+            <button class="preset-btn" id="dcfBearPreset">🐻 Bear Case</button>
+            <button class="preset-btn active" id="dcfBasePreset">⚖️ Base Case</button>
+            <button class="preset-btn" id="dcfBullPreset">🐂 Bull Case</button>
+          </div>
+
+          <!-- Interactive Sliders Card -->
+          <div class="card">
+            <div class="section-title" style="margin-bottom: 14px;">🎛️ Interactive Valuation Assumptions</div>
+            
+            <div class="slider-group">
+              <div class="slider-label">
+                <span>1. 5-Year Annual FCF Growth:</span>
+                <span class="slider-val mono" id="dcfGrowthVal">18%</span>
+              </div>
+              <input type="range" class="range-slider" id="dcfGrowthSlider" min="2" max="45" value="18" step="1">
+            </div>
+
+            <div class="slider-group">
+              <div class="slider-label">
+                <span>2. Terminal Exit Multiple (Year 5):</span>
+                <span class="slider-val mono" id="dcfMultipleVal">24.0x</span>
+              </div>
+              <input type="range" class="range-slider" id="dcfMultipleSlider" min="8" max="45" value="24" step="1">
+            </div>
+
+            <div class="slider-group">
+              <div class="slider-label">
+                <span>3. Required Discount Rate (Hurdle):</span>
+                <span class="slider-val mono" id="dcfDiscountVal">9.5%</span>
+              </div>
+              <input type="range" class="range-slider" id="dcfDiscountSlider" min="6" max="16" value="9.5" step="0.5">
+            </div>
+
+            <!-- Detailed DCF Breakdown Table -->
+            <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-subtle); font-size: 12px;" id="dcfBreakdownTable">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Subtab Panel 5: Thesis & Journal -->
+        <div id="subtabThesis" class="subtab-panel hidden">
+          
+          <!-- Buy Thesis & Conviction Card -->
+          <div class="card thesis-card">
+            <div class="section-title">📝 Core Investment Thesis</div>
+            
+            <div class="form-group">
+              <label class="form-label">Conviction Level</label>
+              <select id="thesisConvictionSelect" class="form-select">
+                <option value="fortress">⭐⭐⭐⭐⭐ Fortress Moat (Buffett Tier)</option>
+                <option value="high" selected>⭐⭐⭐⭐ High Conviction</option>
+                <option value="medium">⭐⭐⭐ Moderate / Valuation Dependent</option>
+                <option value="speculative">⭐⭐ Speculative Turnaround</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Target Entry Buy Price ($)</label>
+              <input type="number" id="thesisTargetPrice" class="form-input mono" placeholder="e.g. 115.00" step="0.01">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Core Moat Rationale</label>
+              <textarea id="thesisRationale" class="form-textarea" placeholder="Why do you believe this company has a durable moat, pricing power, and fortress balance sheet?"></textarea>
+            </div>
+
+            <button class="btn-primary" id="saveThesisBtn">💾 Save Investment Thesis</button>
+          </div>
+
+          <!-- Pre-Committed Sell Guardrails -->
+          <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <div class="section-title">🛡️ Pre-Committed Exit Guardrails</div>
+              <button class="btn-secondary" id="addGuardrailBtn" style="padding: 4px 8px; font-size: 11px;">+ Add</button>
+            </div>
+            <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px;">
+              Objective conditions that invalidate your thesis if triggered.
+            </p>
+            <div class="trigger-list" id="sellTriggersList">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
+
+          <!-- Chronological Journal Activity Log -->
+          <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <div class="section-title">📅 Journal & Activity Log</div>
+              <button class="btn-secondary" id="addJournalNoteBtn" style="padding: 4px 8px; font-size: 11px;">+ Write Note</button>
+            </div>
+            <div class="journal-log" id="journalEntriesList">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- ==================== VIEW 3: FUNDAMENTAL SCREENER ==================== -->
+      <section id="viewScreener" class="view-panel hidden">
+        
+        <div class="section-header">
+          <div class="section-title">🔍 Fundamental Moat Screener</div>
+          <span id="screenerCountBadge" class="score-badge pristine">6 Matches</span>
+        </div>
+
+        <!-- Quick Preset Pills -->
+        <div style="display: flex; gap: 6px; overflow-x: auto; margin-bottom: 14px; scrollbar-width: none;">
+          <button class="btn-secondary active" id="presetAllBtn" style="font-size: 12px; padding: 6px 10px;">All</button>
+          <button class="btn-secondary" id="presetFortressBtn" style="font-size: 12px; padding: 6px 10px;">👑 Fortress (Score ≥ 85)</button>
+          <button class="btn-secondary" id="presetRoicBtn" style="font-size: 12px; padding: 6px 10px;">🚀 ROIC ≥ 20%</button>
+          <button class="btn-secondary" id="presetCashBtn" style="font-size: 12px; padding: 6px 10px;">💎 Net Cash Only</button>
+        </div>
+
+        <!-- Filter Controls Grid -->
+        <div class="card screener-filters">
+          <div class="form-group">
+            <label class="form-label">Min Health Score: <span id="filterHealthVal" class="text-cyan mono">70</span></label>
+            <input type="range" class="range-slider" id="filterHealthSlider" min="0" max="95" value="70" step="5">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Min Piotroski F-Score: <span id="filterPiotroskiVal" class="text-cyan mono">6</span>/9</label>
+            <input type="range" class="range-slider" id="filterPiotroskiSlider" min="0" max="9" value="6" step="1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Min ROIC %: <span id="filterRoicVal" class="text-cyan mono">12%</span></label>
+            <input type="range" class="range-slider" id="filterRoicSlider" min="0" max="40" value="12" step="2">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Sector</label>
+            <select id="filterSectorSelect" class="form-select" style="padding: 6px 10px;">
+              <option value="all">All Sectors</option>
+              <option value="Technology">Technology</option>
+              <option value="Communication Services">Communication Services</option>
+              <option value="Consumer Defensive">Consumer Defensive</option>
+              <option value="Financial Services">Financial Services</option>
+              <option value="Healthcare">Healthcare</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Screener Results Table -->
+        <div class="stock-table-container">
+          <table class="stock-table">
+            <thead>
+              <tr>
+                <th>Ticker</th>
+                <th>Price</th>
+                <th>Health</th>
+                <th>Piotroski</th>
+                <th>ROIC</th>
+                <th>Net Cash</th>
+              </tr>
+            </thead>
+            <tbody id="screenerTableBody">
+              <!-- Rendered by JS -->
+            </tbody>
+          </table>
+        </div>
+
+      </section>
+
+      <!-- ==================== VIEW 4: PEER COMPARE MATRIX ==================== -->
+      <section id="viewCompare" class="view-panel hidden">
+        
+        <div class="section-header">
+          <div class="section-title">⚔️ Side-by-Side Peer Comparison</div>
+        </div>
+
+        <div class="card" style="margin-bottom: 16px;">
+          <div class="form-group">
+            <label class="form-label">Compare Tickers (up to 4, comma separated)</label>
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="compareInput" class="form-input mono" value="AAPL, MSFT, NVDA, GOOGL" placeholder="e.g. AAPL, MSFT, GOOGL">
+              <button class="btn-primary" id="compareRunBtn">Compare</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Comparison Matrix Container -->
+        <div id="compareMatrixContainer">
+          <!-- Rendered by JS -->
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="bottom-nav">
+      <div class="bottom-nav-inner">
+        <button class="nav-tab active" data-view="viewWatchlist" id="tabWatchlist">
+          <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span>Watchlist</span>
+        </button>
+
+        <button class="nav-tab" data-view="viewDeepDive" id="tabDeepDive">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          <span>Scorecard</span>
+        </button>
+
+        <button class="nav-tab" data-view="viewScreener" id="tabScreener">
+          <svg viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+          <span>Screener</span>
+        </button>
+
+        <button class="nav-tab" data-view="viewCompare" id="tabCompare">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <span>Compare</span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- ==================== MODALS ==================== -->
+
+    <!-- Modal 1: Search & Command Palette -->
+    <div class="modal-backdrop" id="searchModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">🔍 Search Companies & Tickers</h3>
+          <button class="icon-btn" id="closeSearchModalBtn">✕</button>
+        </div>
+        <div class="form-group" style="margin-bottom: 12px;">
+          <input type="text" id="searchInput" class="form-input mono" placeholder="Search by symbol (e.g. NVDA, MSFT, BRK-B)..." autocomplete="off">
+        </div>
+        <div id="searchResultsList" style="display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto;">
+          <!-- Search suggestions rendered by JS -->
         </div>
       </div>
+    </div>
 
-      <!-- Personal Data Backup Export / Import -->
-      <div class="card">
-        <div class="section-title" style="margin-bottom: 8px;">💾 Backup & Restore</div>
-        <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">
-          Download all your personal investment theses, sell guardrails, and journal notes.
+    <!-- Modal 2: Settings & Information -->
+    <div class="modal-backdrop" id="settingsModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">⚙️ App Settings</h3>
+          <button class="icon-btn" id="closeSettingsModalBtn">✕</button>
+        </div>
+
+        <!-- Push Notifications Toggle -->
+        <div class="card" style="margin-bottom: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div class="section-title">🔔 Web Push Notifications</div>
+              <p style="font-size: 12px; color: var(--text-secondary);">Alerts on health score shifts & filings</p>
+            </div>
+            <button class="btn-secondary" id="enablePushBtn">Enable</button>
+          </div>
+        </div>
+
+        <!-- Personal Data Backup Export / Import -->
+        <div class="card">
+          <div class="section-title" style="margin-bottom: 8px;">💾 Backup & Restore</div>
+          <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">
+            Download all your personal investment theses, sell guardrails, and journal notes.
+          </p>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn-primary" id="exportBackupBtn" style="flex: 1;">📥 Export Backup JSON</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Modal 3: Onboarding Starter Bundles -->
+    <div class="modal-backdrop" id="onboardingModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">🎩 Welcome to Pocket Omaha</h3>
+        </div>
+        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+          "Track wonderful businesses with durable economic moats." Choose a curated starter watchlist to begin:
         </p>
-        <div style="display: flex; gap: 8px;">
-          <button class="btn-primary" id="exportBackupBtn" style="flex: 1;">📥 Export Backup JSON</button>
-        </div>
-      </div>
 
-    </div>
-  </div>
-
-  <!-- Modal 3: Onboarding Starter Bundles -->
-  <div class="modal-backdrop" id="onboardingModal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 class="modal-title">🎩 Welcome to Pocket Omaha</h3>
-      </div>
-      <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
-        "Track wonderful businesses with durable economic moats." Choose a curated starter watchlist to begin:
-      </p>
-
-      <div style="display: flex; flex-direction: column; gap: 10px;">
-        <div class="card card-clickable" data-starter="compounders" style="margin-bottom: 0;">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-              <div style="font-weight: 700;">👑 The Compounders Bundle</div>
-              <div style="font-size: 12px; color: var(--text-secondary);">AAPL · MSFT · GOOGL · BRK-B · NVDA</div>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <div class="card card-clickable" data-starter="compounders" style="margin-bottom: 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-weight: 700;">👑 The Compounders Bundle</div>
+                <div style="font-size: 12px; color: var(--text-secondary);">AAPL · MSFT · GOOGL · BRK-B · NVDA</div>
+              </div>
+              <span class="score-badge pristine">88/100</span>
             </div>
-            <span class="score-badge pristine">88/100</span>
+          </div>
+
+          <div class="card card-clickable" data-starter="ai-semis" style="margin-bottom: 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-weight: 700;">🚀 AI & Semiconductors Bundle</div>
+                <div style="font-size: 12px; color: var(--text-secondary);">NVDA · MSFT · GOOGL · TSLA · AAPL</div>
+              </div>
+              <span class="score-badge pristine">90/100</span>
+            </div>
+          </div>
+
+          <div class="card card-clickable" data-starter="aristocrats" style="margin-bottom: 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-weight: 700;">🛡️ Defensive Aristocrats Bundle</div>
+                <div style="font-size: 12px; color: var(--text-secondary);">BRK-B · MSFT · AAPL · GOOGL</div>
+              </div>
+              <span class="score-badge good">85/100</span>
+            </div>
           </div>
         </div>
 
-        <div class="card card-clickable" data-starter="ai-semis" style="margin-bottom: 0;">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-              <div style="font-weight: 700;">🚀 AI & Semiconductors Bundle</div>
-              <div style="font-size: 12px; color: var(--text-secondary);">NVDA · MSFT · GOOGL · TSLA · AAPL</div>
-            </div>
-            <span class="score-badge pristine">90/100</span>
-          </div>
-        </div>
-
-        <div class="card card-clickable" data-starter="aristocrats" style="margin-bottom: 0;">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-              <div style="font-weight: 700;">🛡️ Defensive Aristocrats Bundle</div>
-              <div style="font-size: 12px; color: var(--text-secondary);">BRK-B · MSFT · AAPL · GOOGL</div>
-            </div>
-            <span class="score-badge good">85/100</span>
-          </div>
+        <div style="margin-top: 16px; text-align: center;">
+          <button class="btn-secondary" id="skipOnboardingBtn">Explore Default Watchlist →</button>
         </div>
       </div>
+    </div>
 
-      <div style="margin-top: 16px; text-align: center;">
-        <button class="btn-secondary" id="skipOnboardingBtn">Explore Default Watchlist →</button>
+    <!-- Modal 4: Add New Watchlist -->
+    <div class="modal-backdrop" id="newWatchlistModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">✨ Create New Watchlist</h3>
+          <button class="icon-btn" id="closeNewListModalBtn">✕</button>
+        </div>
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label class="form-label">Watchlist Name</label>
+          <input type="text" id="newWatchlistNameInput" class="form-input" placeholder="e.g. Dividend Fortress, Tech Radar">
+        </div>
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label class="form-label">Initial Tickers (comma separated)</label>
+          <input type="text" id="newWatchlistTickersInput" class="form-input mono" placeholder="e.g. AAPL, MSFT, NVDA">
+        </div>
+        <button class="btn-primary" id="saveNewWatchlistBtn" style="width: 100%;">Create Watchlist</button>
       </div>
     </div>
-  </div>
 
-  <!-- Modal 4: Add New Watchlist -->
-  <div class="modal-backdrop" id="newWatchlistModal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 class="modal-title">✨ Create New Watchlist</h3>
-        <button class="icon-btn" id="closeNewListModalBtn">✕</button>
+    <!-- Modal 5: Add Journal Note -->
+    <div class="modal-backdrop" id="journalModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">✍️ New Journal Entry</h3>
+          <button class="icon-btn" id="closeJournalModalBtn">✕</button>
+        </div>
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label class="form-label">Date & Thoughts (Earnings, valuation shift, thesis update)</label>
+          <textarea id="newJournalNoteText" class="form-textarea" placeholder="e.g. Q2 earnings beat expectations. Gross margins expanded +200 bps. Holding strong..."></textarea>
+        </div>
+        <button class="btn-primary" id="saveJournalNoteBtn" style="width: 100%;">Post Note</button>
       </div>
-      <div class="form-group" style="margin-bottom: 12px;">
-        <label class="form-label">Watchlist Name</label>
-        <input type="text" id="newWatchlistNameInput" class="form-input" placeholder="e.g. Dividend Fortress, Tech Radar">
-      </div>
-      <div class="form-group" style="margin-bottom: 16px;">
-        <label class="form-label">Initial Tickers (comma separated)</label>
-        <input type="text" id="newWatchlistTickersInput" class="form-input mono" placeholder="e.g. AAPL, MSFT, NVDA">
-      </div>
-      <button class="btn-primary" id="saveNewWatchlistBtn" style="width: 100%;">Create Watchlist</button>
     </div>
-  </div>
 
-  <!-- Modal 5: Add Journal Note -->
-  <div class="modal-backdrop" id="journalModal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 class="modal-title">✍️ New Journal Entry</h3>
-        <button class="icon-btn" id="closeJournalModalBtn">✕</button>
-      </div>
-      <div class="form-group" style="margin-bottom: 16px;">
-        <label class="form-label">Date & Thoughts (Earnings, valuation shift, thesis update)</label>
-        <textarea id="newJournalNoteText" class="form-textarea" placeholder="e.g. Q2 earnings beat expectations. Gross margins expanded +200 bps. Holding strong..."></textarea>
-      </div>
-      <button class="btn-primary" id="saveJournalNoteBtn" style="width: 100%;">Post Note</button>
-    </div>
   </div>
 
   <!-- Application Logic -->

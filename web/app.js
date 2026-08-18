@@ -35,20 +35,157 @@ document.addEventListener('DOMContentLoaded', async () => {
   registerServiceWorker();
   initEventListeners();
   initNetworkListeners();
-  checkInviteParam();
+  initGateForm();
 
-  // Load initial data
-  await loadWatchlists();
-  await loadWatchlistData(state.activeWatchlistId);
+  // Check device registration / invite session
+  const isAuthed = await checkAuthSession();
+  if (isAuthed) {
+    // Load initial data
+    await loadWatchlists();
+    await loadWatchlistData(state.activeWatchlistId);
 
-  // Check first run onboarding
-  if (!localStorage.getItem('omaha_onboarded')) {
-    openModal('onboardingModal');
+    // Check first run onboarding
+    if (!localStorage.getItem('omaha_onboarded')) {
+      openModal('onboardingModal');
+    }
+
+    // Handle URL deep links e.g. ?ticker=AAPL&tab=checklist
+    handleUrlParams();
+  }
+});
+
+// ----------------- AUTHENTICATION & GATE CONTROLLER -----------------
+async function checkAuthSession() {
+  const params = new URLSearchParams(window.location.search);
+  const inviteParam = params.get('invite') || params.get('code');
+  if (inviteParam) {
+    const input = document.getElementById('gateCodeInput');
+    if (input) input.value = inviteParam.trim().toUpperCase();
   }
 
-  // Handle URL deep links e.g. ?ticker=AAPL&tab=checklist
-  handleUrlParams();
-});
+  try {
+    const res = await fetch('/api/auth/session', {
+      headers: getAuthHeaders()
+    });
+    const session = await res.json();
+
+    if (session.authenticated && !session.revoked) {
+      document.getElementById('gateScreen')?.classList.add('hidden');
+      document.getElementById('appShell')?.classList.remove('hidden');
+      return true;
+    } else {
+      showGateScreen();
+      return false;
+    }
+  } catch (err) {
+    console.warn('Session check error:', err);
+    showGateScreen();
+    return false;
+  }
+}
+
+function showGateScreen() {
+  document.getElementById('appShell')?.classList.add('hidden');
+  const gate = document.getElementById('gateScreen');
+  if (gate) {
+    gate.classList.remove('hidden');
+    gate.classList.add('fade-in');
+  }
+
+  // Show installation tip on iOS/Android if not running in standalone mode
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  if (!isStandalone && isMobile) {
+    document.getElementById('gateInAppNotice')?.classList.remove('hidden');
+  }
+}
+
+function initGateForm() {
+  const form = document.getElementById('gateForm');
+  if (!form) return;
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const codeInput = document.getElementById('gateCodeInput');
+    const errEl = document.getElementById('gateErrorText');
+    const submitBtn = document.getElementById('gateSubmitBtn');
+
+    const code = (codeInput?.value || '').trim().toUpperCase();
+    if (!code) return;
+
+    errEl.classList.add('hidden');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Se verifică…';
+
+    try {
+      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+      const isAndroid = /Android/i.test(navigator.userAgent);
+      const deviceLabel = isIOS ? 'iPhone' : isAndroid ? 'Android' : 'Web Browser';
+
+      const res = await fetch('/api/auth/redeem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code,
+          device_label: `${deviceLabel} (${new Date().toLocaleDateString('ro-RO', { month: 'short', day: 'numeric' })})`
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Cod de invitație invalid sau expirat.');
+      }
+
+      // Store device token
+      if (data.token) {
+        localStorage.setItem('omaha_token', data.token);
+      }
+
+      // Smooth transition into app
+      document.getElementById('gateScreen')?.classList.add('hidden');
+      document.getElementById('appShell')?.classList.remove('hidden');
+      document.getElementById('appShell')?.classList.add('fade-in');
+
+      // Load data
+      await loadWatchlists();
+      await loadWatchlistData(state.activeWatchlistId);
+
+      if (!localStorage.getItem('omaha_onboarded')) {
+        openModal('onboardingModal');
+      }
+
+      handleUrlParams();
+    } catch (err) {
+      errEl.textContent = err.message || 'Eroare la activare. Verifică codul.';
+      errEl.classList.remove('hidden');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Activează Dispozitivul';
+    }
+  });
+}
+
+function getAuthHeaders() {
+  const token = localStorage.getItem('omaha_token');
+  const headers = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
+async function apiFetch(url, options = {}) {
+  const headers = {
+    ...getAuthHeaders(),
+    ...(options.headers || {})
+  };
+  const res = await fetch(url, { ...options, headers });
+  if (res.status === 401) {
+    showGateScreen();
+    throw new Error('Dispozitiv neautorizat. Introdu codul de invitație.');
+  }
+  return res;
+}
 
 // ----------------- THEME CONTROLLER -----------------
 function initTheme() {
@@ -309,7 +446,7 @@ function initEventListeners() {
 // ----------------- WATCHLIST LOGIC & RENDERING -----------------
 async function loadWatchlists() {
   try {
-    const res = await fetch('/api/watchlists');
+    const res = await apiFetch('/api/watchlists');
     const data = await res.json();
     state.watchlists = data.watchlists || [];
 
@@ -326,7 +463,7 @@ async function loadWatchlists() {
 
 async function loadWatchlistData(watchlistId) {
   try {
-    const res = await fetch(`/api/watchlists/${watchlistId}/health`);
+    const res = await apiFetch(`/api/watchlists/${watchlistId}/health`);
     const data = await res.json();
     state.currentWatchlistData = data;
     renderWatchlistHero(data);
@@ -460,7 +597,7 @@ async function openStockDeepDive(tickerSymbol) {
   switchSubtab('overview');
 
   try {
-    const res = await fetch(`/api/stock/${ticker}`);
+    const res = await apiFetch(`/api/stock/${ticker}`);
     if (!res.ok) throw new Error('Stock not found');
     const data = await res.json();
     state.currentStock = data;
@@ -828,7 +965,7 @@ function calculateClientDCF() {
 // ----------------- INVESTMENT THESIS & JOURNAL -----------------
 async function loadInvestmentThesis(ticker) {
   try {
-    const res = await fetch(`/api/theses/${ticker}`);
+    const res = await apiFetch(`/api/theses/${ticker}`);
     const data = await res.json();
     state.thesis = data;
 
@@ -855,7 +992,7 @@ async function handleSaveThesis() {
   state.thesis.coreRationale = coreRationale;
 
   try {
-    const res = await fetch(`/api/theses/${state.currentTicker}`, {
+    const res = await apiFetch(`/api/theses/${state.currentTicker}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(state.thesis)
@@ -946,7 +1083,7 @@ async function handleSaveJournalNote() {
 
 async function handleSaveThesisSilent() {
   if (!state.currentTicker) return;
-  await fetch(`/api/theses/${state.currentTicker}`, {
+  await apiFetch(`/api/theses/${state.currentTicker}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(state.thesis)
@@ -956,7 +1093,7 @@ async function handleSaveThesisSilent() {
 // ----------------- SCREENER LOGIC -----------------
 async function loadScreenerData() {
   try {
-    const res = await fetch('/api/screener');
+    const res = await apiFetch('/api/screener');
     const data = await res.json();
     state.allScreenerStocks = data.stocks || [];
     filterScreenerStocks();
@@ -1026,7 +1163,7 @@ async function runComparison() {
   const container = document.getElementById('compareMatrixContainer');
 
   try {
-    const res = await fetch(`/api/compare?tickers=${encodeURIComponent(input)}`);
+    const res = await apiFetch(`/api/compare?tickers=${encodeURIComponent(input)}`);
     const data = await res.json();
     const stocks = data.stocks || [];
 
@@ -1100,7 +1237,7 @@ async function handleSearchInput(e) {
   }
 
   try {
-    const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+    const res = await apiFetch(`/api/search?q=${encodeURIComponent(query)}`);
     const results = await res.json();
 
     if (results.length === 0) {
@@ -1145,7 +1282,7 @@ async function handleCreateWatchlist() {
   const tickers = rawTickers.split(',').map(t => t.trim().toUpperCase()).filter(Boolean);
 
   try {
-    const res = await fetch('/api/watchlists', {
+    const res = await apiFetch('/api/watchlists', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, tickers })
@@ -1177,7 +1314,7 @@ async function handleToggleBookmark() {
     alert(`Added ${state.currentTicker} to ${currentWl.name}!`);
   }
 
-  await fetch(`/api/watchlists/${state.activeWatchlistId}`, {
+  await apiFetch(`/api/watchlists/${state.activeWatchlistId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ tickers })
