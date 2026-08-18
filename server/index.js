@@ -7,6 +7,7 @@ import { initDatabase, db } from './db.js';
 import { getStockData } from './finance.js';
 import {
   requireAdmin,
+  requireDeviceAuth,
   getAdminDevices,
   updateDeviceRevoke,
   updateDeviceLabel,
@@ -64,7 +65,7 @@ app.get('/api/auth/session', checkSession);
 
 // ----------------- PUSH NOTIFICATIONS API -----------------
 app.get('/api/push/vapid-key', getVapidPublicKey);
-app.post('/api/push/subscribe', saveSubscription);
+app.post('/api/push/subscribe', requireDeviceAuth, saveSubscription);
 app.post('/api/push/test', requireAdmin, async (req, res) => {
   const { title = 'Pocket Omaha Alert 🎩', body = 'Test health score update notification' } = req.body || {};
   const results = await broadcastPush({
@@ -77,10 +78,10 @@ app.post('/api/push/test', requireAdmin, async (req, res) => {
   res.json({ success: true, delivered: results.length });
 });
 
-// ----------------- FINANCIAL DATA & SCORING API -----------------
+// ----------------- FINANCIAL DATA & SCORING API (PROTECTED) -----------------
 
 // Single Stock Deep Dive
-app.get('/api/stock/:ticker', async (req, res) => {
+app.get('/api/stock/:ticker', requireDeviceAuth, async (req, res) => {
   const { ticker } = req.params;
   const forceRefresh = req.query.refresh === '1' || req.query.refresh === 'true';
 
@@ -97,13 +98,12 @@ app.get('/api/stock/:ticker', async (req, res) => {
 });
 
 // Search / Autocomplete Tickers
-app.get('/api/search', async (req, res) => {
+app.get('/api/search', requireDeviceAuth, async (req, res) => {
   const query = (req.query.q || '').trim().toUpperCase();
   if (!query) {
     return res.json([]);
   }
 
-  // First search cached / known stocks
   const cachedMatches = db.prepare(`
     SELECT ticker, name, sector, price, change_pct, health_score
     FROM stock_cache
@@ -132,7 +132,6 @@ app.get('/api/search', async (req, res) => {
     t.ticker.startsWith(query) || t.name.toUpperCase().includes(query)
   );
 
-  // Combine and deduplicate
   const map = new Map();
   cachedMatches.forEach(item => map.set(item.ticker, item));
   matchedPopular.forEach(item => {
@@ -145,7 +144,7 @@ app.get('/api/search', async (req, res) => {
 });
 
 // Compare Multiple Tickers Side-by-Side
-app.get('/api/compare', async (req, res) => {
+app.get('/api/compare', requireDeviceAuth, async (req, res) => {
   const rawTickers = req.query.tickers || 'AAPL,MSFT,NVDA';
   const tickers = rawTickers
     .split(',')
@@ -173,14 +172,12 @@ app.get('/api/compare', async (req, res) => {
 });
 
 // Screener Endpoint
-app.get('/api/screener', async (req, res) => {
+app.get('/api/screener', requireDeviceAuth, async (req, res) => {
   const minHealth = parseInt(req.query.minHealth || '0', 10);
   const minPiotroski = parseInt(req.query.minPiotroski || '0', 10);
   const minRoic = parseFloat(req.query.minRoic || '0');
-  const maxDebtEquity = parseFloat(req.query.maxDebtEquity || '999');
   const sector = req.query.sector || '';
 
-  // Ensure default watchlist stocks are cached
   const starterList = ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'BRK-B', 'TSLA', 'JNJ', 'PG', 'KO', 'V'];
   for (const t of starterList) {
     const cached = db.prepare('SELECT ticker FROM stock_cache WHERE ticker = ?').get(t);
@@ -218,8 +215,8 @@ app.get('/api/screener', async (req, res) => {
   return res.json({ count: stocks.length, stocks });
 });
 
-// ----------------- WATCHLISTS API -----------------
-app.get('/api/watchlists', (req, res) => {
+// ----------------- WATCHLISTS API (PROTECTED) -----------------
+app.get('/api/watchlists', requireDeviceAuth, (req, res) => {
   const lists = db.prepare('SELECT * FROM watchlists ORDER BY is_default DESC, name ASC').all();
   return res.json({
     watchlists: lists.map(l => ({
@@ -232,7 +229,7 @@ app.get('/api/watchlists', (req, res) => {
   });
 });
 
-app.post('/api/watchlists', (req, res) => {
+app.post('/api/watchlists', requireDeviceAuth, (req, res) => {
   const { name, tickers = [] } = req.body || {};
   if (!name || typeof name !== 'string') {
     return res.status(400).json({ error: 'Watchlist name is required' });
@@ -249,7 +246,7 @@ app.post('/api/watchlists', (req, res) => {
   return res.json({ success: true, id, name: name.trim(), tickers: cleanTickers });
 });
 
-app.put('/api/watchlists/:id', (req, res) => {
+app.put('/api/watchlists/:id', requireDeviceAuth, (req, res) => {
   const { id } = req.params;
   const { name, tickers } = req.body || {};
 
@@ -270,14 +267,14 @@ app.put('/api/watchlists/:id', (req, res) => {
   return res.json({ success: true });
 });
 
-app.delete('/api/watchlists/:id', (req, res) => {
+app.delete('/api/watchlists/:id', requireDeviceAuth, (req, res) => {
   const { id } = req.params;
   db.prepare('DELETE FROM watchlists WHERE id = ?').run(id);
   return res.json({ success: true });
 });
 
 // Watchlist Health Composite Details
-app.get('/api/watchlists/:id/health', async (req, res) => {
+app.get('/api/watchlists/:id/health', requireDeviceAuth, async (req, res) => {
   const { id } = req.params;
   const wl = db.prepare('SELECT * FROM watchlists WHERE id = ?').get(id);
   if (!wl) {
@@ -311,10 +308,8 @@ app.get('/api/watchlists/:id/health', async (req, res) => {
     });
   }
 
-  // Calculate weighted composite scores
   const avgHealth = Math.round(validStocks.reduce((sum, s) => sum + s.health_score, 0) / validStocks.length);
   
-  // Aggregate 5 pillars
   const pillarSums = [0, 0, 0, 0, 0];
   validStocks.forEach(s => {
     if (s.pillars) {
@@ -365,8 +360,8 @@ app.get('/api/watchlists/:id/health', async (req, res) => {
   });
 });
 
-// ----------------- INVESTMENT THESIS & JOURNAL API -----------------
-app.get('/api/theses/:ticker', (req, res) => {
+// ----------------- INVESTMENT THESIS & JOURNAL API (PROTECTED) -----------------
+app.get('/api/theses/:ticker', requireDeviceAuth, (req, res) => {
   const ticker = req.params.ticker.toUpperCase();
   const thesis = db.prepare('SELECT * FROM theses WHERE ticker = ?').get(ticker);
   if (!thesis) {
@@ -393,7 +388,7 @@ app.get('/api/theses/:ticker', (req, res) => {
   });
 });
 
-app.post('/api/theses/:ticker', (req, res) => {
+app.post('/api/theses/:ticker', requireDeviceAuth, (req, res) => {
   const ticker = req.params.ticker.toUpperCase();
   const { conviction = 'high', targetBuyPrice = null, coreRationale = '', moatTags = [], sellTriggers = [], journalEntries = [] } = req.body || {};
 
@@ -422,7 +417,7 @@ app.post('/api/theses/:ticker', (req, res) => {
 });
 
 // Full Backup Export
-app.get('/api/theses', (req, res) => {
+app.get('/api/theses', requireDeviceAuth, (req, res) => {
   const theses = db.prepare('SELECT * FROM theses').all();
   const watchlists = db.prepare('SELECT * FROM watchlists').all();
 

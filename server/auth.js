@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { db } from './db.js';
 
-const COOKIE_NAME = 'pocket_omaha_token';
+export const COOKIE_NAME = 'pocket_omaha_token';
 
 // Middleware to guard admin endpoints with X-Admin: 1
 export function requireAdmin(req, res, next) {
@@ -9,6 +9,27 @@ export function requireAdmin(req, res, next) {
   if (xAdmin !== '1' && process.env.NODE_ENV !== 'development-bypass') {
     return res.status(403).json({ error: 'Admin access forbidden. Missing X-Admin header.' });
   }
+  next();
+}
+
+// Middleware to require registered device authorization
+export function requireDeviceAuth(req, res, next) {
+  // If request arrives via admin listener with X-Admin: 1, allow
+  if (req.headers['x-admin'] === '1') {
+    return next();
+  }
+
+  const token = extractToken(req);
+  if (!token) {
+    return res.status(401).json({ error: 'Device not registered. Invite code required.' });
+  }
+
+  const device = db.prepare('SELECT id, label, revoked FROM devices WHERE token = ?').get(token);
+  if (!device || device.revoked === 1) {
+    return res.status(401).json({ error: 'Device registration invalid or revoked.' });
+  }
+
+  req.device = device;
   next();
 }
 
@@ -110,8 +131,8 @@ export function createAdminInvite(req, res) {
   const ttlDays = 7;
   const code = generateInviteCode();
   
-  const host = req.get('host') || 'localhost:3000';
-  const protocol = req.protocol === 'https' || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
+  const host = req.get('host') || 'omaha.zandaulion.com';
+  const protocol = req.protocol === 'https' || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'https';
   const url = `${protocol}://${host}/?invite=${code}`;
 
   const expiresAt = new Date(Date.now() + ttlDays * 24 * 60 * 60 * 1000).toISOString();
@@ -205,12 +226,8 @@ export function redeemInvite(req, res) {
     }
   }
 
-  // Set cookie
-  res.cookie(COOKIE_NAME, token, {
-    httpOnly: true,
-    sameSite: 'lax',
-    maxAge: 365 * 24 * 60 * 60 * 1000
-  });
+  // Set long-lived cookie
+  res.setHeader('Set-Cookie', `${COOKIE_NAME}=${token}; Path=/; Max-Age=31536000; SameSite=Lax; HttpOnly`);
 
   return res.json({
     success: true,
@@ -264,6 +281,15 @@ export function extractToken(req) {
   const authHeader = req.headers['authorization'];
   if (authHeader && authHeader.startsWith('Bearer ')) {
     return authHeader.substring(7).trim();
+  }
+  const cookieHeader = req.headers['cookie'];
+  if (cookieHeader) {
+    const cookies = cookieHeader.split(';').map(c => c.trim());
+    for (const cookie of cookies) {
+      if (cookie.startsWith(`${COOKIE_NAME}=`)) {
+        return decodeURIComponent(cookie.substring(COOKIE_NAME.length + 1));
+      }
+    }
   }
   return req.cookies?.[COOKIE_NAME] || null;
 }
