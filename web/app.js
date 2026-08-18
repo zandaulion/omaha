@@ -29,8 +29,8 @@ const state = {
   }
 };
 
-// DOM Content Loaded Entry Point
-document.addEventListener('DOMContentLoaded', async () => {
+// Application Initialization Entry Point
+async function initApp() {
   initTheme();
   registerServiceWorker();
   initEventListeners();
@@ -52,7 +52,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Handle URL deep links e.g. ?ticker=AAPL&tab=checklist
     handleUrlParams();
   }
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
 
 // ----------------- AUTHENTICATION & GATE CONTROLLER -----------------
 async function checkAuthSession() {

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pocket-omaha-v1.0.0';
+const CACHE_NAME = 'pocket-omaha-v1.0.1';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -36,8 +36,14 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // API Requests: Network first with cache fallback
+  // API Requests: Network ONLY / Network first (never serve stale auth)
   if (url.pathname.startsWith('/api/')) {
+    if (url.pathname.startsWith('/api/auth/')) {
+      // Auth requests must never be cached by SW
+      event.respondWith(fetch(event.request));
+      return;
+    }
+
     event.respondWith(
       fetch(event.request)
         .then((response) => {
@@ -54,19 +60,33 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static Assets: Cache first with network fallback
+  // HTML / Root: Network first to ensure fresh auth state
+  if (url.pathname === '/' || url.pathname.endsWith('.html')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Static Assets (CSS, JS, Icons): Stale-While-Revalidate
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        // Fetch update in background for freshness
-        fetch(event.request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
-          }
-        }).catch(() => {});
-        return cachedResponse;
-      }
-      return fetch(event.request);
+      const fetchPromise = fetch(event.request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
+        }
+        return networkResponse;
+      }).catch(() => {});
+
+      return cachedResponse || fetchPromise;
     })
   );
 });
