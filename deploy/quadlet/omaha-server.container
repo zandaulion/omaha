@@ -1,0 +1,21 @@
+[Unit]
+Description=Pocket Omaha server (Financial scoring, caching, push notifications)
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image=localhost/omaha-server:latest
+ContainerName=omaha-server
+PublishPort=127.0.0.1:8095:3000
+Volume=omaha-server-data:/data
+Environment=DATA_DIR=/data
+Environment=PORT=3000
+NoNewPrivileges=true
+DropCapability=ALL
+
+[Service]
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target
