@@ -39,12 +39,12 @@
         Introdu codul de invitație pentru a înregistra acest dispozitiv.
       </p>
 
-      <form id="gateForm" class="gate-form" action="javascript:void(0);" onsubmit="return false;">
+      <form id="gateForm" class="gate-form" action="javascript:void(0);" onsubmit="if(window.manualRedeem)window.manualRedeem();return false;">
         <div class="gate-input-row">
           <input type="text" id="gateCodeInput" class="form-input mono gate-code-input" 
                  placeholder="OMAHA-XXXX" autocomplete="off" autocapitalize="characters" 
                  spellcheck="false" required>
-          <button type="button" class="btn-primary gate-submit-btn" id="gateSubmitBtn">
+          <button type="button" class="btn-primary gate-submit-btn" id="gateSubmitBtn" onclick="if(window.manualRedeem)window.manualRedeem();">
             Activează
           </button>
         </div>
@@ -57,6 +57,59 @@
       </div>
     </div>
   </div>
+
+  <script>
+  (function() {
+    var params = new URLSearchParams(window.location.search);
+    var code = (params.get('invite') || params.get('code') || '').trim().toUpperCase();
+    if (code) {
+      var inp = document.getElementById('gateCodeInput');
+      if (inp) inp.value = code;
+      setTimeout(function() { redeem(code); }, 50);
+    }
+
+    function redeem(c) {
+      var btn = document.getElementById('gateSubmitBtn');
+      var err = document.getElementById('gateErrorText');
+      if (btn) { btn.disabled = true; btn.textContent = 'Se activează…'; }
+      if (err) err.classList.add('hidden');
+
+      var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+      var isAndroid = /Android/i.test(navigator.userAgent);
+      var label = isIOS ? 'iPhone' : (isAndroid ? 'Android' : 'Web Browser');
+
+      fetch('/api/auth/redeem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: c, device_label: label })
+      }).then(function(r) { return r.json(); }).then(function(d) {
+        if (d.success && d.token) {
+          localStorage.setItem('omaha_token', d.token);
+          try { window.history.replaceState({}, document.title, window.location.pathname); } catch(e) {}
+          window.location.reload();
+        } else {
+          if (err) {
+            err.textContent = d.error || 'Cod invalid sau expirat.';
+            err.classList.remove('hidden');
+          }
+          if (btn) { btn.disabled = false; btn.textContent = 'Activează'; }
+        }
+      }).catch(function(e) {
+        if (err) {
+          err.textContent = 'Eroare de rețea la activare.';
+          err.classList.remove('hidden');
+        }
+        if (btn) { btn.disabled = false; btn.textContent = 'Activează'; }
+      });
+    }
+
+    window.manualRedeem = function() {
+      var inp = document.getElementById('gateCodeInput');
+      var c = (inp ? inp.value : '').trim().toUpperCase();
+      if (c) redeem(c);
+    };
+  })();
+  </script>
 
   <!-- ==================== MAIN AUTHENTICATED APP SHELL ==================== -->
   <div id="appShell" class="hidden">
