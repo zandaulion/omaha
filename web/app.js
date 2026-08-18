@@ -68,8 +68,7 @@ if (document.readyState === 'loading') {
 
 // ----------------- AUTHENTICATION & GATE CONTROLLER -----------------
 async function checkAuthSession() {
-  const params = new URLSearchParams(window.location.search);
-  const inviteParam = params.get('invite') || params.get('code');
+  const token = localStorage.getItem('omaha_token');
 
   try {
     const res = await fetch('/api/auth/session', {
@@ -82,6 +81,14 @@ async function checkAuthSession() {
       document.getElementById('appShell')?.classList.remove('hidden');
       return true;
     }
+
+    // If server says token was revoked or invalid, clear it
+    if (token && session.revoked) {
+      localStorage.removeItem('omaha_token');
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const inviteParam = params.get('invite') || params.get('code');
 
     // If not yet authenticated and invite code is in URL, auto-activate immediately
     if (inviteParam) {
@@ -102,6 +109,11 @@ async function checkAuthSession() {
     return false;
   } catch (err) {
     console.warn('Session check error:', err);
+    if (token) {
+      document.getElementById('gateScreen')?.classList.add('hidden');
+      document.getElementById('appShell')?.classList.remove('hidden');
+      return true;
+    }
     showGateScreen();
     return false;
   }
