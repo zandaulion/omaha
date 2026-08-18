@@ -8,6 +8,7 @@ Image=localhost/omaha-server:latest
 ContainerName=omaha-server
 PublishPort=127.0.0.1:8095:3000
 Volume=omaha-server-data:/data
+EnvironmentFile=%h/.config/omaha/omaha.env
 Environment=DATA_DIR=/data
 Environment=PORT=3000
 NoNewPrivileges=true

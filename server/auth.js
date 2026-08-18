@@ -108,12 +108,14 @@ export function getAdminInvites(req, res) {
     ORDER BY created_at DESC
   `).all();
 
+  const base = (process.env.PUBLIC_BASE_URL || 'https://omaha.zandaulion.com').trim().replace(/\/+$/, '');
+
   // Plaintext rule: if used_at is set, ensure code and url are null
   const sanitized = invites.map(inv => ({
     id: inv.id,
     label: inv.label,
     code: inv.used_at ? null : inv.code,
-    url: inv.used_at ? null : inv.url,
+    url: inv.used_at ? null : (inv.code ? `${base}/?invite=${inv.code}` : null),
     created_at: inv.created_at,
     expires_at: inv.expires_at,
     used_at: inv.used_at,
@@ -131,9 +133,8 @@ export function createAdminInvite(req, res) {
   const ttlDays = 7;
   const code = generateInviteCode();
   
-  const host = req.get('host') || 'omaha.zandaulion.com';
-  const protocol = req.protocol === 'https' || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'https';
-  const url = `${protocol}://${host}/?invite=${code}`;
+  const base = (process.env.PUBLIC_BASE_URL || 'https://omaha.zandaulion.com').trim().replace(/\/+$/, '');
+  const url = `${base}/?invite=${code}`;
 
   const expiresAt = new Date(Date.now() + ttlDays * 24 * 60 * 60 * 1000).toISOString();
 
