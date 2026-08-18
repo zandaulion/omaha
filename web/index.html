@@ -20,7 +20,7 @@
   <link rel="manifest" href="/manifest.webmanifest">
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/app.css">
+  <link rel="stylesheet" href="/app.css?v=2.0.0">
 </head>
 <body>
 
@@ -60,6 +60,17 @@
 
   <script>
   (function() {
+    // 1. Instant check: if already authenticated, immediately display app shell!
+    if (localStorage.getItem('omaha_token')) {
+      var gateEl = document.getElementById('gateScreen');
+      var appEl = document.getElementById('appShell');
+      if (gateEl) gateEl.classList.add('hidden');
+      if (appEl) {
+        appEl.classList.remove('hidden');
+        appEl.classList.add('fade-in');
+      }
+    }
+
     var params = new URLSearchParams(window.location.search);
     var code = (params.get('invite') || params.get('code') || '').trim().toUpperCase();
     if (code) {
@@ -85,6 +96,13 @@
       }).then(function(r) { return r.json(); }).then(function(d) {
         if (d.success && d.token) {
           localStorage.setItem('omaha_token', d.token);
+          var gateEl = document.getElementById('gateScreen');
+          var appEl = document.getElementById('appShell');
+          if (gateEl) gateEl.classList.add('hidden');
+          if (appEl) {
+            appEl.classList.remove('hidden');
+            appEl.classList.add('fade-in');
+          }
           try { window.history.replaceState({}, document.title, window.location.pathname); } catch(e) {}
           window.location.reload();
         } else {
@@ -748,6 +766,6 @@
   </div>
 
   <!-- Application Logic -->
-  <script type="module" src="/app.js"></script>
+  <script type="module" src="/app.js?v=2.0.0"></script>
 </body>
 </html>

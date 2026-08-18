@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pocket-omaha-v1.0.4';
+const CACHE_NAME = 'pocket-omaha-v2.0.0';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -12,10 +12,11 @@ const STATIC_ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(STATIC_ASSETS);
-    }).then(() => self.skipWaiting())
+    })
   );
 });
 
@@ -36,32 +37,14 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // API Requests: Network ONLY / Network first (never serve stale auth)
+  // API Requests: Network ONLY (no caching auth/financial APIs in SW)
   if (url.pathname.startsWith('/api/')) {
-    if (url.pathname.startsWith('/api/auth/')) {
-      // Auth requests must never be cached by SW
-      event.respondWith(fetch(event.request));
-      return;
-    }
-
-    event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          if (response && response.status === 200 && event.request.method === 'GET') {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, clone);
-            });
-          }
-          return response;
-        })
-        .catch(() => caches.match(event.request))
-    );
+    event.respondWith(fetch(event.request));
     return;
   }
 
-  // HTML / Root: Network first to ensure fresh auth state
-  if (url.pathname === '/' || url.pathname.endsWith('.html')) {
+  // HTML, JS, CSS: ALWAYS Network-First so code updates apply immediately
+  if (url.pathname === '/' || url.pathname.endsWith('.html') || url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
@@ -76,7 +59,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static Assets (CSS, JS, Icons): Stale-While-Revalidate
+  // Static Assets (Icons/Images): Stale-While-Revalidate
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {
