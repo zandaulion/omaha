@@ -132,7 +132,7 @@ pocket-omaha/
 │   ├── sw.js                  # Offline caching and push listener
 │   └── icons/                 # High-res PWA icons and SVG assets
 ├── admin.sh                   # Administration CLI tool
-├── LICENSE                    # MIT License
+├── LICENSE                    # GNU General Public License v3.0 (GPL-3.0)
 └── package.json               # Node.js project manifest
 ```
 
@@ -140,5 +140,6 @@ pocket-omaha/
 
 ## 📄 License
 
-This project is open-source software licensed under the [MIT License](LICENSE).
+This project is open-source software licensed under the [GNU General Public License v3.0 (GPL-3.0)](LICENSE).
+
 
