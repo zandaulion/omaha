@@ -668,6 +668,17 @@ function renderWatchlistHero(data) {
     const { totalPass = 0, totalWatch = 0, totalFail = 0 } = data.checklistAggregates;
     checkText.innerHTML = `🟢 ${totalPass} Pass · 🟡 ${totalWatch} Watch · 🔴 ${totalFail} Risk Flags`;
   }
+
+  // Composite Moat Dynamic Update
+  const moatEl = document.getElementById('heroMoatText');
+  if (moatEl) {
+    let moatLabel = 'Moderate';
+    if (score >= 85) moatLabel = 'Wide / Fortress';
+    else if (score >= 70) moatLabel = 'Strong';
+    else if (score >= 50) moatLabel = 'Moderate';
+    else moatLabel = 'Narrow / Speculative';
+    moatEl.textContent = `Composite Moat: ${moatLabel}`;
+  }
 }
 
 function renderWatchlistCards() {
