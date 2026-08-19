@@ -8,6 +8,11 @@
     "start": "node server/index.js",
     "dev": "node --watch server/index.js"
   },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/marinmda/omaha.git"
+  },
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
