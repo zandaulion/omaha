@@ -17,7 +17,7 @@ export function getGeminiApiKey() {
 }
 
 export function getGeminiModel() {
-  return (process.env.GEMINI_MODEL || 'gemini-2.5-flash').trim();
+  return (process.env.GEMINI_MODEL || 'gemini-3.7-flash').trim();
 }
 
 /**
