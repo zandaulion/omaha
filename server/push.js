@@ -37,6 +37,7 @@ export function getVapidPublicKey(req, res) {
 
 export function saveSubscription(req, res) {
   const { subscription, device_id } = req.body || {};
+  const deviceId = req.device?.id || device_id;
   if (!subscription || !subscription.endpoint) {
     return res.status(400).json({ error: 'Valid push subscription object required' });
   }
@@ -54,10 +55,10 @@ export function saveSubscription(req, res) {
         p256dh=excluded.p256dh,
         auth=excluded.auth,
         last_active=datetime('now')
-    `).run(device_id || null, endpoint, p256dh, auth);
+    `).run(deviceId || null, endpoint, p256dh, auth);
 
-    if (device_id) {
-      db.prepare('UPDATE devices SET has_push = 1 WHERE id = ?').run(device_id);
+    if (deviceId) {
+      db.prepare('UPDATE devices SET has_push = 1 WHERE id = ?').run(deviceId);
     }
 
     return res.json({ success: true });
