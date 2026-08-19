@@ -20,7 +20,7 @@
   <link rel="manifest" href="/manifest.webmanifest">
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/app.css?v=2.0.4">
+  <link rel="stylesheet" href="/app.css?v=2.0.5">
 </head>
 <body>
 
@@ -181,10 +181,10 @@
             <!-- Populated by JS -->
           </div>
 
-          <!-- Checklist Mini Summary -->
-          <div style="margin-top: 14px; display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--text-secondary); border-top: 1px solid var(--border-subtle); padding-top: 10px;">
-            <span id="heroChecklistText">🟢 48 Pass · 🟡 8 Watch · 🔴 4 Risk Flags</span>
-            <span class="mono" style="color: var(--brand-cyan);">Composite Moat: Strong</span>
+          <!-- Checklist Mini Summary & Composite Moat -->
+          <div style="margin-top: 14px; border-top: 1px solid var(--border-subtle); padding-top: 10px; font-size: 12px; display: flex; flex-direction: column; gap: 4px;">
+            <span id="heroChecklistText" style="color: var(--text-secondary);">🟢 48 Pass · 🟡 8 Watch · 🔴 4 Risk Flags</span>
+            <span class="mono" id="heroMoatText" style="color: var(--brand-cyan); font-size: 12px;">Composite Moat: Strong</span>
           </div>
         </div>
 
@@ -798,6 +798,6 @@
   </div>
 
   <!-- Application Logic -->
-  <script type="module" src="/app.js?v=2.0.4"></script>
+  <script type="module" src="/app.js?v=2.0.5"></script>
 </body>
 </html>
