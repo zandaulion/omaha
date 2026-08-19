@@ -20,7 +20,7 @@
   <link rel="manifest" href="/manifest.webmanifest">
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/app.css?v=2.0.9">
+  <link rel="stylesheet" href="/app.css?v=2.1.0">
 </head>
 <body>
 
@@ -233,16 +233,21 @@
         
         <!-- Deep Dive Top Bar -->
         <div style="display: flex; align-items: center; justify-content: space-between; margin: 12px 0 16px 0;">
-          <button class="btn-secondary" id="deepDiveBackBtn" style="display: flex; align-items: gap: 4px; padding: 6px 10px;">
+          <button class="btn-secondary" id="deepDiveBackBtn" style="display: flex; align-items: center; gap: 4px; padding: 6px 10px;">
             ← Back
           </button>
           <div style="text-align: center;">
             <h2 id="deepDiveTicker" class="mono" style="font-size: 20px; font-weight: 800; letter-spacing: -0.01em;">NVDA</h2>
             <p id="deepDiveName" style="font-size: 12px; color: var(--text-secondary);">NVIDIA Corporation</p>
           </div>
-          <button class="icon-btn" id="bookmarkBtn" title="Bookmark to Watchlist">
-            ⭐
-          </button>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <button class="btn-ai-sparkle-pill" id="deepDiveGeminiHeaderBtn" title="Analyze with Gemini AI">
+              ✨ AI Summary
+            </button>
+            <button class="icon-btn" id="bookmarkBtn" title="Bookmark to Watchlist">
+              ⭐
+            </button>
+          </div>
         </div>
 
         <!-- Price & Change Row -->
@@ -287,6 +292,7 @@
         <!-- Segmented Sub-Tabs -->
         <div class="segmented-tabs" id="deepDiveSubtabs">
           <button class="tab-pill active" data-subtab="overview">Overview</button>
+          <button class="tab-pill tab-pill-ai" data-subtab="gemini">✨ Gemini AI</button>
           <button class="tab-pill" data-subtab="checklist">12-Pt Checklist</button>
           <button class="tab-pill" data-subtab="trends">5Y Trends</button>
           <button class="tab-pill" data-subtab="dcf">DCF Sandbox</button>
@@ -296,6 +302,24 @@
         <!-- Subtab Panel 1: Overview -->
         <div id="subtabOverview" class="subtab-panel">
           
+          <!-- Gemini AI Analysis Teaser Card -->
+          <div class="card ai-teaser-card" id="overviewAiCard">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+              <div class="section-title ai-gradient-text" style="display: flex; align-items: center; gap: 6px;">
+                <span>✨</span> <span>Gemini AI Moat & Health Summary</span>
+              </div>
+              <span class="score-badge ai-badge-pill">Buffett & Munger Framework</span>
+            </div>
+            <div id="overviewAiBody">
+              <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">
+                Sends all financial statements, computed ratios (Altman Z, Piotroski, ROIC, DCF), and 12-point checklist to Gemini for an executive summary, moat breakdown, and conclusion with explanations.
+              </p>
+              <button class="btn-ai-sparkle" id="overviewGeminiActionBtn" style="width: 100%;">
+                ✨ Analyze with Gemini AI
+              </button>
+            </div>
+          </div>
+
           <!-- Catalysts & Moats Card -->
           <div class="card">
             <div class="section-title" style="margin-bottom: 12px; color: var(--health-pristine);">
@@ -514,6 +538,13 @@
             </div>
           </div>
 
+        </div>
+
+        <!-- Subtab Panel 6: Gemini AI Moat & Health Analysis -->
+        <div id="subtabGemini" class="subtab-panel hidden">
+          <div id="geminiAnalysisContainer">
+            <!-- Rendered by JS: CTA, Loader, or AI Summary Dashboard -->
+          </div>
         </div>
 
       </section>
@@ -800,6 +831,6 @@
   </div>
 
   <!-- Application Logic -->
-  <script type="module" src="/app.js?v=2.0.9"></script>
+  <script type="module" src="/app.js?v=2.1.0"></script>
 </body>
 </html>

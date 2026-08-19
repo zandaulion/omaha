@@ -26,7 +26,8 @@ const state = {
     moatTags: [],
     sellTriggers: [],
     journalEntries: []
-  }
+  },
+  aiSummaries: {}
 };
 
 // Application Initialization Entry Point
@@ -366,6 +367,7 @@ function switchSubtab(subtabName) {
 
   const subtabMap = {
     overview: 'subtabOverview',
+    gemini: 'subtabGemini',
     checklist: 'subtabChecklist',
     trends: 'subtabTrends',
     dcf: 'subtabDcf',
@@ -376,6 +378,10 @@ function switchSubtab(subtabName) {
   if (target) {
     target.classList.remove('hidden');
     target.classList.add('fade-in');
+  }
+
+  if (subtabName === 'gemini') {
+    ensureGeminiSubtabRendered(state.currentTicker);
   }
 }
 
@@ -410,6 +416,21 @@ function initEventListeners() {
       const subtab = btn.getAttribute('data-subtab');
       switchSubtab(subtab);
     });
+  });
+
+  // Gemini AI Triggers
+  document.getElementById('deepDiveGeminiHeaderBtn')?.addEventListener('click', () => {
+    switchSubtab('gemini');
+    if (!state.aiSummaries[state.currentTicker]) {
+      generateGeminiSummary(state.currentTicker, false);
+    }
+  });
+
+  document.getElementById('overviewGeminiActionBtn')?.addEventListener('click', () => {
+    switchSubtab('gemini');
+    if (!state.aiSummaries[state.currentTicker]) {
+      generateGeminiSummary(state.currentTicker, false);
+    }
   });
 
   // Watchlist Selector change
@@ -816,6 +837,7 @@ async function openStockDeepDive(tickerSymbol, initialSubtab = null) {
     renderTrendsSubtab(data);
     initDCFSandbox(data);
     loadInvestmentThesis(ticker);
+    fetchCachedAISummary(ticker);
   } catch (err) {
     console.error('Deep dive error:', err);
   }
@@ -865,6 +887,13 @@ function renderDeepDiveHero(stock) {
 }
 
 function renderOverviewSubtab(stock) {
+  // Update AI Overview Card if already cached
+  if (state.aiSummaries[stock.ticker]) {
+    updateOverviewAICard(stock.ticker, state.aiSummaries[stock.ticker]);
+  } else {
+    resetOverviewAICard(stock.ticker);
+  }
+
   // Catalysts
   const catList = document.getElementById('catalystsList');
   if (catList && stock.catalysts) {
@@ -916,6 +945,345 @@ function renderOverviewSubtab(stock) {
       </div>
     `).join('');
   }
+}
+
+// ----------------- GEMINI AI ANALYSIS & SUMMARY -----------------
+async function fetchCachedAISummary(ticker) {
+  try {
+    const res = await apiFetch(`/api/stock/${ticker}/ai-summary`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.summary) {
+        state.aiSummaries[ticker] = data.summary;
+        updateOverviewAICard(ticker, data.summary);
+        if (state.activeSubtab === 'gemini' && state.currentTicker === ticker) {
+          renderGeminiDashboard(data.summary);
+        }
+        return data.summary;
+      }
+    }
+  } catch (e) {
+    console.warn('[AI] Cached summary fetch warning:', e);
+  }
+  return null;
+}
+
+function ensureGeminiSubtabRendered(ticker) {
+  const container = document.getElementById('geminiAnalysisContainer');
+  if (!container) return;
+
+  if (state.aiSummaries[ticker]) {
+    renderGeminiDashboard(state.aiSummaries[ticker]);
+  } else {
+    renderGeminiCTA(ticker);
+    fetchCachedAISummary(ticker);
+  }
+}
+
+function resetOverviewAICard(ticker) {
+  const body = document.getElementById('overviewAiBody');
+  if (!body) return;
+  body.innerHTML = `
+    <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">
+      Sends all financial statements, computed ratios (Altman Z, Piotroski, ROIC, DCF), and 12-point checklist to Gemini for an executive summary, moat breakdown, and conclusion with explanations.
+    </p>
+    <button class="btn-ai-sparkle" id="overviewGeminiActionBtn" style="width: 100%;">
+      ✨ Analyze with Gemini AI
+    </button>
+  `;
+  document.getElementById('overviewGeminiActionBtn')?.addEventListener('click', () => {
+    switchSubtab('gemini');
+    if (!state.aiSummaries[state.currentTicker]) {
+      generateGeminiSummary(state.currentTicker, false);
+    }
+  });
+}
+
+function renderGeminiCTA(ticker) {
+  const container = document.getElementById('geminiAnalysisContainer');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="card ai-teaser-card" style="text-align: center; padding: 32px 16px;">
+      <div style="font-size: 36px; margin-bottom: 10px;">✨</div>
+      <h3 class="section-title ai-gradient-text" style="font-size: 18px; margin-bottom: 8px;">
+        Gemini AI Fundamental Moat & Valuation Analysis
+      </h3>
+      <p style="font-size: 13px; color: var(--text-secondary); max-width: 480px; margin: 0 auto 18px auto; line-height: 1.5;">
+        Send <strong>${ticker}</strong>'s complete financial statements, computed quantitative KPIs (Altman Z, Piotroski, ROIC, DCF), and 12-point checklist to Google Gemini for a rigorous, Buffett-style value investing synthesis.
+      </p>
+      <div style="display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-bottom: 20px;">
+        <span class="score-badge ai-badge-pill">🏰 Moat & Pricing Power</span>
+        <span class="score-badge ai-badge-pill">🛡️ Balance Sheet Fortress</span>
+        <span class="score-badge ai-badge-pill">🎯 DCF Margin of Safety</span>
+        <span class="score-badge ai-badge-pill">🚦 12-Point Checklist</span>
+      </div>
+      <button class="btn-ai-sparkle" id="runGeminiCTAActionBtn" style="font-size: 14px; padding: 12px 24px;">
+        ✨ Generate AI Moat & Health Summary
+      </button>
+    </div>
+  `;
+
+  document.getElementById('runGeminiCTAActionBtn')?.addEventListener('click', () => {
+    generateGeminiSummary(ticker, true);
+  });
+}
+
+function renderGeminiLoading(ticker) {
+  const container = document.getElementById('geminiAnalysisContainer');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="ai-loader-card">
+      <div class="ai-sparkle-spin">✨</div>
+      <h3 class="section-title ai-gradient-text" style="font-size: 16px; margin-bottom: 6px;">
+        Analyzing ${ticker} with Gemini 2.5 Flash…
+      </h3>
+      <p style="font-size: 12px; color: var(--text-secondary); max-width: 360px; margin: 0 auto 16px auto;">
+        Synthesizing 25+ fundamental metrics, balance sheet leverage, and intrinsic fair value.
+      </p>
+
+      <div class="ai-progress-steps">
+        <div class="ai-step-item">
+          <div class="ai-step-dot"></div>
+          <span>1. Packing financial statement ratios & KPIs…</span>
+        </div>
+        <div class="ai-step-item">
+          <div class="ai-step-dot" style="animation-delay: 0.3s;"></div>
+          <span>2. Evaluating 12-point traffic-light checklist…</span>
+        </div>
+        <div class="ai-step-item">
+          <div class="ai-step-dot" style="animation-delay: 0.6s;"></div>
+          <span>3. Running DCF intrinsic valuation & moat tests…</span>
+        </div>
+        <div class="ai-step-item">
+          <div class="ai-step-dot" style="animation-delay: 0.9s;"></div>
+          <span>4. Formulating Buffett-style verdict & explanations…</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderGeminiError(ticker, errorMsg) {
+  const container = document.getElementById('geminiAnalysisContainer');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="card" style="text-align: center; padding: 28px 16px; border-color: var(--health-risk-border);">
+      <div style="font-size: 32px; margin-bottom: 8px;">⚠️</div>
+      <h3 style="font-size: 16px; font-weight: 700; color: var(--health-risk); margin-bottom: 6px;">
+        Gemini Analysis Error
+      </h3>
+      <p style="font-size: 12px; color: var(--text-secondary); max-width: 400px; margin: 0 auto 16px auto;">
+        ${errorMsg || 'Unable to complete AI analysis. Check your connection or API key.'}
+      </p>
+      <button class="btn-primary" id="retryGeminiBtn">
+        🔄 Retry Analysis
+      </button>
+    </div>
+  `;
+
+  document.getElementById('retryGeminiBtn')?.addEventListener('click', () => {
+    generateGeminiSummary(ticker, true);
+  });
+}
+
+async function generateGeminiSummary(ticker, force = false) {
+  renderGeminiLoading(ticker);
+
+  try {
+    const res = await apiFetch(`/api/stock/${ticker}/ai-summary`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ forceRefresh: force })
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success || !data.summary) {
+      throw new Error(data.error || 'Failed to generate Gemini analysis');
+    }
+
+    state.aiSummaries[ticker] = data.summary;
+    renderGeminiDashboard(data.summary);
+    updateOverviewAICard(ticker, data.summary);
+    showToast('✨ Gemini analysis complete!', '🤖');
+  } catch (err) {
+    console.error('Gemini error:', err);
+    renderGeminiError(ticker, err.message);
+  }
+}
+
+function updateOverviewAICard(ticker, summary) {
+  const card = document.getElementById('overviewAiCard');
+  const body = document.getElementById('overviewAiBody');
+  if (!card || !body || !summary || summary.ticker !== ticker) return;
+
+  const badgeClass = summary.verdictGrade === 'PRISTINE_MOAT' ? 'pristine'
+    : summary.verdictGrade === 'SOLID_COMPOUNDER' ? 'good'
+    : summary.verdictGrade === 'VALUATION_WATCH' ? 'watch'
+    : 'risk';
+
+  body.innerHTML = `
+    <div style="margin-bottom: 10px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+        <span class="ai-verdict-badge ${badgeClass}" style="font-size: 11px; padding: 2px 8px;">${summary.verdictBadge || '👑 Moat Verdict'}</span>
+        <span style="font-size: 11px; color: var(--text-tertiary);">Generated by Gemini</span>
+      </div>
+      <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); line-height: 1.4; margin-bottom: 6px;">
+        "${summary.verdict}"
+      </div>
+      <p style="font-size: 12px; color: var(--text-secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4;">
+        ${summary.executiveSummary}
+      </p>
+    </div>
+    <button class="btn-ai-sparkle" id="overviewViewFullAiBtn" style="width: 100%;">
+      ✨ View Full Explanations & Conclusion →
+    </button>
+  `;
+
+  document.getElementById('overviewViewFullAiBtn')?.addEventListener('click', () => {
+    switchSubtab('gemini');
+  });
+}
+
+function renderGeminiDashboard(data) {
+  const container = document.getElementById('geminiAnalysisContainer');
+  if (!container) return;
+
+  const verdictClass = data.verdictGrade === 'PRISTINE_MOAT' ? 'pristine'
+    : data.verdictGrade === 'SOLID_COMPOUNDER' ? 'good'
+    : data.verdictGrade === 'VALUATION_WATCH' ? 'watch'
+    : 'risk';
+
+  const dateFormatted = data.generatedAt
+    ? `${new Date(data.generatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}, ${new Date(data.generatedAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}`
+    : 'Recently';
+
+  container.innerHTML = `
+    <!-- 1. AI Verdict Hero Card -->
+    <div class="card card-elevated ai-verdict-card" style="margin-bottom: 16px;">
+      <div class="ai-verdict-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 18px;">✨</span>
+          <span style="font-size: 13px; font-weight: 700; color: #C084FC;">Warren Buffett AI Framework</span>
+        </div>
+        <span class="ai-verdict-badge ${verdictClass}">${data.verdictBadge || '👑 Moat Verdict'}</span>
+      </div>
+      <div class="ai-verdict-title">${data.verdict}</div>
+      ${data.buffettPrinciple ? `
+        <div class="ai-quote-box">
+          <strong>Buffett / Munger Rule:</strong> "${data.buffettPrinciple}"
+        </div>
+      ` : ''}
+    </div>
+
+    <!-- 2. Executive Summary Card -->
+    <div class="card" style="margin-bottom: 16px;">
+      <div class="section-title ai-gradient-text" style="margin-bottom: 10px;">
+        📝 Executive Moat & Health Summary
+      </div>
+      <div style="font-size: 13px; color: var(--text-primary); line-height: 1.6; white-space: pre-line;">
+        ${data.executiveSummary}
+      </div>
+    </div>
+
+    <!-- 3. Fundamental Deep-Dive Pillars -->
+    <div class="ai-pillar-grid">
+      <!-- Moat & Profitability -->
+      <div class="ai-pillar-card">
+        <div class="ai-pillar-header">
+          <div class="ai-pillar-title">🏰 Economic Moat & Pricing Power</div>
+          <span class="ai-pillar-rating-chip" style="background: rgba(16, 185, 129, 0.15); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.3);">${data.moatAndProfitability?.ratingLabel || data.moatAndProfitability?.rating || 'Wide Moat'}</span>
+        </div>
+        <p class="ai-pillar-explanation">${data.moatAndProfitability?.explanation || ''}</p>
+      </div>
+
+      <!-- Solvency & Safety -->
+      <div class="ai-pillar-card">
+        <div class="ai-pillar-header">
+          <div class="ai-pillar-title">🛡️ Balance Sheet & Solvency</div>
+          <span class="ai-pillar-rating-chip" style="background: rgba(6, 182, 212, 0.15); color: #38BDF8; border: 1px solid rgba(6, 182, 212, 0.3);">${data.solvencyAndSafety?.ratingLabel || data.solvencyAndSafety?.rating || 'Fortress'}</span>
+        </div>
+        <p class="ai-pillar-explanation">${data.solvencyAndSafety?.explanation || ''}</p>
+      </div>
+
+      <!-- Valuation & DCF -->
+      <div class="ai-pillar-card">
+        <div class="ai-pillar-header">
+          <div class="ai-pillar-title">🎯 Valuation & Margin of Safety</div>
+          <span class="ai-pillar-rating-chip" style="background: rgba(245, 158, 11, 0.15); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.3);">${data.valuationAndDCF?.ratingLabel || data.valuationAndDCF?.rating || 'Fair Value'}</span>
+        </div>
+        <p class="ai-pillar-explanation">${data.valuationAndDCF?.explanation || ''}</p>
+      </div>
+    </div>
+
+    <!-- 4. Key Strengths & Catalysts -->
+    <div class="card" style="margin-bottom: 16px;">
+      <div class="section-title" style="margin-bottom: 12px; color: var(--health-pristine);">
+        ⚡ Key Moat Strengths & Competitive Advantages
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        ${(data.keyStrengths || []).map(s => `
+          <div class="ai-strength-item">
+            <span style="font-size: 16px;">🟢</span>
+            <div>
+              <div class="ai-strength-title">${s.title}</div>
+              <div style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">${s.detail}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <!-- 5. Key Risks & Critical Watchpoints -->
+    <div class="card" style="margin-bottom: 16px;">
+      <div class="section-title" style="margin-bottom: 12px; color: var(--health-moderate);">
+        ⚠️ Key Risks & Critical Watchpoints
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        ${(data.keyRisks || []).map(r => `
+          <div class="ai-risk-item">
+            <span style="font-size: 16px;">🟡</span>
+            <div>
+              <div class="ai-risk-title">${r.title}</div>
+              <div style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">${r.detail}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <!-- 6. Actionable Takeaways & Buy Target Zone -->
+    <div class="ai-buyzone-card">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+        <div class="section-title" style="color: var(--brand-cyan);">🎯 Value Investor Buy Zone & Strategy</div>
+        ${data.buyZone?.targetRange ? `<span class="score-badge pristine mono">${data.buyZone.targetRange}</span>` : ''}
+      </div>
+      ${data.buyZone?.perspective ? `<p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px;">${data.buyZone.perspective}</p>` : ''}
+      <div style="font-size: 13px; color: var(--text-primary); line-height: 1.5; padding: 10px 12px; background: var(--bg-surface-subtle); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); margin-bottom: 8px;">
+        <strong>Conclusion:</strong> ${data.conclusion}
+      </div>
+      ${data.whatToWatch && data.whatToWatch.length > 0 ? `
+        <div style="margin-top: 10px;">
+          <span style="font-size: 11px; font-weight: 700; color: var(--text-tertiary); text-transform: uppercase;">Filings Watchlist:</span>
+          <ul style="margin: 6px 0 0 18px; font-size: 12px; color: var(--text-secondary);">
+            ${data.whatToWatch.map(w => `<li style="margin-bottom: 4px;">${w}</li>`).join('')}
+          </ul>
+        </div>
+      ` : ''}
+    </div>
+
+    <!-- 7. Meta Bar -->
+    <div class="ai-meta-bar">
+      <span>🤖 Model: <strong class="mono">${data.model || 'Gemini'}</strong> · Generated: ${dateFormatted}</span>
+      <button class="btn-secondary" id="reAnalyzeGeminiBtn" style="padding: 4px 10px; font-size: 11px;">🔄 Re-Analyze</button>
+    </div>
+  `;
+
+  document.getElementById('reAnalyzeGeminiBtn')?.addEventListener('click', () => {
+    generateGeminiSummary(data.ticker, true);
+  });
 }
 
 function renderChecklistSubtab(stock) {

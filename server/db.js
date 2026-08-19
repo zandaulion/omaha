@@ -103,6 +103,12 @@ export function initDatabase() {
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS ai_summaries (
+      ticker TEXT PRIMARY KEY,
+      summary_json TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
   `);
 
   // Initialize starter watchlists if not present
