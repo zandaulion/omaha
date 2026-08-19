@@ -19,6 +19,7 @@ import {
   checkSession
 } from './auth.js';
 import { initVapid, getVapidPublicKey, saveSubscription, broadcastPush } from './push.js';
+import { generateStockAISummary, getCachedAISummary } from './gemini.js';
 
 dotenv.config();
 
@@ -100,6 +101,46 @@ app.get('/api/stock/:ticker', requireDeviceAuth, async (req, res) => {
   } catch (err) {
     console.error(`Error fetching ${ticker}:`, err);
     return res.status(500).json({ error: 'Failed to fetch financial data' });
+  }
+});
+
+// Get Cached Gemini AI Summary
+app.get('/api/stock/:ticker/ai-summary', requireDeviceAuth, async (req, res) => {
+  const { ticker } = req.params;
+  try {
+    const cached = getCachedAISummary(ticker);
+    return res.json({ summary: cached });
+  } catch (err) {
+    console.error(`Error retrieving AI summary for ${ticker}:`, err);
+    return res.status(500).json({ error: 'Failed to retrieve AI summary' });
+  }
+});
+
+// Generate or Refresh Gemini AI Fundamental & Moat Analysis
+app.post('/api/stock/:ticker/ai-summary', requireDeviceAuth, async (req, res) => {
+  const { ticker } = req.params;
+  const forceRefresh = req.query.refresh === '1' || req.query.refresh === 'true' || req.body?.forceRefresh === true;
+
+  try {
+    if (!forceRefresh) {
+      const cached = getCachedAISummary(ticker);
+      if (cached) {
+        return res.json({ success: true, summary: cached, fromCache: true });
+      }
+    }
+
+    const stock = await getStockData(ticker);
+    if (!stock) {
+      return res.status(404).json({ error: `Ticker ${ticker} not found` });
+    }
+
+    const thesis = db.prepare('SELECT * FROM theses WHERE ticker = ?').get(ticker.toUpperCase());
+    const result = await generateStockAISummary(stock, thesis);
+
+    return res.json({ success: true, summary: result, fromCache: false });
+  } catch (err) {
+    console.error(`Error generating Gemini summary for ${ticker}:`, err);
+    return res.status(500).json({ error: err.message || 'Failed to generate Gemini analysis' });
   }
 });
 

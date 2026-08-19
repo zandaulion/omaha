@@ -1688,4 +1688,319 @@ body {
   to { opacity: 0; transform: translateY(-8px) scale(0.95); }
 }
 
+/* ==========================================================================
+   Gemini AI Analysis & Moat Summary Styles
+   ========================================================================== */
+
+.btn-ai-sparkle {
+  background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 50%, #D946EF 100%);
+  color: #FFFFFF;
+  border: none;
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-shadow: 0 4px 14px rgba(139, 92, 246, 0.35);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-ai-sparkle:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5);
+  opacity: 0.95;
+}
+
+.btn-ai-sparkle:active {
+  transform: scale(0.98);
+}
+
+.btn-ai-sparkle-pill {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.25) 100%);
+  color: #C084FC;
+  border: 1px solid rgba(192, 132, 252, 0.35);
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-ai-sparkle-pill:hover {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.35) 0%, rgba(139, 92, 246, 0.4) 100%);
+  border-color: #C084FC;
+  color: #FFFFFF;
+  transform: translateY(-1px);
+}
+
+.tab-pill-ai {
+  color: #C084FC !important;
+  border-color: rgba(192, 132, 252, 0.3) !important;
+}
+
+.tab-pill-ai.active {
+  background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%) !important;
+  color: #FFFFFF !important;
+}
+
+.ai-gradient-text {
+  background: linear-gradient(135deg, #C084FC 0%, #38BDF8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 700;
+}
+
+.ai-badge-pill {
+  background: rgba(168, 85, 247, 0.15);
+  color: #C084FC;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  font-size: 11px;
+}
+
+.ai-teaser-card {
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  background: linear-gradient(180deg, rgba(139, 92, 246, 0.06) 0%, var(--bg-surface) 100%);
+}
+
+.ai-verdict-card {
+  background: linear-gradient(145deg, rgba(30, 27, 75, 0.5) 0%, rgba(18, 24, 36, 0.95) 100%);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  box-shadow: 0 8px 24px -4px rgba(139, 92, 246, 0.2);
+}
+
+.ai-verdict-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.ai-verdict-badge {
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ai-verdict-badge.pristine {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34D399;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.ai-verdict-badge.good {
+  background: rgba(6, 182, 212, 0.15);
+  color: #38BDF8;
+  border: 1px solid rgba(6, 182, 212, 0.35);
+}
+
+.ai-verdict-badge.watch {
+  background: rgba(245, 158, 11, 0.15);
+  color: #FBBF24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.ai-verdict-badge.risk {
+  background: rgba(239, 68, 68, 0.15);
+  color: #F87171;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.ai-verdict-title {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  line-height: 1.4;
+  margin-bottom: 12px;
+}
+
+.ai-quote-box {
+  background: rgba(0, 0, 0, 0.25);
+  border-left: 3px solid #A855F7;
+  padding: 10px 14px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-style: italic;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 8px;
+}
+
+.ai-pillar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.ai-pillar-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 14px;
+}
+
+.ai-pillar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.ai-pillar-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ai-pillar-rating-chip {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+}
+
+.ai-pillar-explanation {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.ai-strength-item, .ai-risk-item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  background: var(--bg-surface-subtle);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+}
+
+.ai-strength-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--health-pristine);
+}
+
+.ai-risk-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--health-moderate);
+}
+
+.ai-buyzone-card {
+  background: linear-gradient(145deg, rgba(6, 182, 212, 0.08) 0%, var(--bg-surface) 100%);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.ai-meta-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--bg-surface-subtle);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* AI Loading State Animation */
+.ai-loader-card {
+  text-align: center;
+  padding: 36px 16px;
+  background: var(--bg-surface);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  border-radius: var(--radius-md);
+}
+
+.ai-sparkle-spin {
+  font-size: 36px;
+  display: inline-block;
+  animation: pulseRotate 2s infinite ease-in-out;
+  margin-bottom: 12px;
+}
+
+@keyframes pulseRotate {
+  0% { transform: scale(1) rotate(0deg); opacity: 0.8; }
+  50% { transform: scale(1.2) rotate(180deg); opacity: 1; filter: drop-shadow(0 0 12px rgba(168, 85, 247, 0.8)); }
+  100% { transform: scale(1) rotate(360deg); opacity: 0.8; }
+}
+
+.ai-progress-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 320px;
+  margin: 16px auto 0 auto;
+  text-align: left;
+}
+
+.ai-step-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.ai-step-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #A855F7;
+  animation: pulseDot 1.5s infinite;
+}
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 0.4; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+/* Light Theme Overrides */
+[data-theme="light"] .ai-verdict-card {
+  background: linear-gradient(145deg, #FAF5FF 0%, #FFFFFF 100%);
+  border: 1px solid #E9D5FF;
+  box-shadow: 0 4px 14px rgba(168, 85, 247, 0.1);
+}
+
+[data-theme="light"] .ai-quote-box {
+  background: #F3E8FF;
+  color: #4C1D95;
+}
+
+[data-theme="light"] .btn-ai-sparkle-pill {
+  background: #F5F3FF;
+  color: #7C3AED;
+  border-color: #DDD6FE;
+}
+
+[data-theme="light"] .ai-teaser-card {
+  background: #FAFAFE;
+  border-color: #E9D5FF;
+}
+
 
