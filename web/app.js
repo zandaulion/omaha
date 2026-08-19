@@ -5,10 +5,10 @@
 
 // Global Application State
 const state = {
-  activeView: 'viewWatchlist',
-  activeSubtab: 'overview',
+  activeView: localStorage.getItem('omaha_active_view') || 'viewWatchlist',
+  activeSubtab: localStorage.getItem('omaha_active_subtab') || 'overview',
   activeWatchlistId: localStorage.getItem('omaha_active_watchlist') || null,
-  currentTicker: 'NVDA',
+  currentTicker: localStorage.getItem('omaha_current_ticker') || 'NVDA',
   currentStock: null,
   watchlists: [],
   currentWatchlistData: null,
@@ -47,13 +47,33 @@ async function initApp() {
   if (isAuthed) {
     try {
       await loadWatchlists();
-      await loadWatchlistData(state.activeWatchlistId);
+      if (state.activeWatchlistId) {
+        await loadWatchlistData(state.activeWatchlistId);
+      }
 
       if (!localStorage.getItem('omaha_onboarded')) {
         openModal('onboardingModal');
       }
 
-      handleUrlParams();
+      // Check URL parameters first; if none, restore last viewed screen
+      const hasUrlNav = handleUrlParams();
+      if (!hasUrlNav) {
+        const savedView = localStorage.getItem('omaha_active_view') || 'viewWatchlist';
+        const savedTicker = localStorage.getItem('omaha_current_ticker');
+        const savedSubtab = localStorage.getItem('omaha_active_subtab') || 'overview';
+
+        if (savedView === 'viewDeepDive' && savedTicker) {
+          await openStockDeepDive(savedTicker, savedSubtab);
+        } else if (savedView === 'viewScreener') {
+          loadScreenerData();
+          switchView('viewScreener');
+        } else if (savedView === 'viewCompare') {
+          runComparison();
+          switchView('viewCompare');
+        } else {
+          switchView('viewWatchlist');
+        }
+      }
     } catch (e) {
       console.warn('Non-fatal initial data load warning:', e);
     }
@@ -304,6 +324,7 @@ function initNetworkListeners() {
 // ----------------- NAVIGATION & ROUTING -----------------
 function switchView(viewId) {
   state.activeView = viewId;
+  localStorage.setItem('omaha_active_view', viewId);
 
   document.querySelectorAll('.view-panel').forEach((panel) => {
     panel.classList.add('hidden');
@@ -329,6 +350,7 @@ function switchView(viewId) {
 
 function switchSubtab(subtabName) {
   state.activeSubtab = subtabName;
+  localStorage.setItem('omaha_active_subtab', subtabName);
 
   document.querySelectorAll('#deepDiveSubtabs .tab-pill').forEach((btn) => {
     if (btn.getAttribute('data-subtab') === subtabName) {
@@ -770,13 +792,16 @@ function renderWatchlistCards() {
 }
 
 // ----------------- STOCK DEEP DIVE SCORECARD -----------------
-async function openStockDeepDive(tickerSymbol) {
+async function openStockDeepDive(tickerSymbol, initialSubtab = null) {
   const ticker = tickerSymbol.toUpperCase();
   state.currentTicker = ticker;
+  localStorage.setItem('omaha_current_ticker', ticker);
+
+  const subtabToOpen = initialSubtab || (state.activeView === 'viewDeepDive' ? state.activeSubtab : (localStorage.getItem('omaha_active_subtab') || 'overview'));
 
   // Show loading state or navigate immediately
   switchView('viewDeepDive');
-  switchSubtab('overview');
+  switchSubtab(subtabToOpen);
 
   try {
     const res = await apiFetch(`/api/stock/${ticker}`);
@@ -1872,6 +1897,7 @@ function handleUrlParams() {
   const params = new URLSearchParams(window.location.search);
   const ticker = params.get('ticker');
   const tab = params.get('tab');
+  const view = params.get('view');
   const watchlist = params.get('watchlist') || params.get('wl');
 
   if (watchlist && state.watchlists.some(w => w.id === watchlist)) {
@@ -1883,11 +1909,26 @@ function handleUrlParams() {
   }
 
   if (ticker) {
-    openStockDeepDive(ticker);
-    if (tab) {
-      switchSubtab(tab);
+    openStockDeepDive(ticker, tab || 'overview');
+    return true;
+  }
+
+  if (view) {
+    if (view === 'screener' || view === 'viewScreener') {
+      loadScreenerData();
+      switchView('viewScreener');
+      return true;
+    } else if (view === 'compare' || view === 'viewCompare') {
+      runComparison();
+      switchView('viewCompare');
+      return true;
+    } else if (view === 'watchlist' || view === 'viewWatchlist') {
+      switchView('viewWatchlist');
+      return true;
     }
   }
+
+  return false;
 }
 
 function openModal(id) {
