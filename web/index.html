@@ -20,7 +20,7 @@
   <link rel="manifest" href="/manifest.webmanifest">
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/app.css?v=2.0.5">
+  <link rel="stylesheet" href="/app.css?v=2.0.6">
 </head>
 <body>
 
@@ -194,18 +194,20 @@
             <select id="watchlistSelect" class="form-select" style="padding: 6px 12px; font-size: 13px; font-weight: 600;">
               <!-- Watchlists populated by JS -->
             </select>
-            <button class="btn-primary" id="addStockTriggerBtn" style="padding: 6px 12px; font-size: 12px; font-weight: 600;">+ Add Stock</button>
-            <button class="btn-secondary" id="newListBtn" style="padding: 6px 10px; font-size: 12px;">+ New Watchlist</button>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 11px; color: var(--text-tertiary);">Sort:</span>
+              <select id="sortSelect" class="form-select" style="padding: 5px 8px; font-size: 12px;">
+                <option value="health">Health Score</option>
+                <option value="change">Price Change</option>
+                <option value="roic">ROIC (Moat)</option>
+                <option value="pe">P/E Ratio</option>
+              </select>
+            </div>
           </div>
 
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <span style="font-size: 11px; color: var(--text-tertiary);">Sort:</span>
-            <select id="sortSelect" class="form-select" style="padding: 4px 8px; font-size: 12px;">
-              <option value="health">Health Score</option>
-              <option value="change">Price Change</option>
-              <option value="roic">ROIC (Moat)</option>
-              <option value="pe">P/E Ratio</option>
-            </select>
+          <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+            <button class="btn-primary" id="addStockTriggerBtn" style="padding: 6px 12px; font-size: 12px; font-weight: 600; white-space: nowrap;">+ Add Stock</button>
+            <button class="btn-secondary" id="newListBtn" style="padding: 6px 10px; font-size: 12px; white-space: nowrap;">+ New Watchlist</button>
           </div>
         </div>
 
@@ -798,6 +800,6 @@
   </div>
 
   <!-- Application Logic -->
-  <script type="module" src="/app.js?v=2.0.5"></script>
+  <script type="module" src="/app.js?v=2.0.6"></script>
 </body>
 </html>
