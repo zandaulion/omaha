@@ -20,7 +20,7 @@
   <link rel="manifest" href="/manifest.webmanifest">
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/app.css?v=2.0.0">
+  <link rel="stylesheet" href="/app.css?v=2.0.4">
 </head>
 <body>
 
@@ -194,7 +194,8 @@
             <select id="watchlistSelect" class="form-select" style="padding: 6px 12px; font-size: 13px; font-weight: 600;">
               <!-- Watchlists populated by JS -->
             </select>
-            <button class="btn-secondary" id="newListBtn" style="padding: 6px 10px; font-size: 12px;">+ New</button>
+            <button class="btn-primary" id="addStockTriggerBtn" style="padding: 6px 12px; font-size: 12px; font-weight: 600;">+ Add Stock</button>
+            <button class="btn-secondary" id="newListBtn" style="padding: 6px 10px; font-size: 12px;">+ New Watchlist</button>
           </div>
 
           <div style="display: flex; align-items: center; gap: 6px;">
@@ -632,21 +633,52 @@
 
     <!-- ==================== MODALS ==================== -->
 
-    <!-- Modal 1: Search & Command Palette -->
+    <!-- Modal 1: Search & Add Stocks Modal -->
     <div class="modal-backdrop" id="searchModal">
       <div class="modal-content">
         <div class="modal-header">
-          <h3 class="modal-title">🔍 Search Companies & Tickers</h3>
+          <h3 class="modal-title">🔍 Search & Add Stock</h3>
           <button class="icon-btn" id="closeSearchModalBtn">✕</button>
         </div>
-        <div class="form-group" style="margin-bottom: 12px;">
-          <input type="text" id="searchInput" class="form-input mono" placeholder="Search by symbol (e.g. NVDA, MSFT, BRK-B)..." autocomplete="off">
+
+        <!-- Target Watchlist Row -->
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 12px; color: var(--text-secondary); background: var(--bg-surface-subtle); padding: 6px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+          <span>Add to Watchlist:</span>
+          <select id="searchTargetWatchlistSelect" class="form-select" style="padding: 4px 8px; font-size: 12px; font-weight: 600; width: auto; border: none; background: transparent;">
+            <!-- Populated by JS -->
+          </select>
         </div>
-        <div id="searchResultsList" style="display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto;">
+
+        <!-- Search Input with Clear Button -->
+        <div class="form-group" style="position: relative; margin-bottom: 10px;">
+          <input type="text" id="searchInput" class="form-input" placeholder="Search by symbol (e.g. COST, PLTR) or name (e.g. Costco, Palantir)..." autocomplete="off" spellcheck="false">
+          <button id="searchClearBtn" class="icon-btn hidden" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; font-size: 11px;">✕</button>
+        </div>
+
+        <!-- Quick Suggestions Chips -->
+        <div id="searchPopularChips" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; align-items: center;">
+          <span style="font-size: 11px; color: var(--text-tertiary);">Popular:</span>
+          <button class="popular-chip mono" data-chip-ticker="AAPL">AAPL</button>
+          <button class="popular-chip mono" data-chip-ticker="MSFT">MSFT</button>
+          <button class="popular-chip mono" data-chip-ticker="NVDA">NVDA</button>
+          <button class="popular-chip mono" data-chip-ticker="COST">COST</button>
+          <button class="popular-chip mono" data-chip-ticker="PLTR">PLTR</button>
+          <button class="popular-chip mono" data-chip-ticker="GOOGL">GOOGL</button>
+          <button class="popular-chip mono" data-chip-ticker="AMZN">AMZN</button>
+          <button class="popular-chip mono" data-chip-ticker="TSM">TSM</button>
+          <button class="popular-chip mono" data-chip-ticker="ASML">ASML</button>
+          <button class="popular-chip mono" data-chip-ticker="BRK-B">BRK-B</button>
+        </div>
+
+        <!-- Search Results List -->
+        <div id="searchResultsList" style="display: flex; flex-direction: column; gap: 8px; max-height: 340px; overflow-y: auto; padding-right: 2px;">
           <!-- Search suggestions rendered by JS -->
         </div>
       </div>
     </div>
+
+    <!-- Floating Action Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
 
     <!-- Modal 2: Settings & Information -->
     <div class="modal-backdrop" id="settingsModal">
@@ -766,6 +798,6 @@
   </div>
 
   <!-- Application Logic -->
-  <script type="module" src="/app.js?v=2.0.0"></script>
+  <script type="module" src="/app.js?v=2.0.4"></script>
 </body>
 </html>

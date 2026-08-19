@@ -133,5 +133,12 @@ export function initDatabase() {
       JSON.stringify(['BRK-B', 'MSFT', 'AAPL', 'GOOGL']),
       0
     );
+
+    insertWatchlist.run(
+      'under-20',
+      'Promising Under $20',
+      JSON.stringify(['BTG', 'STNE', 'VALE', 'ERIC', 'BMBL', 'PBR', 'NOK', 'PAGS', 'KVUE', 'PATH', 'SBSW', 'LYFT', 'TAL', 'IQ', 'NU', 'AES', 'GRAB', 'NIO', 'SOFI', 'RKT']),
+      0
+    );
   }
 }

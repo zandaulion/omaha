@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { initDatabase, db } from './db.js';
-import { getStockData } from './finance.js';
+import { getStockData, searchStocks } from './finance.js';
 import {
   requireAdmin,
   requireDeviceAuth,
@@ -38,7 +38,13 @@ app.use(express.urlencoded({ extended: true }));
 
 // Serve static frontend files
 const WEB_DIR = path.join(__dirname, '../web');
-app.use(express.static(WEB_DIR));
+app.use(express.static(WEB_DIR, {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html') || filePath.endsWith('.js') || filePath.endsWith('.css') || filePath.endsWith('.webmanifest')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    }
+  }
+}));
 
 // ----------------- SYSTEM & HEALTH -----------------
 app.get('/api/health', (req, res) => {
@@ -97,50 +103,20 @@ app.get('/api/stock/:ticker', requireDeviceAuth, async (req, res) => {
   }
 });
 
-// Search / Autocomplete Tickers
+// Search / Autocomplete Tickers & Company Names
 app.get('/api/search', requireDeviceAuth, async (req, res) => {
-  const query = (req.query.q || '').trim().toUpperCase();
+  const query = (req.query.q || '').trim();
   if (!query) {
     return res.json([]);
   }
 
-  const cachedMatches = db.prepare(`
-    SELECT ticker, name, sector, price, change_pct, health_score
-    FROM stock_cache
-    WHERE ticker LIKE ? OR UPPER(name) LIKE ?
-    LIMIT 8
-  `).all(`${query}%`, `%${query}%`);
-
-  const popularTickers = [
-    { ticker: 'AAPL', name: 'Apple Inc.', sector: 'Technology' },
-    { ticker: 'MSFT', name: 'Microsoft Corporation', sector: 'Technology' },
-    { ticker: 'NVDA', name: 'NVIDIA Corporation', sector: 'Technology' },
-    { ticker: 'GOOGL', name: 'Alphabet Inc.', sector: 'Communication Services' },
-    { ticker: 'AMZN', name: 'Amazon.com Inc.', sector: 'Consumer Cyclical' },
-    { ticker: 'META', name: 'Meta Platforms Inc.', sector: 'Communication Services' },
-    { ticker: 'BRK-B', name: 'Berkshire Hathaway Inc.', sector: 'Financial Services' },
-    { ticker: 'TSLA', name: 'Tesla Inc.', sector: 'Consumer Cyclical' },
-    { ticker: 'JNJ', name: 'Johnson & Johnson', sector: 'Healthcare' },
-    { ticker: 'V', name: 'Visa Inc.', sector: 'Financial Services' },
-    { ticker: 'PG', name: 'Procter & Gamble Co.', sector: 'Consumer Defensive' },
-    { ticker: 'KO', name: 'Coca-Cola Company', sector: 'Consumer Defensive' },
-    { ticker: 'ASML', name: 'ASML Holding N.V.', sector: 'Technology' },
-    { ticker: 'TSM', name: 'Taiwan Semiconductor Manufacturing', sector: 'Technology' }
-  ];
-
-  const matchedPopular = popularTickers.filter(t =>
-    t.ticker.startsWith(query) || t.name.toUpperCase().includes(query)
-  );
-
-  const map = new Map();
-  cachedMatches.forEach(item => map.set(item.ticker, item));
-  matchedPopular.forEach(item => {
-    if (!map.has(item.ticker)) {
-      map.set(item.ticker, { ...item, price: null, change_pct: null, health_score: null });
-    }
-  });
-
-  return res.json(Array.from(map.values()).slice(0, 10));
+  try {
+    const results = await searchStocks(query);
+    return res.json(results);
+  } catch (err) {
+    console.error('Search endpoint error:', err);
+    return res.status(500).json({ error: 'Failed to execute stock search' });
+  }
 });
 
 // Compare Multiple Tickers Side-by-Side
@@ -248,11 +224,16 @@ app.post('/api/watchlists', requireDeviceAuth, (req, res) => {
 
 app.put('/api/watchlists/:id', requireDeviceAuth, (req, res) => {
   const { id } = req.params;
-  const { name, tickers } = req.body || {};
+  const { name, tickers, is_default } = req.body || {};
 
   const existing = db.prepare('SELECT * FROM watchlists WHERE id = ?').get(id);
   if (!existing) {
     return res.status(404).json({ error: 'Watchlist not found' });
+  }
+
+  if (is_default === true || is_default === 1) {
+    db.prepare('UPDATE watchlists SET is_default = 0').run();
+    db.prepare('UPDATE watchlists SET is_default = 1 WHERE id = ?').run(id);
   }
 
   const newName = name ? name.trim() : existing.name;
@@ -271,6 +252,74 @@ app.delete('/api/watchlists/:id', requireDeviceAuth, (req, res) => {
   const { id } = req.params;
   db.prepare('DELETE FROM watchlists WHERE id = ?').run(id);
   return res.json({ success: true });
+});
+
+// Add a Stock to a Watchlist
+app.post('/api/watchlists/:id/stocks', requireDeviceAuth, async (req, res) => {
+  const { id } = req.params;
+  const { ticker } = req.body || {};
+  if (!ticker || typeof ticker !== 'string') {
+    return res.status(400).json({ error: 'Ticker symbol is required' });
+  }
+
+  const cleanTicker = ticker.trim().toUpperCase();
+  const existing = db.prepare('SELECT * FROM watchlists WHERE id = ?').get(id);
+  if (!existing) {
+    return res.status(404).json({ error: 'Watchlist not found' });
+  }
+
+  let currentTickers = JSON.parse(existing.tickers_json || '[]');
+  if (!currentTickers.includes(cleanTicker)) {
+    currentTickers.push(cleanTicker);
+    db.prepare(`
+      UPDATE watchlists
+      SET tickers_json = ?, updated_at = datetime('now')
+      WHERE id = ?
+    `).run(JSON.stringify(currentTickers), id);
+  }
+
+  // Pre-fetch stock data to ensure it is cached
+  let stockData = null;
+  try {
+    stockData = await getStockData(cleanTicker);
+  } catch (err) {
+    console.warn(`[Finance] Pre-fetch warning on adding ${cleanTicker}:`, err.message);
+  }
+
+  return res.json({
+    success: true,
+    watchlistId: id,
+    ticker: cleanTicker,
+    tickers: currentTickers,
+    stock: stockData
+  });
+});
+
+// Remove a Stock from a Watchlist
+app.delete('/api/watchlists/:id/stocks/:ticker', requireDeviceAuth, (req, res) => {
+  const { id, ticker } = req.params;
+  const cleanTicker = (ticker || '').trim().toUpperCase();
+
+  const existing = db.prepare('SELECT * FROM watchlists WHERE id = ?').get(id);
+  if (!existing) {
+    return res.status(404).json({ error: 'Watchlist not found' });
+  }
+
+  let currentTickers = JSON.parse(existing.tickers_json || '[]');
+  currentTickers = currentTickers.filter(t => t !== cleanTicker);
+
+  db.prepare(`
+    UPDATE watchlists
+    SET tickers_json = ?, updated_at = datetime('now')
+    WHERE id = ?
+  `).run(JSON.stringify(currentTickers), id);
+
+  return res.json({
+    success: true,
+    watchlistId: id,
+    ticker: cleanTicker,
+    tickers: currentTickers
+  });
 });
 
 // Watchlist Health Composite Details

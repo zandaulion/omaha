@@ -5,7 +5,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 [[ -f "$ROOT/.admin.env" ]] && { set -a; . "$ROOT/.admin.env"; set +a; }
-API="${API:-${ADMIN_API:-http://127.0.0.1:3000}}"
+API="${API:-${ADMIN_API:-http://127.0.0.1:8095}}"
 
 j() { python3 -m json.tool 2>/dev/null || cat; }
 get() { curl -fsS --max-time 15 -H 'X-Admin: 1' "$API$1"; }
