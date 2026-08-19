@@ -1112,17 +1112,26 @@ function calculateClientDCF() {
   const equityVal = enterpriseVal + cashB - debtB;
   const fairValue = equityVal / sharesB;
 
-  const marginPct = ((fairValue - price) / fairValue) * 100;
-  const isUndervalued = marginPct >= 0;
+  const isUndervalued = fairValue > price;
+  const isNegative = fairValue <= 0;
 
-  document.getElementById('dcfFairValueText').textContent = `$${fairValue.toFixed(2)}`;
+  const fairValueFormatted = fairValue < 0 ? `-$${Math.abs(fairValue).toFixed(2)}` : `$${fairValue.toFixed(2)}`;
+  document.getElementById('dcfFairValueText').textContent = fairValueFormatted;
   document.getElementById('dcfCurrentPriceText').textContent = `$${price.toFixed(2)}`;
 
   const badge = document.getElementById('dcfMarginBadge');
-  badge.className = `margin-of-safety-meter ${isUndervalued ? 'undervalued' : 'overvalued'}`;
-  badge.textContent = isUndervalued
-    ? `🟢 MARGIN OF SAFETY: +${marginPct.toFixed(1)}% Undervalued`
-    : `🔴 OVERVALUED: ${Math.abs(marginPct).toFixed(1)}% Premium to Fair Value`;
+  if (isNegative) {
+    badge.className = 'margin-of-safety-meter overvalued';
+    badge.textContent = '🔴 SEVERELY OVERVALUED: Negative Intrinsic Value (0% Margin of Safety)';
+  } else if (isUndervalued) {
+    const marginPct = ((fairValue - price) / fairValue) * 100;
+    badge.className = 'margin-of-safety-meter undervalued';
+    badge.textContent = `🟢 MARGIN OF SAFETY: +${marginPct.toFixed(1)}% Undervalued`;
+  } else {
+    const overvaluedPct = ((price - fairValue) / fairValue) * 100;
+    badge.className = 'margin-of-safety-meter overvalued';
+    badge.textContent = `🔴 OVERVALUED: ${overvaluedPct.toFixed(1)}% Premium to Fair Value`;
+  }
 
   // Render Table Breakdown
   const tableContainer = document.getElementById('dcfBreakdownTable');
@@ -1145,7 +1154,7 @@ function calculateClientDCF() {
     </div>
     <div style="display: flex; justify-content: space-between; font-weight: 700; margin-top: 6px; border-top: 1px solid var(--border-subtle); padding-top: 6px;">
       <span>Total Intrinsic Equity Value:</span>
-      <span class="mono text-cyan">$${equityVal.toFixed(2)} Billion</span>
+      <span class="mono ${equityVal >= 0 ? 'text-cyan' : 'text-rose'}">${equityVal < 0 ? '-$' + Math.abs(equityVal).toFixed(2) : '$' + equityVal.toFixed(2)} Billion</span>
     </div>
   `;
 }
