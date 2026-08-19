@@ -1037,7 +1037,7 @@ function renderGeminiLoading(ticker) {
     <div class="ai-loader-card">
       <div class="ai-sparkle-spin">✨</div>
       <h3 class="section-title ai-gradient-text" style="font-size: 16px; margin-bottom: 6px;">
-        Analyzing ${ticker} with Gemini 2.5 Flash…
+        Analyzing ${ticker} with Gemini 3.7 Flash…
       </h3>
       <p style="font-size: 12px; color: var(--text-secondary); max-width: 360px; margin: 0 auto 16px auto;">
         Synthesizing 25+ fundamental metrics, balance sheet leverage, and intrinsic fair value.
