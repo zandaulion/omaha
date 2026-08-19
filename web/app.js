@@ -7,7 +7,7 @@
 const state = {
   activeView: 'viewWatchlist',
   activeSubtab: 'overview',
-  activeWatchlistId: 'compounders',
+  activeWatchlistId: localStorage.getItem('omaha_active_watchlist') || null,
   currentTicker: 'NVDA',
   currentStock: null,
   watchlists: [],
@@ -393,6 +393,7 @@ function initEventListeners() {
   // Watchlist Selector change
   document.getElementById('watchlistSelect')?.addEventListener('change', (e) => {
     state.activeWatchlistId = e.target.value;
+    localStorage.setItem('omaha_active_watchlist', state.activeWatchlistId);
     loadWatchlistData(state.activeWatchlistId);
   });
 
@@ -411,19 +412,77 @@ function initEventListeners() {
   document.getElementById('saveNewWatchlistBtn')?.addEventListener('click', handleCreateWatchlist);
 
   // Search Modal triggers
-  document.getElementById('searchTriggerBtn')?.addEventListener('click', () => {
+  const openSearch = () => {
     openModal('searchModal');
-    document.getElementById('searchInput')?.focus();
-  });
+    const targetSelect = document.getElementById('searchTargetWatchlistSelect');
+    if (targetSelect) targetSelect.value = state.activeWatchlistId;
+    const input = document.getElementById('searchInput');
+    if (input) {
+      input.focus();
+      handleSearchInput();
+    }
+  };
+
+  document.getElementById('searchTriggerBtn')?.addEventListener('click', openSearch);
+  document.getElementById('addStockTriggerBtn')?.addEventListener('click', openSearch);
+  document.getElementById('emptyAddStockBtn')?.addEventListener('click', openSearch);
   document.getElementById('closeSearchModalBtn')?.addEventListener('click', () => {
     closeModal('searchModal');
   });
-  document.getElementById('emptyAddStockBtn')?.addEventListener('click', () => {
-    openModal('searchModal');
+
+  // Search Clear button
+  document.getElementById('searchClearBtn')?.addEventListener('click', () => {
+    const input = document.getElementById('searchInput');
+    if (input) {
+      input.value = '';
+      input.focus();
+      document.getElementById('searchClearBtn')?.classList.add('hidden');
+      handleSearchInput();
+    }
+  });
+
+  // Search Target Watchlist change -> update result buttons
+  document.getElementById('searchTargetWatchlistSelect')?.addEventListener('change', () => {
+    handleSearchInput();
   });
 
   // Search Input live typing
-  document.getElementById('searchInput')?.addEventListener('input', debounce(handleSearchInput, 200));
+  document.getElementById('searchInput')?.addEventListener('input', (e) => {
+    const val = e.target.value;
+    const clearBtn = document.getElementById('searchClearBtn');
+    if (clearBtn) {
+      if (val.length > 0) clearBtn.classList.remove('hidden');
+      else clearBtn.classList.add('hidden');
+    }
+    debounceSearch();
+  });
+
+  const debounceSearch = debounce(handleSearchInput, 200);
+
+  // Search Input keydown: Enter to add / view
+  document.getElementById('searchInput')?.addEventListener('keydown', async (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const val = e.target.value.trim().toUpperCase();
+      if (!val) return;
+
+      const targetWlId = document.getElementById('searchTargetWatchlistSelect')?.value || state.activeWatchlistId;
+      await handleAddStockToWatchlist(val, targetWlId);
+    }
+  });
+
+  // Quick Suggestion Chips
+  document.querySelectorAll('#searchPopularChips [data-chip-ticker]').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      const ticker = chip.getAttribute('data-chip-ticker');
+      const input = document.getElementById('searchInput');
+      if (input) {
+        input.value = ticker;
+        document.getElementById('searchClearBtn')?.classList.remove('hidden');
+        handleSearchInput();
+      }
+    });
+  });
 
   // Settings Modal triggers
   document.getElementById('settingsTriggerBtn')?.addEventListener('click', () => {
@@ -449,6 +508,7 @@ function initEventListeners() {
     card.addEventListener('click', async () => {
       const starterId = card.getAttribute('data-starter');
       state.activeWatchlistId = starterId;
+      localStorage.setItem('omaha_active_watchlist', starterId);
       localStorage.setItem('omaha_onboarded', 'true');
       closeModal('onboardingModal');
       await loadWatchlists();
@@ -462,16 +522,19 @@ function initEventListeners() {
 
   // DCF Sliders & Presets
   document.getElementById('dcfGrowthSlider')?.addEventListener('input', (e) => {
+    document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
     state.dcf.growth = parseFloat(e.target.value);
     document.getElementById('dcfGrowthVal').textContent = `${state.dcf.growth}%`;
     calculateClientDCF();
   });
   document.getElementById('dcfMultipleSlider')?.addEventListener('input', (e) => {
+    document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
     state.dcf.multiple = parseFloat(e.target.value);
     document.getElementById('dcfMultipleVal').textContent = `${state.dcf.multiple.toFixed(1)}x`;
     calculateClientDCF();
   });
   document.getElementById('dcfDiscountSlider')?.addEventListener('input', (e) => {
+    document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
     state.dcf.discount = parseFloat(e.target.value);
     document.getElementById('dcfDiscountVal').textContent = `${state.dcf.discount.toFixed(1)}%`;
     calculateClientDCF();
@@ -526,9 +589,27 @@ async function loadWatchlists() {
     const data = await res.json();
     state.watchlists = data.watchlists || [];
 
+    const savedWlId = localStorage.getItem('omaha_active_watchlist');
+    if (savedWlId && state.watchlists.some(w => w.id === savedWlId)) {
+      state.activeWatchlistId = savedWlId;
+    } else if (!state.activeWatchlistId || !state.watchlists.some(w => w.id === state.activeWatchlistId)) {
+      const defaultWl = state.watchlists.find(w => w.is_default) || state.watchlists[0];
+      if (defaultWl) {
+        state.activeWatchlistId = defaultWl.id;
+        localStorage.setItem('omaha_active_watchlist', defaultWl.id);
+      }
+    }
+
     const select = document.getElementById('watchlistSelect');
     if (select) {
       select.innerHTML = state.watchlists.map(w =>
+        `<option value="${w.id}" ${w.id === state.activeWatchlistId ? 'selected' : ''}>${w.name}</option>`
+      ).join('');
+    }
+
+    const searchSelect = document.getElementById('searchTargetWatchlistSelect');
+    if (searchSelect) {
+      searchSelect.innerHTML = state.watchlists.map(w =>
         `<option value="${w.id}" ${w.id === state.activeWatchlistId ? 'selected' : ''}>${w.name}</option>`
       ).join('');
     }
@@ -635,11 +716,14 @@ function renderWatchlistCards() {
         </div>
 
         <div class="stock-right">
-          <div class="stock-price-col">
-            <div class="stock-price mono">$${stock.price.toFixed(2)}</div>
-            <div class="stock-change mono ${isPos ? 'positive' : 'negative'}">
-              ${isPos ? '+' : ''}${stock.change_pct.toFixed(2)}%
+          <div style="display: flex; align-items: flex-start; gap: 8px;">
+            <div class="stock-price-col">
+              <div class="stock-price mono">$${stock.price.toFixed(2)}</div>
+              <div class="stock-change mono ${isPos ? 'positive' : 'negative'}">
+                ${isPos ? '+' : ''}${stock.change_pct.toFixed(2)}%
+              </div>
             </div>
+            <button class="stock-remove-btn" data-remove-ticker="${stock.ticker}" title="Remove ${stock.ticker} from watchlist">✕</button>
           </div>
           <div class="score-badge ${tier}" style="margin-top: 6px;">
             ${stock.health_score}/100 🟢
@@ -656,9 +740,19 @@ function renderWatchlistCards() {
 
   // Add click listeners to cards
   container.querySelectorAll('.stock-card').forEach((card) => {
-    card.addEventListener('click', () => {
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.stock-remove-btn')) return;
       const ticker = card.getAttribute('data-ticker');
       openStockDeepDive(ticker);
+    });
+  });
+
+  // Add click listeners to remove buttons
+  container.querySelectorAll('.stock-remove-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const ticker = btn.getAttribute('data-remove-ticker');
+      handleRemoveStockFromWatchlist(ticker);
     });
   });
 }
@@ -679,6 +773,7 @@ async function openStockDeepDive(tickerSymbol) {
     state.currentStock = data;
 
     renderDeepDiveHero(data);
+    updateBookmarkButtonState();
     renderOverviewSubtab(data);
     renderChecklistSubtab(data);
     renderTrendsSubtab(data);
@@ -920,52 +1015,57 @@ function renderTrendsSubtab(stock) {
 }
 
 // ----------------- DCF INTRINSIC VALUE SANDBOX -----------------
-function initDCFSandbox(stock) {
-  const revGrowth = Math.round((stock.financials?.historical?.revenue3yCAGR || 0.14) * 100);
-  const pe = stock.summary?.ratios?.pe || 24;
+function getStockDCFBaselines(stock) {
+  const targetStock = stock || state.currentStock;
+  const revGrowth = Math.round((targetStock?.financials?.historical?.revenue3yCAGR || 0.14) * 100);
+  const pe = targetStock?.summary?.ratios?.pe || 24;
 
-  state.dcf.growth = Math.min(35, Math.max(5, revGrowth));
-  state.dcf.multiple = Math.min(35, Math.max(12, Math.round(pe * 0.85)));
-  state.dcf.discount = 9.5;
-
-  document.getElementById('dcfGrowthSlider').value = state.dcf.growth;
-  document.getElementById('dcfGrowthVal').textContent = `${state.dcf.growth}%`;
-
-  document.getElementById('dcfMultipleSlider').value = state.dcf.multiple;
-  document.getElementById('dcfMultipleVal').textContent = `${state.dcf.multiple}x`;
-
-  document.getElementById('dcfDiscountSlider').value = state.dcf.discount;
-  document.getElementById('dcfDiscountVal').textContent = `${state.dcf.discount}%`;
-
-  calculateClientDCF();
+  return {
+    baseGrowth: Math.min(35, Math.max(5, revGrowth)),
+    baseMultiple: Math.min(35, Math.max(12, Math.round(pe * 0.85))),
+    baseDiscount: 9.5
+  };
 }
 
-function setDCFPreset(preset) {
+function initDCFSandbox(stock) {
+  setDCFPreset('base', stock);
+}
+
+function setDCFPreset(preset, stockOverride) {
   document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+  const { baseGrowth, baseMultiple, baseDiscount } = getStockDCFBaselines(stockOverride || state.currentStock);
 
   if (preset === 'bear') {
-    document.getElementById('dcfBearPreset').classList.add('active');
-    state.dcf.growth = Math.max(4, Math.round(state.dcf.growth * 0.65));
-    state.dcf.multiple = 16.0;
+    document.getElementById('dcfBearPreset')?.classList.add('active');
+    state.dcf.growth = Math.max(4, Math.round(baseGrowth * 0.65));
+    state.dcf.multiple = Math.max(10, Math.round(baseMultiple * 0.70));
     state.dcf.discount = 11.0;
   } else if (preset === 'base') {
-    document.getElementById('dcfBasePreset').classList.add('active');
-    state.dcf.growth = 15;
-    state.dcf.multiple = 22.0;
-    state.dcf.discount = 9.5;
+    document.getElementById('dcfBasePreset')?.classList.add('active');
+    state.dcf.growth = baseGrowth;
+    state.dcf.multiple = baseMultiple;
+    state.dcf.discount = baseDiscount;
   } else if (preset === 'bull') {
-    document.getElementById('dcfBullPreset').classList.add('active');
-    state.dcf.growth = Math.min(45, Math.round(state.dcf.growth * 1.35));
-    state.dcf.multiple = 30.0;
+    document.getElementById('dcfBullPreset')?.classList.add('active');
+    state.dcf.growth = Math.min(45, Math.round(baseGrowth * 1.30));
+    state.dcf.multiple = Math.min(45, Math.round(baseMultiple * 1.25));
     state.dcf.discount = 9.0;
   }
 
-  document.getElementById('dcfGrowthSlider').value = state.dcf.growth;
-  document.getElementById('dcfGrowthVal').textContent = `${state.dcf.growth}%`;
-  document.getElementById('dcfMultipleSlider').value = state.dcf.multiple;
-  document.getElementById('dcfMultipleVal').textContent = `${state.dcf.multiple}x`;
-  document.getElementById('dcfDiscountSlider').value = state.dcf.discount;
-  document.getElementById('dcfDiscountVal').textContent = `${state.dcf.discount}%`;
+  const growthSlider = document.getElementById('dcfGrowthSlider');
+  if (growthSlider) growthSlider.value = state.dcf.growth;
+  const growthVal = document.getElementById('dcfGrowthVal');
+  if (growthVal) growthVal.textContent = `${state.dcf.growth}%`;
+
+  const multipleSlider = document.getElementById('dcfMultipleSlider');
+  if (multipleSlider) multipleSlider.value = state.dcf.multiple;
+  const multipleVal = document.getElementById('dcfMultipleVal');
+  if (multipleVal) multipleVal.textContent = `${state.dcf.multiple}x`;
+
+  const discountSlider = document.getElementById('dcfDiscountSlider');
+  if (discountSlider) discountSlider.value = state.dcf.discount;
+  const discountVal = document.getElementById('dcfDiscountVal');
+  if (discountVal) discountVal.textContent = `${state.dcf.discount}%`;
 
   calculateClientDCF();
 }
@@ -1303,45 +1403,227 @@ async function runComparison() {
   }
 }
 
-// ----------------- SEARCH AUTOCOMPLETE -----------------
-async function handleSearchInput(e) {
-  const query = e.target.value.trim();
+// ----------------- TOAST NOTIFICATIONS -----------------
+function showToast(message, icon = '✓') {
+  const container = document.getElementById('toastContainer');
+  if (!container) return;
+
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.innerHTML = `<span>${icon}</span> <span>${message}</span>`;
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.animation = 'toastOut 0.25s forwards';
+    setTimeout(() => toast.remove(), 250);
+  }, 2400);
+}
+
+// ----------------- SEARCH & ADD STOCK LOGIC -----------------
+async function handleSearchInput() {
+  const inputEl = document.getElementById('searchInput');
+  const query = (inputEl?.value || '').trim();
   const list = document.getElementById('searchResultsList');
+  const targetWlId = document.getElementById('searchTargetWatchlistSelect')?.value || state.activeWatchlistId;
+  const targetWl = state.watchlists.find(w => w.id === targetWlId);
+  const currentTickers = targetWl?.tickers || [];
+
+  if (!list) return;
+
   if (!query) {
-    list.innerHTML = '';
+    // Render popular recommendation cards when input is empty
+    const popularRecommendations = [
+      { ticker: 'COST', name: 'Costco Wholesale Corporation', sector: 'Consumer Defensive', exchange: 'NASDAQ' },
+      { ticker: 'PLTR', name: 'Palantir Technologies Inc.', sector: 'Technology', exchange: 'NASDAQ' },
+      { ticker: 'NVDA', name: 'NVIDIA Corporation', sector: 'Technology', exchange: 'NASDAQ' },
+      { ticker: 'AAPL', name: 'Apple Inc.', sector: 'Technology', exchange: 'NASDAQ' },
+      { ticker: 'MSFT', name: 'Microsoft Corporation', sector: 'Technology', exchange: 'NASDAQ' },
+      { ticker: 'ASML', name: 'ASML Holding N.V.', sector: 'Technology', exchange: 'NASDAQ' },
+      { ticker: 'TSM', name: 'Taiwan Semiconductor Manufacturing', sector: 'Technology', exchange: 'NYSE' },
+      { ticker: 'BRK-B', name: 'Berkshire Hathaway Inc.', sector: 'Financial Services', exchange: 'NYSE' }
+    ];
+
+    list.innerHTML = popularRecommendations.map(r => {
+      const inWl = currentTickers.includes(r.ticker);
+      return `
+        <div class="search-result-card" data-ticker="${r.ticker}">
+          <div class="search-result-left">
+            <div class="search-result-header">
+              <span class="search-result-ticker mono">${r.ticker}</span>
+              ${r.exchange ? `<span class="search-result-exchange">${r.exchange}</span>` : ''}
+              ${r.sector ? `<span class="search-result-meta">• ${r.sector}</span>` : ''}
+            </div>
+            <div class="search-result-name">${r.name}</div>
+          </div>
+          <div class="search-result-actions">
+            <button class="btn-add-action ${inWl ? 'added' : 'add'}" data-add-ticker="${r.ticker}">
+              ${inWl ? '✓ Added' : '+ Add'}
+            </button>
+            <button class="btn-view-action" data-view-ticker="${r.ticker}">📊 Analyze</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    attachSearchResultEvents(list, targetWlId);
     return;
   }
+
+  // Show subtle loading state
+  list.innerHTML = `<div style="font-size: 13px; color: var(--text-secondary); padding: 14px; text-align: center;">🔍 Searching global markets for "${query}"…</div>`;
 
   try {
     const res = await apiFetch(`/api/search?q=${encodeURIComponent(query)}`);
     const results = await res.json();
 
     if (results.length === 0) {
-      list.innerHTML = `<div style="font-size: 13px; color: var(--text-secondary); padding: 12px; text-align: center;">No matching companies found.</div>`;
+      list.innerHTML = `
+        <div style="font-size: 13px; color: var(--text-secondary); padding: 16px; text-align: center;">
+          No matching companies found for "<strong>${query}</strong>".<br>
+          <button class="btn-primary" id="directAddBtn" style="margin-top: 10px; font-size: 12px; padding: 6px 14px;">
+            + Add "${query.toUpperCase()}" Directly
+          </button>
+        </div>
+      `;
+      document.getElementById('directAddBtn')?.addEventListener('click', () => {
+        handleAddStockToWatchlist(query.toUpperCase(), targetWlId);
+      });
       return;
     }
 
-    list.innerHTML = results.map(r => `
-      <div class="card card-clickable" data-search-ticker="${r.ticker}" style="margin-bottom: 0; padding: 10px 14px;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <div>
-            <span class="mono" style="font-weight: 700; font-size: 15px;">${r.ticker}</span>
-            <span style="font-size: 13px; color: var(--text-secondary); margin-left: 8px;">${r.name}</span>
+    list.innerHTML = results.map(r => {
+      const inWl = currentTickers.includes(r.ticker);
+      return `
+        <div class="search-result-card" data-ticker="${r.ticker}">
+          <div class="search-result-left">
+            <div class="search-result-header">
+              <span class="search-result-ticker mono">${r.ticker}</span>
+              ${r.exchange ? `<span class="search-result-exchange">${r.exchange}</span>` : ''}
+              ${r.sector ? `<span class="search-result-meta">• ${r.sector}</span>` : ''}
+              ${r.health_score ? `<span class="score-badge pristine" style="font-size: 11px; padding: 2px 6px;">${r.health_score}/100</span>` : ''}
+            </div>
+            <div class="search-result-name">${r.name}</div>
           </div>
-          ${r.health_score ? `<span class="score-badge pristine">${r.health_score}/100</span>` : ''}
+          <div class="search-result-actions">
+            <button class="btn-add-action ${inWl ? 'added' : 'add'}" data-add-ticker="${r.ticker}">
+              ${inWl ? '✓ Added' : '+ Add'}
+            </button>
+            <button class="btn-view-action" data-view-ticker="${r.ticker}">📊 Analyze</button>
+          </div>
         </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
 
-    list.querySelectorAll('[data-search-ticker]').forEach(card => {
-      card.addEventListener('click', () => {
-        const ticker = card.getAttribute('data-search-ticker');
-        closeModal('searchModal');
-        openStockDeepDive(ticker);
-      });
-    });
+    attachSearchResultEvents(list, targetWlId);
   } catch (err) {
     console.error('Search error:', err);
+    list.innerHTML = `<div style="font-size: 13px; color: var(--health-risk); padding: 12px; text-align: center;">Failed to search stocks. Check network connection.</div>`;
+  }
+}
+
+function attachSearchResultEvents(container, targetWlId) {
+  // Add button click
+  container.querySelectorAll('[data-add-ticker]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const ticker = btn.getAttribute('data-add-ticker');
+      await handleAddStockToWatchlist(ticker, targetWlId, btn);
+    });
+  });
+
+  // View / Analyze button click
+  container.querySelectorAll('[data-view-ticker]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const ticker = btn.getAttribute('data-view-ticker');
+      closeModal('searchModal');
+      openStockDeepDive(ticker);
+    });
+  });
+
+  // Card click -> View
+  container.querySelectorAll('.search-result-card').forEach(card => {
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('button')) return;
+      const ticker = card.getAttribute('data-ticker');
+      closeModal('searchModal');
+      openStockDeepDive(ticker);
+    });
+  });
+}
+
+// Add a stock to a watchlist
+async function handleAddStockToWatchlist(tickerSymbol, targetWatchlistId, btnEl = null) {
+  const ticker = tickerSymbol.trim().toUpperCase();
+  const watchlistId = targetWatchlistId || state.activeWatchlistId;
+  const wl = state.watchlists.find(w => w.id === watchlistId);
+  const wlName = wl ? wl.name : 'Watchlist';
+
+  if (!ticker) return;
+
+  if (btnEl) {
+    btnEl.textContent = 'Adding…';
+    btnEl.disabled = true;
+  }
+
+  try {
+    const res = await apiFetch(`/api/watchlists/${watchlistId}/stocks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ticker })
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Failed to add stock');
+    }
+
+    if (btnEl) {
+      btnEl.className = 'btn-add-action added';
+      btnEl.textContent = '✓ Added';
+      btnEl.disabled = false;
+    }
+
+    showToast(`Added ${ticker} to ${wlName}!`, '🏰');
+
+    // Update local state and reload
+    await loadWatchlists();
+    if (watchlistId === state.activeWatchlistId) {
+      await loadWatchlistData(watchlistId);
+    }
+  } catch (err) {
+    console.error('Error adding stock to watchlist:', err);
+    if (btnEl) {
+      btnEl.className = 'btn-add-action add';
+      btnEl.textContent = '+ Add';
+      btnEl.disabled = false;
+    }
+    showToast(`Failed to add ${ticker}: ${err.message}`, '⚠️');
+  }
+}
+
+// Remove a stock from the active watchlist
+async function handleRemoveStockFromWatchlist(tickerSymbol) {
+  const ticker = tickerSymbol.trim().toUpperCase();
+  const watchlistId = state.activeWatchlistId;
+  const wl = state.watchlists.find(w => w.id === watchlistId);
+  const wlName = wl ? wl.name : 'Watchlist';
+
+  try {
+    const res = await apiFetch(`/api/watchlists/${watchlistId}/stocks/${ticker}`, {
+      method: 'DELETE'
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Failed to remove stock');
+    }
+
+    showToast(`Removed ${ticker} from ${wlName}.`, '🗑️');
+    await loadWatchlists();
+    await loadWatchlistData(watchlistId);
+  } catch (err) {
+    console.error('Error removing stock from watchlist:', err);
+    showToast(`Failed to remove ${ticker}: ${err.message}`, '⚠️');
   }
 }
 
@@ -1367,11 +1649,29 @@ async function handleCreateWatchlist() {
     if (data.success) {
       closeModal('newWatchlistModal');
       state.activeWatchlistId = data.id;
+      localStorage.setItem('omaha_active_watchlist', data.id);
       await loadWatchlists();
       await loadWatchlistData(data.id);
+      showToast(`Created watchlist "${name}"`, '✨');
     }
   } catch (err) {
     console.error('Error creating watchlist:', err);
+  }
+}
+
+function updateBookmarkButtonState() {
+  const btn = document.getElementById('bookmarkBtn');
+  if (!btn) return;
+  const currentWl = state.watchlists.find(w => w.id === state.activeWatchlistId);
+  const inWl = currentWl && (currentWl.tickers || []).includes(state.currentTicker);
+  if (inWl) {
+    btn.innerHTML = '⭐';
+    btn.title = `In ${currentWl.name} (Click to remove)`;
+    btn.style.color = '#F59E0B';
+  } else {
+    btn.innerHTML = '☆';
+    btn.title = `Add to ${currentWl ? currentWl.name : 'Watchlist'}`;
+    btn.style.color = 'var(--text-secondary)';
   }
 }
 
@@ -1381,22 +1681,13 @@ async function handleToggleBookmark() {
   const currentWl = state.watchlists.find(w => w.id === state.activeWatchlistId);
   if (!currentWl) return;
 
-  let tickers = [...(currentWl.tickers || [])];
-  if (tickers.includes(state.currentTicker)) {
-    tickers = tickers.filter(t => t !== state.currentTicker);
-    alert(`Removed ${state.currentTicker} from ${currentWl.name}`);
+  const inWl = (currentWl.tickers || []).includes(state.currentTicker);
+  if (inWl) {
+    await handleRemoveStockFromWatchlist(state.currentTicker);
   } else {
-    tickers.push(state.currentTicker);
-    alert(`Added ${state.currentTicker} to ${currentWl.name}!`);
+    await handleAddStockToWatchlist(state.currentTicker, state.activeWatchlistId);
   }
-
-  await apiFetch(`/api/watchlists/${state.activeWatchlistId}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tickers })
-  });
-
-  await loadWatchlistData(state.activeWatchlistId);
+  updateBookmarkButtonState();
 }
 
 // ----------------- INVITE REDEMPTION & PUSH -----------------
@@ -1480,6 +1771,15 @@ function handleUrlParams() {
   const params = new URLSearchParams(window.location.search);
   const ticker = params.get('ticker');
   const tab = params.get('tab');
+  const watchlist = params.get('watchlist') || params.get('wl');
+
+  if (watchlist && state.watchlists.some(w => w.id === watchlist)) {
+    state.activeWatchlistId = watchlist;
+    localStorage.setItem('omaha_active_watchlist', watchlist);
+    loadWatchlistData(watchlist);
+    const select = document.getElementById('watchlistSelect');
+    if (select) select.value = watchlist;
+  }
 
   if (ticker) {
     openStockDeepDive(ticker);

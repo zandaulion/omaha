@@ -1,12 +1,197 @@
-import yahooFinance from 'yahoo-finance2';
 import { db } from './db.js';
 import { computeComprehensiveHealth } from './scoring.js';
 
-// Suppress yahoo-finance notices
-try {
-  yahooFinance.suppressNotices(['yahooSurvey']);
-} catch (e) {
-  // ignore
+// In-memory session cache for Yahoo Finance crumb and cookie
+let yahooSession = {
+  cookie: null,
+  crumb: null,
+  expires: 0
+};
+
+/**
+ * Get or refresh Yahoo Finance session (cookie + crumb)
+ */
+export async function getYahooSession(force = false) {
+  if (!force && yahooSession.cookie && yahooSession.crumb && Date.now() < yahooSession.expires) {
+    return yahooSession;
+  }
+
+  const headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.9'
+  };
+
+  try {
+    const cookieRes = await fetch('https://fc.yahoo.com', {
+      headers,
+      signal: AbortSignal.timeout(4000)
+    });
+    const cookie = cookieRes.headers.get('set-cookie');
+
+    if (cookie) {
+      const crumbRes = await fetch('https://query2.finance.yahoo.com/v1/test/getcrumb', {
+        headers: { ...headers, Cookie: cookie },
+        signal: AbortSignal.timeout(4000)
+      });
+
+      if (crumbRes.ok) {
+        const crumb = await crumbRes.text();
+        if (crumb && !crumb.includes('Too Many Requests') && !crumb.includes('<html')) {
+          yahooSession = {
+            cookie,
+            crumb,
+            expires: Date.now() + 6 * 3600 * 1000 // 6 hours
+          };
+          return yahooSession;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[Finance] Session initialization warning:', err.message);
+  }
+
+  return { cookie: null, crumb: null, expires: 0 };
+}
+
+/**
+ * Search Yahoo Finance live for ticker symbols or company names
+ */
+export async function searchYahooFinance(query) {
+  const cleanQuery = (query || '').trim();
+  if (!cleanQuery) return [];
+
+  const headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+  };
+
+  const urls = [
+    `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(cleanQuery)}&quotesCount=14&newsCount=0`,
+    `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(cleanQuery)}&quotesCount=14&newsCount=0`
+  ];
+
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, { headers, signal: AbortSignal.timeout(3500) });
+      if (res.ok) {
+        const data = await res.json();
+        const quotes = data.quotes || [];
+        return quotes
+          .filter(q => q.quoteType === 'EQUITY' || q.quoteType === 'ETF' || q.quoteType === 'MUTUALFUND')
+          .map(q => ({
+            ticker: q.symbol,
+            name: q.shortname || q.longname || q.symbol,
+            sector: q.sector || q.industry || '',
+            industry: q.industry || '',
+            exchange: q.exchDisp || q.exchange || '',
+            quoteType: q.quoteType || 'EQUITY'
+          }));
+      }
+    } catch (e) {
+      // Try next endpoint
+    }
+  }
+
+  return [];
+}
+
+/**
+ * High-level search combining SQLite cached stocks, live Yahoo Finance search, and curated list
+ */
+export async function searchStocks(queryStr) {
+  const query = (queryStr || '').trim();
+  if (!query) return [];
+  const upper = query.toUpperCase();
+
+  // 1. Search cached stocks in SQLite
+  let cachedMatches = [];
+  try {
+    cachedMatches = db.prepare(`
+      SELECT ticker, name, sector, industry, price, change_pct, health_score
+      FROM stock_cache
+      WHERE ticker LIKE ? OR UPPER(name) LIKE ?
+      ORDER BY CASE WHEN ticker = ? THEN 0 WHEN ticker LIKE ? THEN 1 ELSE 2 END, health_score DESC
+      LIMIT 10
+    `).all(`${upper}%`, `%${upper}%`, upper, `${upper}%`);
+  } catch (err) {
+    console.warn('[Finance] DB search query error:', err.message);
+  }
+
+  const cachedMap = new Map();
+  cachedMatches.forEach(item => cachedMap.set(item.ticker, item));
+
+  // 2. Search Yahoo Finance live
+  let liveResults = [];
+  try {
+    liveResults = await searchYahooFinance(query);
+  } catch (err) {
+    console.warn('[Finance] Live Yahoo search warning:', err.message);
+  }
+
+  const resultMap = new Map();
+
+  // If exact ticker match is in cache, place it first
+  if (cachedMap.has(upper)) {
+    resultMap.set(upper, { ...cachedMap.get(upper), isCached: true });
+  }
+
+  // Add live search results
+  liveResults.forEach(item => {
+    const sym = item.ticker;
+    const cached = cachedMap.get(sym);
+    if (cached) {
+      resultMap.set(sym, {
+        ticker: sym,
+        name: cached.name || item.name,
+        sector: cached.sector || item.sector,
+        industry: cached.industry || item.industry,
+        exchange: item.exchange,
+        quoteType: item.quoteType,
+        price: cached.price,
+        change_pct: cached.change_pct,
+        health_score: cached.health_score,
+        isCached: true
+      });
+    } else if (!resultMap.has(sym)) {
+      resultMap.set(sym, {
+        ticker: sym,
+        name: item.name,
+        sector: item.sector,
+        industry: item.industry,
+        exchange: item.exchange,
+        quoteType: item.quoteType,
+        price: null,
+        change_pct: null,
+        health_score: null,
+        isCached: false
+      });
+    }
+  });
+
+  // Add remaining cached matches
+  cachedMatches.forEach(item => {
+    if (!resultMap.has(item.ticker)) {
+      resultMap.set(item.ticker, { ...item, isCached: true });
+    }
+  });
+
+  // If upper looks like a clean ticker (1-7 uppercase chars) and not found, provide it as a direct option
+  if (/^[A-Z0-9.\-]{1,7}$/.test(upper) && !resultMap.has(upper)) {
+    resultMap.set(upper, {
+      ticker: upper,
+      name: `${upper} (Direct Symbol)`,
+      sector: 'Equities',
+      industry: '',
+      exchange: '',
+      quoteType: 'EQUITY',
+      price: null,
+      change_pct: null,
+      health_score: null,
+      isCached: false
+    });
+  }
+
+  return Array.from(resultMap.values()).slice(0, 12);
 }
 
 // Built-in high-quality seed profiles for instant offline & fast first-run experience
@@ -48,10 +233,10 @@ const SEED_PROFILES = {
       freeCashFlow: [73.4, 93.0, 111.4, 99.6, 108.7],
       grossMarginPct: [38.2, 41.8, 43.3, 44.1, 46.2],
       operatingMarginPct: [24.1, 29.8, 30.3, 29.8, 31.9],
-      sharesOutstanding: [17.5, 16.7, 16.2, 15.7, 15.2], // In Billions
+      sharesOutstanding: [17.5, 16.7, 16.2, 15.7, 15.2],
       revenue3yCAGR: 0.075,
       eps3yCAGR: 0.125,
-      shareDilutionYoY: -0.028 // -2.8% shares retired via buybacks
+      shareDilutionYoY: -0.028
     },
     ratios: {
       roic: 54.2,
@@ -146,7 +331,7 @@ const SEED_PROFILES = {
       freeCashFlow: [4.3, 4.7, 8.1, 3.8, 65.2],
       grossMarginPct: [62.0, 63.3, 64.9, 56.9, 75.8],
       operatingMarginPct: [26.1, 27.2, 37.3, 20.6, 64.9],
-      sharesOutstanding: [24.8, 24.9, 25.0, 24.9, 24.6], // split adjusted
+      sharesOutstanding: [24.8, 24.9, 25.0, 24.9, 24.6],
       revenue3yCAGR: 0.742,
       eps3yCAGR: 0.985,
       shareDilutionYoY: -0.012
@@ -228,7 +413,7 @@ const SEED_PROFILES = {
       operatingCashFlow: 49200000000,
       capitalExpenditures: 19400000000,
       freeCashFlow: 29800000000,
-      cashAndEquivalents: 276900000000, // Massive cash pile
+      cashAndEquivalents: 276900000000,
       totalDebt: 122000000000,
       currentAssets: 350000000000,
       currentLiabilities: 130000000000,
@@ -296,7 +481,7 @@ const SEED_PROFILES = {
       sharesOutstanding: [2.95, 3.10, 3.16, 3.18, 3.21],
       revenue3yCAGR: 0.215,
       eps3yCAGR: 0.045,
-      shareDilutionYoY: 0.009 // Dilution
+      shareDilutionYoY: 0.009
     },
     ratios: {
       roic: 11.4,
@@ -308,25 +493,29 @@ const SEED_PROFILES = {
 };
 
 /**
- * Fetch stock data from cache or yahoo-finance2 with seed fallback
+ * Fetch stock data from cache or live Yahoo Finance with seed/synthetic fallback
  */
 export async function getStockData(tickerSymbol, forceRefresh = false) {
   const ticker = tickerSymbol.trim().toUpperCase();
 
   // 1. Check SQLite Cache
   if (!forceRefresh) {
-    const cached = db.prepare('SELECT * FROM stock_cache WHERE ticker = ?').get(ticker);
-    if (cached) {
-      const fetchedTime = new Date(cached.last_fetched_at).getTime();
-      const ageMinutes = (Date.now() - fetchedTime) / (1000 * 60);
-      // If cache is less than 15 minutes old, return immediately
-      if (ageMinutes < 15) {
-        return formatCachedStock(cached);
+    try {
+      const cached = db.prepare('SELECT * FROM stock_cache WHERE ticker = ?').get(ticker);
+      if (cached) {
+        const fetchedTime = new Date(cached.last_fetched_at).getTime();
+        const ageMinutes = (Date.now() - fetchedTime) / (1000 * 60);
+        // If cache is less than 15 minutes old, return immediately
+        if (ageMinutes < 15) {
+          return formatCachedStock(cached);
+        }
       }
+    } catch (e) {
+      console.warn('[Finance] Cache read warning:', e.message);
     }
   }
 
-  // 2. Attempt Yahoo Finance Fetch
+  // 2. Attempt Live Yahoo Finance Fetch
   try {
     const rawData = await fetchFromYahoo(ticker);
     if (rawData) {
@@ -338,10 +527,12 @@ export async function getStockData(tickerSymbol, forceRefresh = false) {
   }
 
   // 3. Check if cached data exists (even if older than 15m)
-  const fallbackCache = db.prepare('SELECT * FROM stock_cache WHERE ticker = ?').get(ticker);
-  if (fallbackCache) {
-    return formatCachedStock(fallbackCache);
-  }
+  try {
+    const fallbackCache = db.prepare('SELECT * FROM stock_cache WHERE ticker = ?').get(ticker);
+    if (fallbackCache) {
+      return formatCachedStock(fallbackCache);
+    }
+  } catch (e) {}
 
   // 4. Use Seed Profile if available
   if (SEED_PROFILES[ticker]) {
@@ -433,36 +624,123 @@ export async function getStockData(tickerSymbol, forceRefresh = false) {
   return formatCachedStock(synthRecord);
 }
 
+/**
+ * Fetch live data from Yahoo Finance quoteSummary API with crumb session and chart fallback
+ */
 async function fetchFromYahoo(ticker) {
-  const [quote, summary] = await Promise.all([
-    yahooFinance.quote(ticker),
-    yahooFinance.quoteSummary(ticker, {
-      modules: [
-        'financialData',
-        'defaultKeyStatistics',
-        'incomeStatementHistory',
-        'balanceSheetHistory',
-        'cashflowStatementHistory'
-      ]
-    })
-  ]);
+  const session = await getYahooSession();
+  const headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+  };
+  if (session.cookie) {
+    headers['Cookie'] = session.cookie;
+  }
 
-  if (!quote) return null;
-  return { quote, summary };
+  const modules = 'price,summaryProfile,summaryDetail,financialData,defaultKeyStatistics,incomeStatementHistory,balanceSheetHistory,cashflowStatementHistory';
+  const crumbParam = session.crumb ? '&crumb=' + encodeURIComponent(session.crumb) : '';
+  const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=${modules}${crumbParam}`;
+
+  try {
+    const res = await fetch(url, { headers, signal: AbortSignal.timeout(5000) });
+    if (res.ok) {
+      const data = await res.json();
+      const result = data.quoteSummary?.result?.[0];
+      if (result) {
+        const p = result.price || {};
+        const fd = result.financialData || {};
+        const sd = result.summaryDetail || {};
+        const ks = result.defaultKeyStatistics || {};
+        const sp = result.summaryProfile || {};
+
+        return {
+          quote: {
+            regularMarketPrice: p.regularMarketPrice?.raw || fd.currentPrice?.raw || 100,
+            regularMarketChangePercent: (p.regularMarketChangePercent?.raw || 0) * 100,
+            marketCap: p.marketCap?.raw || sd.marketCap?.raw || 1e9,
+            trailingPE: sd.trailingPE?.raw || ks.trailingPE?.raw || 25,
+            forwardPE: sd.forwardPE?.raw || ks.forwardPE?.raw || 22,
+            pegRatio: ks.pegRatio?.raw || 1.5,
+            dividendYield: sd.dividendYield?.raw || fd.dividendYield?.raw || 0,
+            payoutRatio: sd.payoutRatio?.raw || fd.payoutRatio?.raw || 0,
+            sharesOutstanding: ks.sharesOutstanding?.raw || (p.marketCap?.raw ? p.marketCap.raw / (p.regularMarketPrice?.raw || 1) : 1e8),
+            sector: sp.sector || 'Equities',
+            industry: sp.industry || 'General Industry',
+            currency: p.currency || 'USD',
+            longName: p.longName || p.shortName || ticker,
+            shortName: p.shortName || p.longName || ticker
+          },
+          summary: {
+            financialData: fd,
+            defaultKeyStatistics: ks,
+            summaryDetail: sd,
+            summaryProfile: sp,
+            incomeStatementHistory: result.incomeStatementHistory || {},
+            balanceSheetHistory: result.balanceSheetHistory || {},
+            cashflowStatementHistory: result.cashflowStatementHistory || {}
+          }
+        };
+      }
+    }
+  } catch (err) {
+    console.warn(`[Finance] quoteSummary fetch failed for ${ticker}:`, err.message);
+  }
+
+  // Fallback to Chart API for price & basic company metadata
+  try {
+    const chartUrl = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1mo&range=5y`;
+    const chartRes = await fetch(chartUrl, { headers, signal: AbortSignal.timeout(4000) });
+    if (chartRes.ok) {
+      const chartData = await chartRes.json();
+      const meta = chartData.chart?.result?.[0]?.meta;
+      if (meta && meta.regularMarketPrice) {
+        const price = meta.regularMarketPrice;
+        const prevClose = meta.chartPreviousClose || price;
+        const changePct = prevClose > 0 ? ((price - prevClose) / prevClose) * 100 : 0;
+        const name = meta.longName || meta.shortName || ticker;
+
+        return {
+          quote: {
+            regularMarketPrice: price,
+            regularMarketChangePercent: changePct,
+            marketCap: price * 1e8,
+            trailingPE: 25,
+            forwardPE: 22,
+            pegRatio: 1.5,
+            dividendYield: 0,
+            payoutRatio: 0,
+            sharesOutstanding: 1e8,
+            sector: 'Equities',
+            industry: 'General Industry',
+            currency: meta.currency || 'USD',
+            longName: name,
+            shortName: name
+          },
+          summary: {}
+        };
+      }
+    }
+  } catch (err) {
+    console.warn(`[Finance] Chart API fallback failed for ${ticker}:`, err.message);
+  }
+
+  return null;
 }
 
 function processAndCacheStock(ticker, raw) {
   const q = raw.quote || {};
   const fd = raw.summary?.financialData || {};
   const ks = raw.summary?.defaultKeyStatistics || {};
+  const sd = raw.summary?.summaryDetail || {};
+  const sp = raw.summary?.summaryProfile || {};
+
   const isHistory = raw.summary?.incomeStatementHistory?.incomeStatementHistory || [];
   const bsHistory = raw.summary?.balanceSheetHistory?.balanceSheetStatements || [];
   const cfHistory = raw.summary?.cashflowStatementHistory?.cashflowStatements || [];
 
-  const price = q.regularMarketPrice || q.currentPrice || 100;
-  const changePct = q.regularMarketChangePercent || 0;
+  const price = q.regularMarketPrice || fd.currentPrice?.raw || 100;
+  const changePct = q.regularMarketChangePercent !== undefined ? q.regularMarketChangePercent : 0;
   const name = q.longName || q.shortName || ticker;
-  const marketCap = q.marketCap || (price * (ks.sharesOutstanding || 1e8));
+  const marketCap = q.marketCap || (price * (ks.sharesOutstanding?.raw || 1e8));
 
   // Extract latest statement metrics
   const latestBS = bsHistory[0] || {};
@@ -474,14 +752,14 @@ function processAndCacheStock(ticker, raw) {
 
   const totalRevenue = latestIS.totalRevenue?.raw || fd.totalRevenue?.raw || 1e9;
   const grossProfit = latestIS.grossProfit?.raw || fd.grossProfits?.raw || totalRevenue * 0.45;
-  const ebit = latestIS.ebit?.raw || fd.ebitda?.raw * 0.85 || totalRevenue * 0.20;
+  const ebit = latestIS.ebit?.raw || latestIS.operatingIncome?.raw || (fd.ebitda?.raw ? fd.ebitda.raw * 0.85 : totalRevenue * 0.20);
   const netIncome = latestIS.netIncome?.raw || fd.netIncome?.raw || totalRevenue * 0.15;
   const operatingCashFlow = latestCF.totalCashFromOperatingActivities?.raw || fd.operatingCashflow?.raw || netIncome * 1.1;
-  const capitalExpenditures = Math.abs(latestCF.capitalExpenditures?.raw || 0);
+  const capitalExpenditures = Math.abs(latestCF.capitalExpenditures?.raw || (operatingCashFlow * 0.25));
   const freeCashFlow = fd.freeCashflow?.raw || (operatingCashFlow - capitalExpenditures);
 
-  const cashAndEquivalents = latestBS.cash?.raw || fd.totalCash?.raw || 1e8;
-  const totalDebt = latestBS.longTermDebt?.raw || fd.totalDebt?.raw || 0;
+  const cashAndEquivalents = latestBS.cash?.raw || latestBS.cashAndCashEquivalents?.raw || fd.totalCash?.raw || 1e8;
+  const totalDebt = latestBS.longTermDebt?.raw || latestBS.shortLongTermDebt?.raw || fd.totalDebt?.raw || 0;
   const currentAssets = latestBS.totalCurrentAssets?.raw || cashAndEquivalents * 1.5;
   const currentLiabilities = latestBS.totalCurrentLiabilities?.raw || (currentAssets / 1.5);
   const totalAssets = latestBS.totalAssets?.raw || currentAssets * 2.5;
@@ -502,7 +780,7 @@ function processAndCacheStock(ticker, raw) {
     const cf = cfHistory[i] || {};
     const yr = is.endDate ? new Date(is.endDate).getFullYear() : (2024 - i);
     years.push(yr);
-    const r = (is.totalRevenue?.raw || 1e9) / 1e9;
+    const r = (is.totalRevenue?.raw || totalRevenue) / 1e9;
     revTrend.push(Number(r.toFixed(1)));
     const ocf = cf.totalCashFromOperatingActivities?.raw || (r * 1e9 * 0.2);
     const cap = Math.abs(cf.capitalExpenditures?.raw || (ocf * 0.25));
@@ -510,9 +788,9 @@ function processAndCacheStock(ticker, raw) {
     fcfTrend.push(Number(fcf.toFixed(1)));
     const gp = is.grossProfit?.raw || (r * 1e9 * 0.45);
     gmTrend.push(Number(((gp / (r * 1e9)) * 100).toFixed(1)));
-    const opInc = is.operatingIncome?.raw || (r * 1e9 * 0.20);
+    const opInc = is.operatingIncome?.raw || is.ebit?.raw || (r * 1e9 * 0.20);
     omTrend.push(Number(((opInc / (r * 1e9)) * 100).toFixed(1)));
-    sharesTrend.push(Number(((ks.sharesOutstanding || (marketCap / price)) / 1e9).toFixed(2)));
+    sharesTrend.push(Number(((ks.sharesOutstanding?.raw || (marketCap / price)) / 1e9).toFixed(2)));
   }
 
   // Ensure at least 4 years in trend
@@ -543,7 +821,7 @@ function processAndCacheStock(ticker, raw) {
       longTermDebt: priorBS.longTermDebt?.raw || totalDebt,
       currentAssets: priorBS.totalCurrentAssets?.raw || currentAssets * 0.95,
       currentLiabilities: priorBS.totalCurrentLiabilities?.raw || currentLiabilities,
-      sharesOutstanding: (ks.sharesOutstanding || 1e9) * 1.01,
+      sharesOutstanding: (ks.sharesOutstanding?.raw || 1e9) * 1.01,
       grossProfit: priorIS.grossProfit?.raw || grossProfit * 0.9,
       totalRevenue: priorIS.totalRevenue?.raw || totalRevenue * 0.9
     }
@@ -564,26 +842,26 @@ function processAndCacheStock(ticker, raw) {
     totalAssets,
     totalLiabilities,
     totalStockholderEquity,
-    grossMargin: grossProfit / totalRevenue,
-    operatingMargin: ebit / totalRevenue
+    grossMargin: totalRevenue > 0 ? grossProfit / totalRevenue : 0.45,
+    operatingMargin: totalRevenue > 0 ? ebit / totalRevenue : 0.20
   };
 
   const scoreResult = computeComprehensiveHealth({
     quote: {
       regularMarketPrice: price,
       marketCap,
-      trailingPE: q.trailingPE || ks.trailingPE || 25,
-      forwardPE: q.forwardPE || ks.forwardPE || 22,
-      pegRatio: ks.pegRatio || 1.5,
-      dividendYield: fd.dividendYield?.raw || q.dividendYield || 0,
-      payoutRatio: fd.payoutRatio?.raw || 0,
-      sharesOutstanding: ks.sharesOutstanding || marketCap / price
+      trailingPE: q.trailingPE || sd.trailingPE?.raw || ks.trailingPE?.raw || 25,
+      forwardPE: q.forwardPE || sd.forwardPE?.raw || ks.forwardPE?.raw || 22,
+      pegRatio: ks.pegRatio?.raw || q.pegRatio || 1.5,
+      dividendYield: fd.dividendYield?.raw || sd.dividendYield?.raw || q.dividendYield || 0,
+      payoutRatio: fd.payoutRatio?.raw || sd.payoutRatio?.raw || 0,
+      sharesOutstanding: ks.sharesOutstanding?.raw || marketCap / price
     },
     financials,
     historical,
     ratios: {
-      pe: q.trailingPE || 25,
-      peg: ks.pegRatio || 1.5,
+      pe: q.trailingPE || sd.trailingPE?.raw || 25,
+      peg: ks.pegRatio?.raw || 1.5,
       grossMargin: financials.grossMargin
     }
   });
@@ -591,8 +869,8 @@ function processAndCacheStock(ticker, raw) {
   const record = {
     ticker,
     name,
-    sector: q.sector || 'General Industry',
-    industry: q.industry || 'Equities',
+    sector: q.sector || sp.sector || 'Equities',
+    industry: q.industry || sp.industry || 'General Industry',
     price,
     change_pct: changePct,
     currency: q.currency || 'USD',
@@ -615,10 +893,10 @@ function processAndCacheStock(ticker, raw) {
       checklistSummary: scoreResult.checklistSummary,
       dcf: scoreResult.dcf,
       ratios: {
-        pe: q.trailingPE || 25,
-        forwardPE: q.forwardPE || 22,
-        peg: ks.pegRatio || 1.5,
-        dividendYield: fd.dividendYield?.raw || 0
+        pe: q.trailingPE || sd.trailingPE?.raw || 25,
+        forwardPE: q.forwardPE || sd.forwardPE?.raw || 22,
+        peg: ks.pegRatio?.raw || 1.5,
+        dividendYield: fd.dividendYield?.raw || sd.dividendYield?.raw || 0
       }
     })
   };
@@ -628,46 +906,50 @@ function processAndCacheStock(ticker, raw) {
 }
 
 function saveStockToCache(r) {
-  const stmt = db.prepare(`
-    INSERT INTO stock_cache (
-      ticker, name, sector, industry, price, change_pct, currency, market_cap,
-      health_score, altman_z, piotroski_score, roic_pct, fcf_conversion_pct, net_cash_b,
-      financials_json, checklist_json, catalysts_json, risks_json, pillars_json, summary_json,
-      last_fetched_at
-    ) VALUES (
-      ?, ?, ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      datetime('now')
-    )
-    ON CONFLICT(ticker) DO UPDATE SET
-      name=excluded.name,
-      sector=excluded.sector,
-      industry=excluded.industry,
-      price=excluded.price,
-      change_pct=excluded.change_pct,
-      currency=excluded.currency,
-      market_cap=excluded.market_cap,
-      health_score=excluded.health_score,
-      altman_z=excluded.altman_z,
-      piotroski_score=excluded.piotroski_score,
-      roic_pct=excluded.roic_pct,
-      fcf_conversion_pct=excluded.fcf_conversion_pct,
-      net_cash_b=excluded.net_cash_b,
-      financials_json=excluded.financials_json,
-      checklist_json=excluded.checklist_json,
-      catalysts_json=excluded.catalysts_json,
-      risks_json=excluded.risks_json,
-      pillars_json=excluded.pillars_json,
-      summary_json=excluded.summary_json,
-      last_fetched_at=datetime('now')
-  `);
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO stock_cache (
+        ticker, name, sector, industry, price, change_pct, currency, market_cap,
+        health_score, altman_z, piotroski_score, roic_pct, fcf_conversion_pct, net_cash_b,
+        financials_json, checklist_json, catalysts_json, risks_json, pillars_json, summary_json,
+        last_fetched_at
+      ) VALUES (
+        ?, ?, ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?, ?, ?,
+        datetime('now')
+      )
+      ON CONFLICT(ticker) DO UPDATE SET
+        name=excluded.name,
+        sector=excluded.sector,
+        industry=excluded.industry,
+        price=excluded.price,
+        change_pct=excluded.change_pct,
+        currency=excluded.currency,
+        market_cap=excluded.market_cap,
+        health_score=excluded.health_score,
+        altman_z=excluded.altman_z,
+        piotroski_score=excluded.piotroski_score,
+        roic_pct=excluded.roic_pct,
+        fcf_conversion_pct=excluded.fcf_conversion_pct,
+        net_cash_b=excluded.net_cash_b,
+        financials_json=excluded.financials_json,
+        checklist_json=excluded.checklist_json,
+        catalysts_json=excluded.catalysts_json,
+        risks_json=excluded.risks_json,
+        pillars_json=excluded.pillars_json,
+        summary_json=excluded.summary_json,
+        last_fetched_at=datetime('now')
+    `);
 
-  stmt.run(
-    r.ticker, r.name, r.sector, r.industry, r.price, r.change_pct, r.currency, r.market_cap,
-    r.health_score, r.altman_z, r.piotroski_score, r.roic_pct, r.fcf_conversion_pct, r.net_cash_b,
-    r.financials_json, r.checklist_json, r.catalysts_json, r.risks_json, r.pillars_json, r.summary_json
-  );
+    stmt.run(
+      r.ticker, r.name, r.sector, r.industry, r.price, r.change_pct, r.currency, r.market_cap,
+      r.health_score, r.altman_z, r.piotroski_score, r.roic_pct, r.fcf_conversion_pct, r.net_cash_b,
+      r.financials_json, r.checklist_json, r.catalysts_json, r.risks_json, r.pillars_json, r.summary_json
+    );
+  } catch (err) {
+    console.warn('[Finance] DB save error:', err.message);
+  }
 }
 
 function formatCachedStock(row) {
@@ -758,3 +1040,4 @@ function generateSyntheticProfile(ticker) {
     }
   };
 }
+
