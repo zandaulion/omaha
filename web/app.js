@@ -487,6 +487,7 @@ function initEventListeners() {
   // Settings Modal triggers
   document.getElementById('settingsTriggerBtn')?.addEventListener('click', () => {
     openModal('settingsModal');
+    checkPushStatus();
   });
   document.getElementById('closeSettingsModalBtn')?.addEventListener('click', () => {
     closeModal('settingsModal');
@@ -1742,38 +1743,118 @@ async function handleRedeemInvite() {
   }
 }
 
-async function handleEnablePush() {
+async function checkPushStatus() {
+  const btn = document.getElementById('enablePushBtn');
+  if (!btn) return;
+
   if (!('Notification' in window) || !('serviceWorker' in navigator)) {
-    alert('Web Push is not supported in this browser.');
+    btn.textContent = 'Unsupported';
+    btn.disabled = true;
     return;
   }
 
-  const permission = await Notification.requestPermission();
-  if (permission !== 'granted') {
-    alert('Push notification permission denied.');
+  if (Notification.permission === 'denied') {
+    btn.textContent = 'Blocked';
+    btn.disabled = true;
     return;
   }
 
   try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      btn.textContent = '✓ Enabled';
+      btn.className = 'btn-secondary added';
+      btn.disabled = true;
+    } else {
+      btn.textContent = 'Enable';
+      btn.className = 'btn-secondary';
+      btn.disabled = false;
+    }
+  } catch (e) {
+    console.warn('Error checking push status:', e);
+  }
+}
+
+async function handleEnablePush() {
+  const btn = document.getElementById('enablePushBtn');
+
+  if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+    showToast('Web Push is not supported in this browser.', '⚠️');
+    return;
+  }
+
+  if (Notification.permission === 'denied') {
+    showToast('Push notification permission is blocked in browser settings.', '⚠️');
+    return;
+  }
+
+  try {
+    if (btn) {
+      btn.textContent = 'Enabling…';
+      btn.disabled = true;
+    }
+
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      showToast('Push notification permission was not granted.', '⚠️');
+      if (btn) {
+        btn.textContent = 'Enable';
+        btn.disabled = false;
+      }
+      return;
+    }
+
     const keyRes = await fetch('/api/push/vapid-key');
     const { publicKey } = await keyRes.json();
+    if (!publicKey) {
+      throw new Error('VAPID key unavailable from server.');
+    }
 
     const reg = await navigator.serviceWorker.ready;
-    const sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(publicKey)
-    });
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey)
+      });
+    }
 
-    await fetch('/api/push/subscribe', {
+    const res = await apiFetch('/api/push/subscribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ subscription: sub })
     });
 
-    alert('🔔 Push notifications enabled! You will receive earnings & health score alerts.');
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Failed to register subscription.');
+    }
+
+    if (btn) {
+      btn.textContent = '✓ Enabled';
+      btn.className = 'btn-secondary added';
+      btn.disabled = true;
+    }
+
+    showToast('Push notifications enabled!', '🔔');
+
+    // Trigger an immediate confirmation notification via Service Worker
+    if (reg.showNotification) {
+      reg.showNotification('Pocket Omaha 🎩', {
+        body: '🔔 Notifications are active! You will receive fundamental upgrades & moat alerts.',
+        icon: '/icons/icon-192.png',
+        badge: '/icons/icon-192.png',
+        data: { url: '/' }
+      });
+    }
   } catch (err) {
     console.error('Push error:', err);
-    alert('Failed to register push subscription.');
+    showToast(`Failed to enable push: ${err.message}`, '⚠️');
+    if (btn) {
+      btn.textContent = 'Enable';
+      btn.disabled = false;
+    }
   }
 }
 
