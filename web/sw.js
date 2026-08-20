@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pocket-omaha-v2.2.0';
+const CACHE_NAME = 'pocket-omaha-v2.3.0';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -87,12 +87,18 @@ self.addEventListener('push', (event) => {
   }
 
   const title = data.title || 'Pocket Omaha 🎩';
+  const d = data.data || {};
   const options = {
     body: data.body || 'Financial statement analysis ready.',
     icon: '/icons/icon-192.png',
     badge: '/icons/badge-96.png',
-    vibrate: [100, 50, 100],
-    data: data.data || { url: '/' },
+    // Tagged per ticker and alert type so a repeat replaces the previous
+    // bubble instead of stacking another one on the lock screen. renotify
+    // keeps it alerting, so a genuine second event is not delivered silently.
+    tag: data.tag || (d.type ? `${d.type}:${d.ticker || ''}` : 'omaha'),
+    renotify: true,
+    vibrate: d.severity === 'critical' ? [140, 70, 140] : [100, 50, 100],
+    data: d.url ? d : { url: '/' },
     actions: [
       { action: 'open', title: 'View Scorecard' },
       { action: 'dismiss', title: 'Dismiss' }

@@ -317,6 +317,9 @@ function recordAndSend(alert) {
     body: alert.body,
     icon: '/icons/icon-192.png',
     badge: '/icons/badge-96.png',
+    // One bubble per ticker per alert type; the weekly digest has no ticker so
+    // it gets a key of its own rather than colliding on an empty one.
+    tag: alert.ticker ? `${alert.type}:${alert.ticker}` : alert.type,
     data: { url: alert.url, type: alert.type, ticker: alert.ticker, severity: alert.severity }
   });
 }
