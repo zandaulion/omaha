@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pocket-omaha-v2.1.1';
+const CACHE_NAME = 'pocket-omaha-v2.2.0';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -8,7 +8,10 @@ const STATIC_ASSETS = [
   '/icons/icon.svg',
   '/icons/favicon.svg',
   '/icons/icon-192.png',
-  '/icons/icon-512.png'
+  '/icons/icon-512.png',
+  // Precached: a push can arrive while offline, and a badge that 404s leaves
+  // Android drawing the Chrome logo instead.
+  '/icons/badge-96.png'
 ];
 
 self.addEventListener('install', (event) => {
@@ -87,7 +90,7 @@ self.addEventListener('push', (event) => {
   const options = {
     body: data.body || 'Financial statement analysis ready.',
     icon: '/icons/icon-192.png',
-    badge: '/icons/icon-192.png',
+    badge: '/icons/badge-96.png',
     vibrate: [100, 50, 100],
     data: data.data || { url: '/' },
     actions: [
