@@ -708,32 +708,40 @@ lands above it, and a cash balance moved by a cent. `format.test.js` now sweeps
 
 ### The measurements
 
-| | |
+Measured on a **Samsung SM-F936B (Galaxy Z Fold 4), Android 16 (API 36),
+arm64-v8a** via the sideloadable harness in `android/selftest`, and on the
+Pixel 9a emulator via the instrumented suite.
+
+| | Handset (arm64) | Emulator (x86_64) |
+|---|---|---|
+| Scoring parity, all three fixtures | byte-identical to Node | byte-identical |
+| First score | **7.1 ms** | 22.5 ms |
+| Per score, mean of 10 | **6.0 ms** | 43.1 ms |
+| Page size | 4 KB | 16 KB |
+
+| Artifact | Size |
 |---|---|
-| Parity, all three fixtures | byte-identical to Node |
-| First score on device | ~15 ms |
-| Per score | single-digit ms |
 | APK total, 4 ABIs, unminified | 4,079 KB |
 | Native library, arm64-v8a | 833 KB |
-| Engine assets (the bundle) | 44 KB |
+| Engine bundle (the assets) | 44 KB |
 
 **Roughly 0.9 MB is the real cost on a modern phone** — one ABI via App Bundle
 plus the JS. The remaining ~3 MB of the probe APK is `classes.dex`, almost all
 Kotlin stdlib and coroutines, which a real app carries anyway and R8 would cut.
 
-Timings are from an **x86_64 emulator on a desktop CPU** and are not a phone.
-They settle the order of magnitude — scoring is milliseconds, not seconds — and
-nothing finer. ARM timing still needs a physical device.
+**The handset is about seven times faster than the emulator**, which is the
+opposite of the direction the earlier caution here implied. The emulator figures
+were pessimistic, not optimistic: a software-rendered x86_64 image on a desktop
+CPU is slower at this than the ARM core it is standing in for. The caveat was
+right that emulator numbers do not transfer; it was wrong about which way they
+would move.
 
-The 4 KB/16 KB question resolved itself in passing: `libquickjs.so` is built
-with 4 KB alignment on all four ABIs, and it loaded anyway on a 16 KB page size
-device at API 37. Worth re-checking before release, since Play requires 16 KB
-support for apps targeting Android 15+, and an alignment that happens to work
-today is not the same as one that is correct.
+At 6 ms a score, a six-hourly sweep of a twenty-holding watchlist spends about
+**120 ms scoring**. Whatever eventually constrains this app, it is not the cost
+of running the engine in JavaScript.
 
 ### Still open
 
-* ARM timing and size on a physical device.
 * The `fetch` shim — `AbortSignal` and `Response` for `providers/yahoo.js`.
   Scoring needs no I/O; ingestion does, and `stock.js` bundles the same way.
 * R8 keep rules for the JNI surface, once there is an app to minify.
