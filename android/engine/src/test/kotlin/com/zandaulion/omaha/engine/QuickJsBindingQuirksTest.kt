@@ -86,4 +86,23 @@ class QuickJsBindingQuirksTest {
                 "the ASCII-escaping bridge and return JSON directly."
         )
     }
+
+    /**
+     * Where does this engine round a tie?
+     *
+     * Not a defect report — a measurement. The answer decides whether core/
+     * can rely on toFixed at all, or has to round deterministically itself.
+     */
+    @Test
+    fun `record how this engine rounds toFixed ties`() = runTest {
+        val quickJs = QuickJs.create(Dispatchers.Default)
+        var line: String? = null
+        quickJs.defineBinding("__out", FunctionBinding { args ->
+            line = args[0] as? String
+            null
+        })
+        quickJs.evaluate<Any?>(TO_FIXED_PROBE_JS, "tofixed.js", true)
+        quickJs.close()
+        println("[tofixed/jvm-quickjs] $line")
+    }
 }

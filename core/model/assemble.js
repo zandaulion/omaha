@@ -11,6 +11,7 @@
  */
 
 import { getFxRate as fetchFxRate } from '../providers/index.js';
+import { fixed as fixedDecimal } from '../format.js';
 
 /** Sectors where Altman Z and the working-capital ratios are not defined. */
 export const NON_INDUSTRIAL_SECTORS = new Set(['Financial Services', 'Real Estate']);
@@ -46,8 +47,8 @@ export function buildModel(quote, fundamentals) {
  */
 function buildHistory(annual) {
   const pct = (num, den) =>
-    num === null || den === null || !den ? null : Number(((num / den) * 100).toFixed(1));
-  const bn = (v) => (v === null || v === undefined ? null : Number((v / 1e9).toFixed(2)));
+    num === null || den === null || !den ? null : Number(fixedDecimal(((num / den) * 100), 1));
+  const bn = (v) => (v === null || v === undefined ? null : Number(fixedDecimal((v / 1e9), 2)));
 
   const years = annual.map((p) => Number(String(p.asOfDate).slice(0, 4)));
 
@@ -131,7 +132,7 @@ function cagr(series) {
   const periods = points.length - 1;
   // A sign change makes compound growth meaningless rather than merely large.
   if (first <= 0 || last <= 0) return null;
-  return Number((Math.pow(last / first, 1 / periods) - 1).toFixed(4));
+  return Number(fixedDecimal((Math.pow(last / first, 1 / periods) - 1), 4));
 }
 
 function countableSpan(series) {
@@ -164,7 +165,7 @@ function yoyChange(series) {
 
   const span = last - idx;
   return {
-    value: Number(((curr - series[idx]) / series[idx]).toFixed(4)),
+    value: Number(fixedDecimal(((curr - series[idx]) / series[idx]), 4)),
     years: span,
     consecutive: span === 1
   };

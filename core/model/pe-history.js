@@ -10,6 +10,8 @@
  * the strength of almost no evidence.
  */
 
+import { fixed as fixedDecimal } from '../format.js';
+
 /**
  * The stock's own P/E range over the last five years, from monthly closes
  * divided by the diluted EPS of the fiscal year each month falls in. The spec
@@ -54,7 +56,7 @@ export function buildPeHistory(fundamentals, quote) {
     }
     if (eps === null || eps <= 0) continue;
     const pe = point.close / eps;
-    if (pe > 0 && pe < 400) series.push({ date: point.date, pe: Number(pe.toFixed(2)) });
+    if (pe > 0 && pe < 400) series.push({ date: point.date, pe: Number(fixedDecimal(pe, 2)) });
   }
 
   const values = series.map((s) => s.pe).sort((a, b) => a - b);
@@ -64,7 +66,7 @@ export function buildPeHistory(fundamentals, quote) {
     series,
     months: series.length,
     epsPeriods: epsPeriods.length,
-    current: current === null ? null : Number(current.toFixed(2))
+    current: current === null ? null : Number(fixedDecimal(current, 2))
   };
 
   if (series.length < 12) return { ...empty('too few months of comparable earnings'), ...base };
@@ -92,7 +94,7 @@ export function buildPeHistory(fundamentals, quote) {
     percentile: below === null ? null : Math.round((below / values.length) * 100),
     vsMedianPct:
       median > 0 && current !== null
-        ? Number((((current - median) / median) * 100).toFixed(1))
+        ? Number(fixedDecimal((((current - median) / median) * 100), 1))
         : null
   };
 }

@@ -99,8 +99,12 @@ network to multiple devices. A single-device on-device app needs none of it.
 what keeps `yahoo.js` at a zero-line diff, and it matches how QuickJS injection
 works: `quickjs-kt` exposes `asyncFunction("fetch") { ... }`, which surfaces a
 Kotlin suspend function to JS as a Promise-returning async function. ES modules
-are supported via `asModule = true` with bytecode caching, so the existing
-`import` statements in `core/` need no bundler.
+are nominally supported via `asModule = true`.
+
+**That last point turned out to be wrong**, and only the device work revealed
+it: registering a second module on one QuickJS instance crashes the process.
+`core/` is therefore flattened to a single ES module before it reaches the
+engine — see §20.
 
 **The one real integration wrinkle.** `yahoo.js` uses `AbortSignal.timeout(...)`
 and reads `res.headers.get('set-cookie')`. QuickJS has neither `AbortSignal` nor
@@ -363,7 +367,7 @@ without waiting for `finance.js`.
 | 1 | Extract `core/`, keep the PWA green | No unintended behaviour change. Includes defects 1–5 and the provider seam — **done**, see §16 |
 | 1a | Golden model fixtures | Recorded upstream responses replay offline to a byte-identical model — **done**, see §17 |
 | 1b | `finance.js` split | Store contract defined; assembly in `core/`; golden snapshots unchanged — **done**, see §19 |
-| 2 | QuickJS spike | `core/` + fetch shim in a bare Android module reproduces the golden snapshots for `NOK`, `AAPL` and `JPM` — no longer just "prints a scorecard", since there is now something exact to compare against |
+| 2 | QuickJS spike | Reproduces the golden snapshots for `NOK`, `AAPL` and `JPM` — **done on JVM (§18) and on device (§20)** |
 | 3 | Room + import/export | A PWA `/api/theses` backup imports into Android and back out, losslessly |
 | 4 | Compose UI | Watchlist → Deep Dive → Screener → Compare, tokens generated, screenshot diffs passing |
 | 5 | WorkManager sweep + local notifications | Alerts fire on-device with no network beyond market data |
@@ -642,3 +646,94 @@ receipt and nothing else.
 
 That is the argument for §17's fixture selection in one line: three tickers
 chosen for materially different paths, not three tickers.
+
+---
+
+## 20. On-device results
+
+`core/scoring.js` now scores byte-identically in **Node, JVM QuickJS and
+Android QuickJS**. Six instrumented tests pass on a Pixel 9a emulator running
+API 37 with a 16 KB page size.
+
+```bash
+cd android && ./gradlew :engine-android:connectedDebugAndroidTest
+```
+
+Getting there took three findings that no amount of reading would have
+produced. Each is recorded here because each one changed the design.
+
+### The engine cannot be shipped as a module graph
+
+`quickjs-kt` accepts ES modules, so §4 originally said `core/` needed no
+bundler. Registering a **second** module on one instance faults in native code
+— `EXCEPTION_ACCESS_VIOLATION`, a process kill rather than a catchable error.
+
+`core/` is now flattened by `tools/bundle-core.mjs` (esbuild) into
+`core/dist/scoring.bundle.js`, 44 KB, one module, no imports. Gradle regenerates
+it before packaging, so the APK cannot ship a stale engine, and
+`test/bundle.test.js` fails if a committed bundle has drifted from its sources.
+
+This is a build step, not a second source of truth. It is also not a workaround
+that should be undone lightly: one module per interpreter is a reasonable thing
+for an embedded engine to want, and the bundle loads faster than a graph would.
+
+### `toFixed` is not portable, and it changed a number the user reads
+
+The same source, three engines:
+
+| | Node (V8) | QuickJS/JVM | QuickJS/Android |
+|---|---|---|---|
+| `(4.25).toFixed(1)` | 4.3 | 4.3 | **4.2** |
+| `(0.125).toFixed(2)` | 0.13 | 0.13 | **0.12** |
+| `(2.5).toFixed(0)` | 3 | 3 | **2** |
+
+Android rounds ties to even; the others round away from zero, which is what
+ECMAScript specifies — "if there are two such n, pick the larger n". QuickJS
+delegates decimal conversion to the platform C library, and Bionic differs from
+the desktop libcs.
+
+It surfaced as the PWA reporting *"ROIC of 4.3%"* and the app *"ROIC of 4.2%"*
+for the same company on the same filings. The underlying value was identical.
+Only the rendering differed — and the rendering is what a person reads.
+
+`core/format.js` replaces `toFixed` throughout `core/` (72 call sites). It
+decomposes the double to its exact `m * 2 ** e` form and rounds in integer
+arithmetic, because IEEE 754 *arithmetic* is identical on every engine and only
+decimal *formatting* varies.
+
+A first attempt scaled by a power of ten and rounded that — which is wrong, and
+the golden fixtures caught it: `61.555` is below its midpoint but `61.555 * 100`
+lands above it, and a cash balance moved by a cent. `format.test.js` now sweeps
+~160,000 values against V8 plus every three-decimal midpoint under 400.
+
+### The measurements
+
+| | |
+|---|---|
+| Parity, all three fixtures | byte-identical to Node |
+| First score on device | ~15 ms |
+| Per score | single-digit ms |
+| APK total, 4 ABIs, unminified | 4,079 KB |
+| Native library, arm64-v8a | 833 KB |
+| Engine assets (the bundle) | 44 KB |
+
+**Roughly 0.9 MB is the real cost on a modern phone** — one ABI via App Bundle
+plus the JS. The remaining ~3 MB of the probe APK is `classes.dex`, almost all
+Kotlin stdlib and coroutines, which a real app carries anyway and R8 would cut.
+
+Timings are from an **x86_64 emulator on a desktop CPU** and are not a phone.
+They settle the order of magnitude — scoring is milliseconds, not seconds — and
+nothing finer. ARM timing still needs a physical device.
+
+The 4 KB/16 KB question resolved itself in passing: `libquickjs.so` is built
+with 4 KB alignment on all four ABIs, and it loaded anyway on a 16 KB page size
+device at API 37. Worth re-checking before release, since Play requires 16 KB
+support for apps targeting Android 15+, and an alignment that happens to work
+today is not the same as one that is correct.
+
+### Still open
+
+* ARM timing and size on a physical device.
+* The `fetch` shim — `AbortSignal` and `Response` for `providers/yahoo.js`.
+  Scoring needs no I/O; ingestion does, and `stock.js` bundles the same way.
+* R8 keep rules for the JNI surface, once there is an app to minify.

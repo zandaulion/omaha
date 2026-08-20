@@ -14,6 +14,11 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
 }
 
+// Shared with :engine-android's instrumented tests. The two parity suites must
+// compare results the same way; a second canonicaliser could drift and would
+// then be comparing two different questions.
+sourceSets["test"].kotlin.srcDir("src/testShared/kotlin")
+
 kotlin {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)

@@ -12,6 +12,7 @@
  */
 
 import { formatMoney } from '../scoring.js';
+import { fixed as fixedDecimal } from '../format.js';
 
 /**
  * Build a structured payload containing all available stock information and computed KPIs
@@ -35,12 +36,12 @@ export function buildComprehensivePayload(stock, thesis = null) {
   // confidently explained a ratio that had never been measured.
   const NR = 'not reported';
   const n = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
-  const pct = (v, dp = 1) => (n(v) === null ? NR : `${(v * 100).toFixed(dp)}%`);
-  const pctRaw = (v, dp = 1) => (n(v) === null ? NR : `${v.toFixed(dp)}%`);
-  const mult = (v, dp = 2) => (n(v) === null ? NR : `${v.toFixed(dp)}x`);
+  const pct = (v, dp = 1) => (n(v) === null ? NR : `${fixedDecimal((v * 100), dp)}%`);
+  const pctRaw = (v, dp = 1) => (n(v) === null ? NR : `${fixedDecimal(v, dp)}%`);
+  const mult = (v, dp = 2) => (n(v) === null ? NR : `${fixedDecimal(v, dp)}x`);
   const money = (v) => (n(v) === null ? NR : formatMoney(v, currency));
   const signed = (v, dp = 1) =>
-    n(v) === null ? NR : `${v >= 0 ? '+' : ''}${v.toFixed(dp)}%`;
+    n(v) === null ? NR : `${v >= 0 ? '+' : ''}${fixedDecimal(v, dp)}%`;
 
   const checklistFormatted = (stock.checklist || []).map((c) => ({
     id: c.id,
@@ -158,7 +159,7 @@ export function buildComprehensivePayload(stock, thesis = null) {
       marketCap: money(m.marketCap),
       sharesOutstanding: n(m.sharesOutstanding) === null
         ? NR
-        : `${(m.sharesOutstanding / 1e6).toFixed(1)}M shares`,
+        : `${fixedDecimal((m.sharesOutstanding / 1e6), 1)}M shares`,
       enterpriseValue: money(m.enterpriseValue)
     },
 
@@ -195,7 +196,7 @@ export function buildComprehensivePayload(stock, thesis = null) {
 
     quantitativeKPIs: {
       altmanZScore: {
-        score: n(stock.altman_z) === null ? NR : stock.altman_z.toFixed(2),
+        score: n(stock.altman_z) === null ? NR : fixedDecimal(stock.altman_z, 2),
         zone:
           n(stock.altman_z) === null
             ? (m.isFinancial ? 'not defined for financial institutions' : NR)
@@ -215,13 +216,13 @@ export function buildComprehensivePayload(stock, thesis = null) {
         : NR,
       returnOnInvestedCapital: pctRaw(m.roic),
       estimatedWACC: pctRaw(m.wacc),
-      roicSpreadOverWACC: n(m.roicSpread) === null ? NR : `${m.roicSpread >= 0 ? '+' : ''}${m.roicSpread.toFixed(1)} points`,
+      roicSpreadOverWACC: n(m.roicSpread) === null ? NR : `${m.roicSpread >= 0 ? '+' : ''}${fixedDecimal(m.roicSpread, 1)} points`,
       returnOnEquity: pct(m.roe),
       returnOnAssets: pct(m.roa),
-      assetTurnover: n(m.assetTurnover) === null ? NR : `${m.assetTurnover.toFixed(2)}x`,
+      assetTurnover: n(m.assetTurnover) === null ? NR : `${fixedDecimal(m.assetTurnover, 2)}x`,
       sectorMedianAssetTurnover: n(m.sectorMedianAssetTurnover) === null
         ? 'no sector peers cached for comparison'
-        : `${m.sectorMedianAssetTurnover.toFixed(2)}x`,
+        : `${fixedDecimal(m.sectorMedianAssetTurnover, 2)}x`,
       freeCashFlowConversion: n(stock.fcf_conversion_pct) === null ? NR : `${stock.fcf_conversion_pct}% of net income`,
       grossMargin: pct(m.grossMargin),
       operatingMargin: pct(m.operatingMargin),
@@ -239,14 +240,14 @@ export function buildComprehensivePayload(stock, thesis = null) {
       shareholderEquity: m.negativeEquity ? 'negative book equity' : money(m.equity),
       totalLiabilities: money(m.totalLiabilities),
       workingCapital: money(m.workingCapital),
-      currentRatio: n(m.currentRatio) === null ? NR : m.currentRatio.toFixed(2),
-      quickRatio: n(m.quickRatio) === null ? NR : m.quickRatio.toFixed(2),
+      currentRatio: n(m.currentRatio) === null ? NR : fixedDecimal(m.currentRatio, 2),
+      quickRatio: n(m.quickRatio) === null ? NR : fixedDecimal(m.quickRatio, 2),
       debtToEquity: m.negativeEquity ? 'undefined — book equity is negative' : mult(m.debtToEquity),
       netDebtToEbitda: mult(m.netDebtToEbitda),
       equityToAssets: pct(m.equityToAssets),
       interestCoverage: m.interestCoverageUnburdened
         ? 'no debt burden to cover'
-        : n(m.interestCoverage) === null ? NR : `${m.interestCoverage.toFixed(1)}x`
+        : n(m.interestCoverage) === null ? NR : `${fixedDecimal(m.interestCoverage, 1)}x`
     },
 
     valuation: {
@@ -285,9 +286,9 @@ export function buildComprehensivePayload(stock, thesis = null) {
         ? {
             cashFlowBase: `${formatMoney(dcf.assumptions.cashFlowBase, currency)} — ${dcf.assumptions.cashFlowBasis}`,
             latestFiledCashFlow: money(dcf.assumptions.latestFiledCashFlow),
-            growth: `${(dcf.assumptions.growthRate * 100).toFixed(1)}% a year for 5 years — ${dcf.assumptions.growthBasis}`,
+            growth: `${fixedDecimal((dcf.assumptions.growthRate * 100), 1)}% a year for 5 years — ${dcf.assumptions.growthBasis}`,
             terminalMultiple: `${dcf.assumptions.terminalMultiple}x on year-5 free cash flow`,
-            discountRate: `${(dcf.assumptions.discountRate * 100).toFixed(1)}%`
+            discountRate: `${fixedDecimal((dcf.assumptions.discountRate * 100), 1)}%`
           }
         : NR,
       // The rate that would reconcile the model with the traded price. Where
@@ -295,7 +296,7 @@ export function buildComprehensivePayload(stock, thesis = null) {
       // model should reason from it rather than declaring the market wrong.
       growthRateImpliedByMarketPrice: n(dcf.impliedGrowthRate) === null
         ? NR
-        : `${(dcf.impliedGrowthRate * 100).toFixed(1)}% a year`,
+        : `${fixedDecimal((dcf.impliedGrowthRate * 100), 1)}% a year`,
       modelVersusMarket: dcf.divergenceWarning
         ? `The modelled fair value is ${dcf.divergenceFactor}x the traded price. A gap this wide ` +
           'usually means the assumptions need revisiting or the market is pricing in something ' +
@@ -324,16 +325,16 @@ export function buildComprehensivePayload(stock, thesis = null) {
       operatingMarginByYear_percent: hist.operatingMarginPct || [],
       dilutedSharesByYear_billionsOfShares: hist.sharesOutstanding || [],
       [`dilutedEPSByYear_${currency}perShare`]: hist.dilutedEPS || [],
-      revenueCAGR: n(m.revenueCAGR) === null ? NR : `${(m.revenueCAGR * 100).toFixed(1)}% over ${m.cagrYears} years`,
+      revenueCAGR: n(m.revenueCAGR) === null ? NR : `${fixedDecimal((m.revenueCAGR * 100), 1)}% over ${m.cagrYears} years`,
       epsCAGR: n(m.epsCAGR) === null
         ? `${NR} (undefined when the series crosses zero)`
-        : `${(m.epsCAGR * 100).toFixed(1)}%`,
+        : `${fixedDecimal((m.epsCAGR * 100), 1)}%`,
       fcfPerShareCAGR: n(m.fcfPerShareCAGR) === null
         ? `${NR} (undefined when the series crosses zero)`
-        : `${(m.fcfPerShareCAGR * 100).toFixed(1)}%`,
+        : `${fixedDecimal((m.fcfPerShareCAGR * 100), 1)}%`,
       shareCountChange: n(m.shareChangeYoY) === null
         ? NR
-        : `${(m.shareChangeYoY * 100).toFixed(1)}% over ${m.shareChangeYears || 1} fiscal ` +
+        : `${fixedDecimal((m.shareChangeYoY * 100), 1)}% over ${m.shareChangeYears || 1} fiscal ` +
           `year${(m.shareChangeYears || 1) === 1 ? '' : 's'} ` +
           `(${m.shareChangeAnnualisedPct >= 0 ? '+' : ''}${m.shareChangeAnnualisedPct}% a year), ` +
           `${m.shareChangeYoY < 0 ? 'buybacks' : 'dilution'}`,

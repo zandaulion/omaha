@@ -8,7 +8,8 @@
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
     "test": "node --test \"core/**/*.test.js\" \"test/**/*.test.js\"",
-    "prompt": "node scripts/dump-prompt.mjs"
+    "prompt": "node scripts/dump-prompt.mjs",
+    "bundle:core": "node tools/bundle-core.mjs"
   },
   "license": "GPL-3.0-or-later",
   "repository": {
@@ -20,5 +21,8 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
   }
 }
