@@ -8,3 +8,10 @@ npm-debug.log*
 
 # Generated prompt snapshots (npm run prompt)
 gemini-prompt.*.md
+
+# Android / Gradle
+android/.gradle/
+android/build/
+android/*/build/
+android/local.properties
+android/.kotlin/

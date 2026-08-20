@@ -12,6 +12,12 @@ import {
 const QUOTE_TTL_MIN = 15;
 const FUNDAMENTALS_TTL_HOURS = 24;
 
+/** @see modelObserver call site in getStockData. Tooling only. */
+let modelObserver = null;
+export function __observeModel(fn) {
+  modelObserver = fn;
+}
+
 /** Sectors where Altman Z and the working-capital ratios are not defined. */
 const NON_INDUSTRIAL_SECTORS = new Set(['Financial Services', 'Real Estate']);
 
@@ -177,6 +183,12 @@ export async function getStockData(tickerSymbol, forceRefresh = false) {
   model.peHistory = peHistory;
 
   const score = computeComprehensiveHealth(model);
+  // Tooling seam, null on every normal path. The QuickJS spike needs the exact
+  // object the scoring engine was handed and the exact object it returned, and
+  // that pair cannot be reconstructed from the outside — the model is built up
+  // across the four statements above. Retire this when assembly moves to
+  // core/ (step 1b) and the recorder can call buildModel directly.
+  modelObserver?.(ticker, model, score);
   score.peHistory = peHistory;
   const record = toRecord(ticker, quote, fundamentals, model, score);
 
