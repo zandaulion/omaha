@@ -459,6 +459,10 @@ function deriveMetrics(model) {
     piotroski,
 
     revenueCAGR: hist.revenueCAGR ?? null,
+    revenueChangeLatest: hist.revenueChangeLatest ?? null,
+    revenueChangeYears: hist.revenueChangeYears ?? null,
+    freeCashFlowLatest: hist.freeCashFlowLatest ?? null,
+    freeCashFlowNormalised: hist.freeCashFlowNormalised ?? null,
     epsCAGR: hist.epsCAGR ?? null,
     fcfPerShareCAGR: hist.fcfPerShareCAGR ?? null,
     shareChangeYoY: hist.shareChangeYoY ?? null,
@@ -1019,21 +1023,86 @@ function buildInsights(m, fmt) {
 // =====================================================================
 
 /**
- * Growth for the projection stage: the median of whichever compound rates the
- * filings support, so one noisy series cannot drive the whole valuation.
- * Bounded because extrapolating an extreme trailing rate for five years is an
- * artefact of the window, not a forecast.
+ * Free cash flow base for the projection.
+ *
+ * A single filed year is a fragile foundation when it is an outlier. Bumble's
+ * FY2025 free cash flow was 2.5x the prior year while revenue fell 9.3% — a
+ * projection anchored on it compounds a one-off. Where the latest year sits
+ * far from the three-year median, the median is used instead and the choice is
+ * reported, so nobody has to guess which basis produced the number.
+ */
+function dcfCashFlowBase(m) {
+  const latest = num(m.freeCashFlowLatest) ?? num(m.freeCashFlow);
+  const normal = num(m.freeCashFlowNormalised);
+
+  if (latest === null) return { value: null, basis: 'unavailable', latest, normalised: normal };
+  if (normal === null || normal <= 0) {
+    return { value: latest, basis: 'latest filed year', latest, normalised: normal };
+  }
+
+  const ratio = latest / normal;
+  if (ratio > 1.35 || ratio < 0.65) {
+    return {
+      value: normal,
+      basis: 'three-year median — the latest filed year is an outlier',
+      latest,
+      normalised: normal,
+      outlierRatio: round(ratio)
+    };
+  }
+  return { value: latest, basis: 'latest filed year', latest, normalised: normal };
+}
+
+/**
+ * Growth for the projection stage.
+ *
+ * The median of the filed compound rates, then bounded by what the top line
+ * can actually support. Free cash flow growing faster than revenue for five
+ * straight years requires continuous margin expansion, and a business whose
+ * most recent filed year shrank does not get a growth projection at all — it
+ * gets its decline projected. Bumble's blend came out at +18% a year on
+ * revenue that had just fallen 9.3%, with negative EBIT and -65% ROIC.
  */
 function dcfGrowthRate(m) {
   const rates = [m.revenueCAGR, m.epsCAGR, m.fcfPerShareCAGR].filter(
     (r) => r !== null && r !== undefined
   );
-  if (!rates.length) return 0.04;
-  rates.sort((a, b) => a - b);
-  const mid = Math.floor(rates.length / 2);
-  const median =
-    rates.length % 2 ? rates[mid] : (rates[mid - 1] + rates[mid]) / 2;
-  return Number(Math.min(0.2, Math.max(0.0, median)).toFixed(4));
+
+  let base;
+  if (!rates.length) {
+    base = 0.04;
+  } else {
+    const sorted = [...rates].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    base = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  }
+
+  const latestChange = num(m.revenueChangeLatest);
+
+  // A shrinking business has its decline projected, floored so that five years
+  // of compounding stays inside the plausible.
+  if (latestChange !== null && latestChange < 0) {
+    return {
+      rate: Number(Math.max(-0.15, latestChange).toFixed(4)),
+      basis: 'revenue declined in the latest filed year, so the decline is projected rather than growth',
+      unbounded: Number(base.toFixed(4))
+    };
+  }
+
+  const ceiling =
+    m.revenueCAGR !== null && m.revenueCAGR !== undefined
+      ? Math.min(0.2, m.revenueCAGR + 0.05)
+      : 0.1;
+  const rate = Number(Math.min(ceiling, Math.max(0, base)).toFixed(4));
+
+  return {
+    rate,
+    basis:
+      rate < base
+        ? 'capped at revenue growth plus 5 points — cash flow cannot outgrow the top line indefinitely'
+        : 'median of the filed compound growth rates',
+    unbounded: Number(base.toFixed(4))
+  };
 }
 
 /**
@@ -1049,11 +1118,49 @@ function dcfTerminalMultiple(m) {
     else if (m.roic >= 15) multiple += 4;
     else if (m.roic >= 10) multiple += 1;
     else if (m.roic < 6) multiple -= 3;
+    // Destroying capital outright is a different case from merely low returns.
+    if (m.roic < 0) multiple -= 2;
   }
   if (m.grossMargin !== null && m.grossMargin >= 0.6) multiple += 2;
   if (m.netCash !== null && m.netCash > 0) multiple += 1;
   if (m.netDebtToEbitda !== null && m.netDebtToEbitda > 3) multiple -= 2;
-  return Math.min(26, Math.max(9, multiple));
+  return Math.min(26, Math.max(8, multiple));
+}
+
+/**
+ * The growth rate that would make the model agree with the market.
+ *
+ * More useful than the fair value itself when the two disagree sharply: it
+ * turns "93.8% undervalued" into "the market is pricing in a 28.5% annual
+ * decline", which is a claim the reader can actually assess.
+ */
+function impliedGrowthRate({ price, fcf0, terminalMultiple, discountRate, cash, debt, shares }) {
+  if ([price, fcf0, shares].some((v) => num(v) === null) || fcf0 <= 0 || shares <= 0 || price <= 0) {
+    return null;
+  }
+
+  const valueAt = (g) => {
+    let f = fcf0;
+    let cum = 0;
+    for (let t = 1; t <= 5; t++) {
+      f *= 1 + g;
+      cum += f / Math.pow(1 + discountRate, t);
+    }
+    const ev = cum + (f * terminalMultiple) / Math.pow(1 + discountRate, 5);
+    return (ev + (cash ?? 0) - (debt ?? 0)) / shares;
+  };
+
+  // Monotonic in g, so a bisection converges quickly.
+  let lo = -0.95;
+  let hi = 1.0;
+  if (valueAt(lo) > price) return null;   // even total collapse cannot justify the price
+  if (valueAt(hi) < price) return null;   // even extreme growth cannot justify it
+  for (let i = 0; i < 80; i++) {
+    const mid = (lo + hi) / 2;
+    if (valueAt(mid) > price) hi = mid;
+    else lo = mid;
+  }
+  return Number(((lo + hi) / 2).toFixed(4));
 }
 
 export function computeComprehensiveHealth(model = {}) {
@@ -1066,10 +1173,14 @@ export function computeComprehensiveHealth(model = {}) {
   metrics.peVsHistoryPct = model.peVsHistoryPct ?? null;
 
   // --- DCF -------------------------------------------------------------
+  const cashFlowBase = dcfCashFlowBase(metrics);
+  const growth = dcfGrowthRate(metrics);
+  const terminalMultiple = dcfTerminalMultiple(metrics);
+
   const dcfInput = {
-    trailingFCF: metrics.freeCashFlow,
-    growthRate: dcfGrowthRate(metrics),
-    terminalMultiple: dcfTerminalMultiple(metrics),
+    trailingFCF: cashFlowBase.value,
+    growthRate: growth.rate,
+    terminalMultiple,
     discountRate: 0.095,
     cashReserves: metrics.cash ?? 0,
     totalDebt: metrics.totalDebt ?? 0,
@@ -1100,6 +1211,29 @@ export function computeComprehensiveHealth(model = {}) {
     }
   }
   metrics.dcfDiscountPct = dcfDiscountPct;
+
+  // What the market would have to believe. When the model and the market
+  // disagree by a wide factor, this is the more informative number of the two.
+  const impliedGrowth = dcf.applicable
+    ? impliedGrowthRate({
+        price: metrics.price,
+        fcf0: cashFlowBase.value,
+        terminalMultiple,
+        discountRate: 0.095,
+        cash: metrics.cash,
+        debt: metrics.totalDebt,
+        shares: metrics.sharesOutstanding
+      })
+    : null;
+
+  // A fair value several multiples away from the traded price is far more
+  // likely to mean the assumptions are wrong, or that the market is pricing
+  // something the filings do not show, than that free money is on the table.
+  const divergenceFactor =
+    dcf.applicable && dcf.fairValuePerShare > 0 && metrics.price > 0
+      ? round(dcf.fairValuePerShare / metrics.price)
+      : null;
+  const divergenceWarning = divergenceFactor !== null && (divergenceFactor >= 3 || divergenceFactor <= 0.33);
 
   // --- Pillars ---------------------------------------------------------
   const rawPillars = scorePillars(metrics);
@@ -1231,9 +1365,18 @@ export function computeComprehensiveHealth(model = {}) {
       sharesOutstanding: metrics.sharesOutstanding,
       assumptions: {
         growthRate: dcfInput.growthRate,
+        growthBasis: growth.basis,
+        growthBeforeBounding: growth.unbounded,
         terminalMultiple: dcfInput.terminalMultiple,
-        discountRate: dcfInput.discountRate
+        discountRate: dcfInput.discountRate,
+        cashFlowBase: cashFlowBase.value,
+        cashFlowBasis: cashFlowBase.basis,
+        latestFiledCashFlow: cashFlowBase.latest,
+        normalisedCashFlow: cashFlowBase.normalised
       },
+      impliedGrowthRate: impliedGrowth,
+      divergenceFactor,
+      divergenceWarning,
       pvCashFlows: dcf.pvCashFlows || []
     }
   };

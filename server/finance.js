@@ -217,6 +217,18 @@ function buildHistory(annual) {
     dilutedEPS: annual.map((p) => (p.dilutedEPS ?? null)),
     cash: annual.map((p) => bn(sumOrNull(p.cash, p.shortTermInvestments))),
     totalDebt: annual.map((p) => bn(p.totalDebt)),
+    // Direction of the most recent filed year, which a multi-year CAGR hides:
+    // Bumble's revenue CAGR is +2.2% while its latest year fell 9.3%.
+    ...(() => {
+      const change = yoyChange(annual.map((p) => p.revenue));
+      return { revenueChangeLatest: change.value, revenueChangeYears: change.years };
+    })(),
+
+    // A single year is a fragile base for a five-year projection when it is an
+    // outlier. Both are carried so the model can pick and say which it used.
+    freeCashFlowLatest: latestOf(annual.map((p) => p.freeCashFlow)),
+    freeCashFlowNormalised: normalised(annual.map((p) => p.freeCashFlow)),
+
     revenueCAGR: cagr(annual.map((p) => p.revenue)),
     epsCAGR: cagr(annual.map((p) => p.dilutedEPS)),
     fcfPerShareCAGR: cagr(
@@ -237,6 +249,23 @@ function buildHistory(annual) {
     // The span the CAGRs actually cover, so the UI can label them honestly.
     cagrYears: countableSpan(annual.map((p) => p.revenue))
   };
+}
+
+/** Most recent non-null value in a series. */
+function latestOf(series) {
+  for (let i = series.length - 1; i >= 0; i--) {
+    if (series[i] !== null && series[i] !== undefined) return series[i];
+  }
+  return null;
+}
+
+/** Median of the last three reported values, as a normalised base. */
+function normalised(series) {
+  const points = series.filter((v) => v !== null && v !== undefined).slice(-3);
+  if (points.length < 2) return null;
+  const sorted = [...points].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
 function sumOrNull(...values) {

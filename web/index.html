@@ -472,7 +472,9 @@
                 <span>1. 5-Year Annual FCF Growth:</span>
                 <span class="slider-val mono" id="dcfGrowthVal">18%</span>
               </div>
-              <input type="range" class="range-slider" id="dcfGrowthSlider" min="2" max="45" value="18" step="1">
+              <!-- Range reaches below zero: a shrinking business has its
+                   decline projected, and the slider has to be able to show it. -->
+              <input type="range" class="range-slider" id="dcfGrowthSlider" min="-25" max="45" value="18" step="1">
             </div>
 
             <div class="slider-group">
