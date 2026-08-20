@@ -61,6 +61,7 @@ function addColumnIfMissing(table, column, definition) {
 export function initDatabase() {
   migrateStockCache();
   addColumnIfMissing('invites', 'revoked', 'INTEGER DEFAULT 0');
+  addColumnIfMissing('stock_snapshots', 'peg_ratio', 'REAL');
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS stock_cache (
@@ -166,6 +167,7 @@ export function initDatabase() {
       current_ratio REAL,
       gross_margin REAL,
       pe_percentile INTEGER,
+      peg_ratio REAL,
       share_change REAL,
       captured_at TEXT DEFAULT (datetime('now'))
     );

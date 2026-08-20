@@ -15,6 +15,24 @@ import { getStockData } from './finance.js';
 import { broadcastPush } from './push.js';
 
 const SCORE_SHIFT_THRESHOLD = 3;
+
+/**
+ * Minimum days between repeats of the same alert type for the same ticker.
+ *
+ * A standing condition is not an event. "PEG below 1.3" stays true for months,
+ * and without a floor here every sweep re-announces it — which is how NU and
+ * PATH sent eight identical notifications in two hours. The per-trigger edge
+ * guards below are the primary defence; this is the backstop that also covers
+ * process restarts, since each restart runs a catch-up sweep.
+ */
+const COOLDOWN_DAYS = {
+  MARGIN_OF_SAFETY: 14,
+  CAPITAL_RETURN: 14,
+  RED_FLAG_WARNING: 3,
+  EARNINGS_HEALTH_SHIFT: 1,
+  WEEKLY_DIGEST: 6
+};
+const DEFAULT_COOLDOWN_DAYS = 3;
 const GROSS_MARGIN_DROP_BPS = 300;
 const SWEEP_INTERVAL_MS = 6 * 60 * 60 * 1000; // four sweeps a day
 const DIGEST_WEEKDAY = 0; // Sunday
@@ -88,8 +106,8 @@ function writeSnapshot(ticker, stock) {
   db.prepare(
     `INSERT INTO stock_snapshots
        (ticker, health_score, checklist_json, altman_z, piotroski_score,
-        current_ratio, gross_margin, pe_percentile, share_change, captured_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+        current_ratio, gross_margin, pe_percentile, peg_ratio, share_change, captured_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
      ON CONFLICT(ticker) DO UPDATE SET
        health_score=excluded.health_score,
        checklist_json=excluded.checklist_json,
@@ -98,6 +116,7 @@ function writeSnapshot(ticker, stock) {
        current_ratio=excluded.current_ratio,
        gross_margin=excluded.gross_margin,
        pe_percentile=excluded.pe_percentile,
+       peg_ratio=excluded.peg_ratio,
        share_change=excluded.share_change,
        captured_at=datetime('now')`
   ).run(
@@ -108,7 +127,11 @@ function writeSnapshot(ticker, stock) {
     stock.piotroski_score ?? null,
     m.currentRatio ?? null,
     m.grossMargin ?? null,
-    stock.summary?.peHistory?.percentile ?? null,
+    // Only a P/E history long enough to mean something is carried forward.
+    stock.summary?.peHistory?.scoreable === true
+      ? stock.summary.peHistory.percentile ?? null
+      : null,
+    m.pegRatio ?? null,
     m.shareChangeYoY ?? null
   );
 }
@@ -207,19 +230,31 @@ export function evaluateTriggers(stock, prev, settings) {
   }
 
   // --- Trigger 3: margin-of-safety entry -----------------------------------
+  //
+  // Both conditions below are edge-triggered. "PEG is under 1.3" is a state
+  // that holds for months; announcing it on every sweep is not an alert, it is
+  // a subscription to the same sentence. Only the crossing is news.
   if (settings.notify_margin_of_safety && typeof stock.health_score === 'number' && stock.health_score >= 85) {
-    const pePercentile = stock.summary?.peHistory?.percentile ?? null;
+    // A P/E history too short to be a valuation range cannot signal cheapness:
+    // a low percentile there reflects earnings recovering off a trough.
+    const peUsable = stock.summary?.peHistory?.scoreable === true;
+    const pePercentile = peUsable ? stock.summary.peHistory.percentile ?? null : null;
     const peg = m.pegRatio;
-    const cheapOnHistory =
+
+    const crossedIntoCheapPe =
       typeof pePercentile === 'number' &&
       pePercentile <= 20 &&
-      (prev.pe_percentile === null || prev.pe_percentile > 20);
-    const cheapOnGrowth = typeof peg === 'number' && peg > 0 && peg <= 1.3;
+      typeof prev.pe_percentile === 'number' &&
+      prev.pe_percentile > 20;
 
-    if (cheapOnHistory || cheapOnGrowth) {
-      const reason = cheapOnHistory
-        ? `P/E is in the cheapest ${pePercentile}% of its own five-year range.`
-        : `PEG of ${peg.toFixed(2)} puts growth on sale.`;
+    const crossedIntoCheapPeg =
+      typeof peg === 'number' && peg > 0 && peg <= 1.3 &&
+      typeof prev.peg_ratio === 'number' && prev.peg_ratio > 1.3;
+
+    if (crossedIntoCheapPe || crossedIntoCheapPeg) {
+      const reason = crossedIntoCheapPe
+        ? `Its P/E has fallen into the cheapest ${pePercentile}% of its own history.`
+        : `Its PEG has fallen to ${peg.toFixed(2)}, from ${prev.peg_ratio.toFixed(2)}.`;
       alerts.push({
         type: 'MARGIN_OF_SAFETY',
         ticker: t,
@@ -233,7 +268,7 @@ export function evaluateTriggers(stock, prev, settings) {
 
   // --- Capital allocation (off by default) ---------------------------------
   if (settings.notify_capital_returns && both(m.shareChangeYoY, prev.share_change)) {
-    if (m.shareChangeYoY < -0.02 && prev.share_change >= -0.02) {
+    if (m.shareChangeYoY < -0.02 && prev.share_change >= -0.02) {   // crossing only
       alerts.push({
         type: 'CAPITAL_RETURN',
         ticker: t,
@@ -249,6 +284,27 @@ export function evaluateTriggers(stock, prev, settings) {
 }
 
 // ------------------------------------------------------------- dispatching
+
+/**
+ * Has this exact alert already gone out recently?
+ *
+ * The edge guards above stop a standing condition re-firing, but a metric that
+ * oscillates around a threshold would still ring repeatedly, and every process
+ * restart runs a catch-up sweep. This is the floor under both.
+ */
+function withinCooldown(alert) {
+  const days = COOLDOWN_DAYS[alert.type] ?? DEFAULT_COOLDOWN_DAYS;
+  const row = db
+    .prepare(
+      `SELECT 1 FROM notification_history
+       WHERE alert_type = ?
+         AND COALESCE(ticker, '') = COALESCE(?, '')
+         AND delivered_at > datetime('now', ?)
+       LIMIT 1`
+    )
+    .get(alert.type, alert.ticker || '', `-${days} days`);
+  return Boolean(row);
+}
 
 function recordAndSend(alert) {
   db.prepare(
@@ -288,6 +344,7 @@ export async function runSweep({ quiet = false } = {}) {
   const settings = getNotificationSettings();
   const tickers = watchedTickers();
   const fired = [];
+  const suppressed = [];
 
   for (const ticker of tickers) {
     try {
@@ -295,8 +352,11 @@ export async function runSweep({ quiet = false } = {}) {
       if (!stock) continue;
 
       const prev = readSnapshot(ticker);
-      const alerts = evaluateTriggers(stock, prev, settings);
-      for (const alert of alerts) {
+      for (const alert of evaluateTriggers(stock, prev, settings)) {
+        if (withinCooldown(alert)) {
+          suppressed.push(`${alert.ticker} ${alert.type}`);
+          continue;
+        }
         fired.push(alert);
         await recordAndSend(alert);
       }
@@ -308,9 +368,12 @@ export async function runSweep({ quiet = false } = {}) {
   }
 
   if (!quiet) {
-    console.log(`[Alerts] Swept ${tickers.length} tickers, ${fired.length} alerts sent.`);
+    console.log(
+      `[Alerts] Swept ${tickers.length} tickers, ${fired.length} sent` +
+      (suppressed.length ? `, ${suppressed.length} suppressed by cooldown.` : '.')
+    );
   }
-  return { swept: tickers.length, alerts: fired };
+  return { swept: tickers.length, alerts: fired, suppressed };
 }
 
 /** Sunday morning summary across the default watchlist. */
@@ -358,6 +421,7 @@ export async function sendWeeklyDigest() {
     url: '/?tab=watchlist'
   };
 
+  if (withinCooldown(alert)) return null;
   await recordAndSend(alert);
   return alert;
 }
@@ -370,8 +434,22 @@ export function startAlertWorker() {
     return;
   }
 
-  // First sweep is delayed so it does not compete with start-up.
+  // A catch-up sweep after start, so downtime does not swallow a filing. It is
+  // skipped when one ran recently: during a run of deployments this fired once
+  // per restart, which is how eight identical notifications went out in two
+  // hours. The cooldown would now suppress the duplicates anyway; not sweeping
+  // at all is cheaper than fetching every holding to discard the result.
   setTimeout(() => {
+    const last = db
+      .prepare('SELECT MAX(captured_at) AS at FROM stock_snapshots')
+      .get()?.at;
+    const recentlySwept =
+      last && Date.now() - new Date(`${last.replace(' ', 'T')}Z`).getTime() < SWEEP_INTERVAL_MS / 2;
+
+    if (recentlySwept) {
+      console.log(`[Alerts] Start-up sweep skipped; last ran at ${last}.`);
+      return;
+    }
     runSweep().catch((err) => console.warn('[Alerts] sweep error:', err.message));
   }, 90_000);
 
