@@ -219,6 +219,147 @@ function showGateScreen() {
   // do here but reveal the card.
 }
 
+function getAuthHeaders() {
+  const token = localStorage.getItem('omaha_token');
+  const headers = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
+// ----------------- OFFLINE DATA CACHE -----------------
+//
+// The service worker deliberately never caches /api responses — they are
+// per-device and authenticated. Offline support instead keeps the last good
+// JSON body for each GET in IndexedDB, so opening the app on a train shows
+// the last known scorecard with an honest "as of" stamp rather than a blank
+// panel. Writes are never served from here.
+
+const CACHE_DB = 'omaha-data';
+const CACHE_STORE = 'responses';
+let cacheDbPromise = null;
+
+function openCacheDb() {
+  if (cacheDbPromise) return cacheDbPromise;
+  cacheDbPromise = new Promise((resolve) => {
+    let req;
+    try {
+      req = indexedDB.open(CACHE_DB, 1);
+    } catch {
+      resolve(null);
+      return;
+    }
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(CACHE_STORE)) {
+        db.createObjectStore(CACHE_STORE, { keyPath: 'url' });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => resolve(null);
+  });
+  return cacheDbPromise;
+}
+
+async function cachePut(url, body) {
+  const db = await openCacheDb();
+  if (!db) return;
+  try {
+    const tx = db.transaction(CACHE_STORE, 'readwrite');
+    tx.objectStore(CACHE_STORE).put({ url, body, storedAt: Date.now() });
+  } catch {
+    // A full or blocked store must not break the live request.
+  }
+}
+
+async function cacheGet(url) {
+  const db = await openCacheDb();
+  if (!db) return null;
+  return new Promise((resolve) => {
+    try {
+      const req = db.transaction(CACHE_STORE, 'readonly').objectStore(CACHE_STORE).get(url);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => resolve(null);
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+/** Newest "as of" stamp across everything rendered this session. */
+function noteDataAge(storedAt) {
+  if (!storedAt) return;
+  state.offlineDataAt = Math.max(state.offlineDataAt || 0, storedAt);
+  updateFreshnessBanner();
+}
+
+function updateFreshnessBanner() {
+  const banner = document.getElementById('offlineBanner');
+  if (!banner) return;
+
+  if (navigator.onLine && !state.servingFromCache) {
+    banner.hidden = true;
+    return;
+  }
+
+  const age = state.offlineDataAt ? Date.now() - state.offlineDataAt : null;
+  let when = 'from your last visit';
+  if (age !== null) {
+    const mins = Math.round(age / 60000);
+    if (mins < 2) when = 'from moments ago';
+    else if (mins < 60) when = `from ${mins} minutes ago`;
+    else if (mins < 48 * 60) when = `from ${Math.round(mins / 60)} hours ago`;
+    else when = `from ${Math.round(mins / 1440)} days ago`;
+  }
+
+  banner.textContent = navigator.onLine
+    ? `Showing saved data ${when} — could not reach the server.`
+    : `Offline. Showing saved data ${when}.`;
+  banner.hidden = false;
+}
+
+async function apiFetch(url, options = {}) {
+  const headers = {
+    ...getAuthHeaders(),
+    ...(options.headers || {})
+  };
+  const method = (options.method || 'GET').toUpperCase();
+  const cacheable = method === 'GET' && url.startsWith('/api/');
+
+  try {
+    const res = await fetch(url, { ...options, headers });
+
+    if (res.status === 401) {
+      showGateScreen();
+      throw new Error('This device is not registered. Enter an invite code to activate it.');
+    }
+
+    if (cacheable && res.ok) {
+      // Clone before the caller reads it — a Response body is single-use.
+      res.clone().json().then((body) => cachePut(url, body)).catch(() => {});
+      state.servingFromCache = false;
+      state.offlineDataAt = Date.now();
+      updateFreshnessBanner();
+    }
+    return res;
+  } catch (err) {
+    if (!cacheable) throw err;
+
+    const hit = await cacheGet(url);
+    if (!hit) throw err;
+
+    state.servingFromCache = true;
+    noteDataAge(hit.storedAt);
+
+    // Handed back as a real Response so every caller keeps working unchanged.
+    return new Response(JSON.stringify(hit.body), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json', 'X-Omaha-From-Cache': '1' }
+    });
+  }
+}
+
 // ----------------- THEME CONTROLLER -----------------
 function initTheme() {
   const media = window.matchMedia('(prefers-color-scheme: light)');
