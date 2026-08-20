@@ -1,0 +1,589 @@
+{
+  "altmanZ": 11.98,
+  "catalysts": [
+    {
+      "icon": "🚀",
+      "text": "ROIC of 95.4%, 85.9 points above its estimated 9.5% cost of capital.",
+      "title": "Elite capital efficiency"
+    },
+    {
+      "icon": "📈",
+      "text": "Diluted share count fell 2.6% year on year.",
+      "title": "Accretive buybacks"
+    }
+  ],
+  "checklist": [
+    {
+      "benchmark": "Z ≥ 3.0 safe zone",
+      "category": "Solvency",
+      "explanation": "Probability of financial distress within two years, from working capital, retained earnings and asset efficiency. Not defined for banks, insurers or REITs.",
+      "id": 1,
+      "name": "Altman Z-Score",
+      "status": "pass",
+      "value": "11.98"
+    },
+    {
+      "benchmark": "> 6.0× EBIT / interest",
+      "category": "Solvency",
+      "explanation": "Operating profit as a multiple of interest owed. A company with no debt has no interest burden to cover.",
+      "id": 2,
+      "name": "Interest Coverage",
+      "status": "pass",
+      "value": "33.8×"
+    },
+    {
+      "benchmark": "≥ 1.50 current assets / liabilities",
+      "category": "Liquidity",
+      "explanation": "Short-term assets against short-term obligations. Banks do not classify their balance sheets this way.",
+      "id": 3,
+      "name": "Current Ratio",
+      "status": "fail",
+      "value": "0.89 (quick 0.86)"
+    },
+    {
+      "benchmark": "< 0.8× or net cash",
+      "category": "Solvency",
+      "explanation": "Leverage against book equity. Negative equity — usually from sustained buybacks — is reported as its own state rather than scored as low leverage.",
+      "id": 4,
+      "name": "Debt to Equity",
+      "status": "watch",
+      "value": "1.34×"
+    },
+    {
+      "benchmark": "Positive every filed year",
+      "category": "Cash Flow",
+      "explanation": "Owner earnings after the capital spending needed to keep the business running, across every filed year.",
+      "id": 5,
+      "name": "Free Cash Flow History",
+      "status": "pass",
+      "value": "4 of 4 years positive"
+    },
+    {
+      "benchmark": "≥ 7 of 9 points",
+      "category": "Quality",
+      "explanation": "Nine fundamental tests across profitability, leverage and efficiency, six of which compare against the prior filed year.",
+      "id": 6,
+      "name": "Piotroski F-Score",
+      "status": "pass",
+      "value": "8/9"
+    },
+    {
+      "benchmark": "ROIC ≥ WACC + 5 pts",
+      "category": "Economic Moat",
+      "explanation": "Return on invested capital against an estimated WACC (CAPM cost of equity from the stock beta, plus its actual cost of debt). A durable moat earns well above its cost of capital.",
+      "id": 7,
+      "name": "ROIC vs. Cost of Capital",
+      "status": "pass",
+      "value": "95.4% vs 9.5% WACC"
+    },
+    {
+      "benchmark": "Expanding or steady",
+      "category": "Pricing Power",
+      "explanation": "Direction of gross margin, which is where pricing power shows up first. Measured across filed quarters where available, otherwise year on year.",
+      "id": 8,
+      "name": "Gross Margin Consistency",
+      "status": "pass",
+      "value": "+357 bps over 5 quarters"
+    },
+    {
+      "benchmark": "Shrinking or < 0.5% a year",
+      "category": "Capital Return",
+      "explanation": "Change in the diluted share count. Buybacks lift per-share value; stock compensation quietly erodes it.",
+      "id": 9,
+      "name": "Share Dilution & Buybacks",
+      "status": "pass",
+      "value": "-2.6% (buybacks)"
+    },
+    {
+      "benchmark": "> 90% conversion",
+      "category": "Earnings Quality",
+      "explanation": "How much reported profit arrives as cash. A persistent gap points to aggressive accrual accounting.",
+      "id": 10,
+      "name": "FCF / Net Income Quality",
+      "status": "watch",
+      "value": "88% conversion"
+    },
+    {
+      "benchmark": "PEG ≤ 1.50",
+      "category": "Valuation",
+      "explanation": "Price/earnings against expected growth. Undefined when growth is negative — a shrinking business is not cheap, it is shrinking.",
+      "id": 11,
+      "name": "Valuation PEG Ratio",
+      "status": "fail",
+      "value": "2.47×"
+    },
+    {
+      "benchmark": "> 8% CAGR",
+      "category": "Growth",
+      "explanation": "Compound revenue growth across the filed years.",
+      "id": 12,
+      "name": "Revenue Growth",
+      "status": "fail",
+      "value": "+1.8% CAGR (3Y)"
+    }
+  ],
+  "checklistSummary": {
+    "failCount": 3,
+    "naCount": 0,
+    "passCount": 7,
+    "passPct": 58,
+    "scored": 12,
+    "total": 12,
+    "watchCount": 2
+  },
+  "coverage": {
+    "measured": 19,
+    "pct": 100,
+    "sufficient": true,
+    "total": 19
+  },
+  "dcf": {
+    "applicable": true,
+    "assumptions": {
+      "cashFlowBase": 98767000000,
+      "cashFlowBasis": "latest filed year",
+      "discountRate": 0.095,
+      "growthBasis": "median of the filed compound growth rates",
+      "growthBeforeBounding": 0.0181,
+      "growthRate": 0.0181,
+      "latestFiledCashFlow": 98767000000,
+      "normalisedCashFlow": 99584000000,
+      "terminalMultiple": 21
+    },
+    "cashReserves": 54697000000,
+    "cumulativePV": 399034916102.16,
+    "currentPrice": 316.83,
+    "divergenceFactor": 0.39,
+    "divergenceWarning": false,
+    "equityValue": 1796236737815.77,
+    "fairValue": 123.08,
+    "impliedGrowthRate": 0.2444,
+    "marginOfSafetyPct": -157.4,
+    "premiumToFairValuePct": 157.4,
+    "pvCashFlows": [
+      {
+        "presentValue": 91830760456.621,
+        "projectedFCF": 100554682700,
+        "year": 1
+      },
+      {
+        "presentValue": 85381641297.61264,
+        "projectedFCF": 102374722456.87,
+        "year": 2
+      },
+      {
+        "presentValue": 79385432881.36934,
+        "projectedFCF": 104227704933.33934,
+        "year": 3
+      },
+      {
+        "presentValue": 73810328051.6184,
+        "projectedFCF": 106114226392.63278,
+        "year": 4
+      },
+      {
+        "presentValue": 68626753414.93395,
+        "projectedFCF": 108034893890.33943,
+        "year": 5
+      }
+    ],
+    "pvTerminalValue": 1441161821713.61,
+    "reason": null,
+    "sharesOutstanding": 14594180000,
+    "terminalValue": 2268732771697.13,
+    "totalDebt": 98657000000
+  },
+  "fcfConversionPct": 88,
+  "healthGrade": "MODERATE",
+  "healthLabel": "Mixed — watch the flagged items",
+  "healthScore": 64,
+  "healthTier": "moderate",
+  "metrics": {
+    "altmanZ": 11.98,
+    "appliedTaxRate": 0.15610002335586043,
+    "assetTurnover": 1.1584451663368045,
+    "beta": 1.086,
+    "betaClamped": false,
+    "cagrYears": 3,
+    "cash": 54697000000,
+    "currentRatio": 0.8932929222186667,
+    "dcfDiscountPct": -157.4,
+    "debtToEquity": 1.3380304612588665,
+    "dividendPayoutOnFcf": 0.1561351463545516,
+    "dividendStreakYears": 4,
+    "dividendYield": 0.0034,
+    "ebit": 133050000000,
+    "ebitda": 144748000000,
+    "effectiveTaxRate": 0.15610002335586043,
+    "enterpriseValue": 4667834129920,
+    "epsCAGR": 0.0688,
+    "equity": 73733000000,
+    "equityToAssets": 0.20524661717342954,
+    "evToFcfYield": 0.021159063765124133,
+    "fcfConversion": 0.8817694848674226,
+    "fcfMargin": 0.23732882225869315,
+    "fcfPerShareCAGR": -0.012,
+    "fcfPositiveYears": 4,
+    "fcfReportedYears": 4,
+    "fcfYield": 0.02136022677626582,
+    "fiscalPeriodEnd": "2025-09-30",
+    "forwardPE": 33.213127,
+    "freeCashFlow": 98767000000,
+    "freeCashFlowLatest": 98767000000,
+    "freeCashFlowNormalised": 99584000000,
+    "fx": {
+      "available": true,
+      "from": "USD",
+      "needed": false,
+      "rate": 1,
+      "to": "USD"
+    },
+    "grossMargin": 0.4690516410716045,
+    "grossMarginChangeBps": 70,
+    "interestCoverage": 33.82913806254767,
+    "interestCoverageUnburdened": false,
+    "interestExpense": 3933000000,
+    "interestExpenseAsOf": "2023-09-30",
+    "interestExpenseCarried": true,
+    "isFinancial": false,
+    "marketCap": 4623874129920,
+    "marketCapDerived": false,
+    "negativeEquity": false,
+    "netCash": -43960000000,
+    "netCashB": -43.96,
+    "netDebtToEbitda": 0.3,
+    "netIncome": 112010000000,
+    "operatingCashFlow": 111482000000,
+    "operatingMargin": 0.31970799762591884,
+    "operatingMarginChangeBps": 46,
+    "peVsHistoryPct": 3.6,
+    "pegRatio": 2.47,
+    "piotroski": {
+      "details": [
+        {
+          "available": true,
+          "id": "f1",
+          "name": "Positive net income",
+          "passed": true
+        },
+        {
+          "available": true,
+          "id": "f2",
+          "name": "Positive operating cash flow",
+          "passed": true
+        },
+        {
+          "available": true,
+          "id": "f3",
+          "name": "Return on assets improved",
+          "passed": true
+        },
+        {
+          "available": true,
+          "id": "f4",
+          "name": "Operating cash flow exceeds net income",
+          "passed": false
+        },
+        {
+          "available": true,
+          "id": "f5",
+          "name": "Leverage steady or lower",
+          "passed": true
+        },
+        {
+          "available": true,
+          "id": "f6",
+          "name": "Current ratio improved",
+          "passed": true
+        },
+        {
+          "available": true,
+          "id": "f7",
+          "name": "No share dilution",
+          "passed": true
+        },
+        {
+          "available": true,
+          "id": "f8",
+          "name": "Gross margin expanded",
+          "passed": true
+        },
+        {
+          "available": true,
+          "id": "f9",
+          "name": "Asset turnover improved",
+          "passed": true
+        }
+      ],
+      "maxScore": 9,
+      "normalised": 8,
+      "score": 8,
+      "testable": 9
+    },
+    "price": 316.83,
+    "priceToBook": 43.04755,
+    "quarterlyGrossMarginTrend": {
+      "changeBps": 357,
+      "consecutiveDeclines": 0,
+      "margins": [
+        46.5,
+        47.2,
+        48.2,
+        49.3,
+        50.1
+      ],
+      "quarters": 5
+    },
+    "quickRatio": 0.858770399261008,
+    "reportingCurrency": "USD",
+    "revenue": 416161000000,
+    "revenueCAGR": 0.0181,
+    "revenueChangeLatest": 0.0643,
+    "revenueChangeYears": 1,
+    "roa": 0.3117962593356549,
+    "roe": 1.5191298333175105,
+    "roic": 95.4,
+    "roicSpread": 85.9,
+    "sectorMedianAssetTurnover": null,
+    "shareChangeAnnualisedPct": -2.62,
+    "shareChangeIsAnnual": true,
+    "shareChangeYears": 1,
+    "shareChangeYoY": -0.0262,
+    "sharesOutstanding": 14594180000,
+    "taxRateEstimated": false,
+    "totalDebt": 98657000000,
+    "totalLiabilities": 285508000000,
+    "totalLiabilitiesDerived": false,
+    "tradedCurrency": "USD",
+    "tradedPrice": 316.83,
+    "trailingPE": 35.598877,
+    "wacc": 9.5,
+    "workingCapital": -17674000000
+  },
+  "netCashB": -43.96,
+  "pillars": [
+    {
+      "items": [
+        {
+          "available": true,
+          "max": 5,
+          "name": "Altman Z-Score",
+          "points": 5
+        },
+        {
+          "available": true,
+          "max": 5,
+          "name": "Net debt / EBITDA",
+          "points": 4
+        },
+        {
+          "available": true,
+          "max": 5,
+          "name": "Interest coverage",
+          "points": 5
+        },
+        {
+          "available": true,
+          "max": 5,
+          "name": "Current & quick ratio",
+          "points": 0
+        }
+      ],
+      "max": 20,
+      "measured": 4,
+      "name": "Financial Health & Solvency",
+      "of": 4,
+      "pct": 70,
+      "score": 14
+    },
+    {
+      "items": [
+        {
+          "available": true,
+          "max": 5,
+          "name": "Piotroski F-Score",
+          "points": 5
+        },
+        {
+          "available": true,
+          "max": 5,
+          "name": "Return on invested capital",
+          "points": 5
+        },
+        {
+          "available": true,
+          "max": 5,
+          "name": "Operating margin trend",
+          "points": 3.5
+        },
+        {
+          "available": true,
+          "max": 5,
+          "name": "Free cash flow conversion",
+          "points": 3.5
+        }
+      ],
+      "max": 20,
+      "measured": 4,
+      "name": "Profitability & Moat Quality",
+      "of": 4,
+      "pct": 85,
+      "score": 17
+    },
+    {
+      "items": [
+        {
+          "available": true,
+          "max": 5,
+          "name": "Forward P/E vs. own history",
+          "points": 3.5
+        },
+        {
+          "available": true,
+          "max": 5,
+          "name": "PEG ratio",
+          "points": 2
+        },
+        {
+          "available": true,
+          "max": 5,
+          "name": "EV / free cash flow yield",
+          "points": 2
+        },
+        {
+          "available": true,
+          "max": 5,
+          "name": "Discount to DCF fair value",
+          "points": 0
+        }
+      ],
+      "max": 20,
+      "measured": 4,
+      "name": "Valuation & Margin of Safety",
+      "of": 4,
+      "pct": 38,
+      "score": 7.5
+    },
+    {
+      "items": [
+        {
+          "available": true,
+          "max": 5,
+          "name": "Revenue CAGR",
+          "points": 0
+        },
+        {
+          "available": true,
+          "max": 5,
+          "name": "Diluted EPS CAGR",
+          "points": 1.5
+        },
+        {
+          "available": true,
+          "max": 5,
+          "name": "FCF per share CAGR",
+          "points": 0
+        },
+        {
+          "available": true,
+          "max": 5,
+          "name": "Gross margin trajectory",
+          "points": 5
+        }
+      ],
+      "max": 20,
+      "measured": 4,
+      "name": "Growth & Operating Leverage",
+      "of": 4,
+      "pct": 33,
+      "score": 6.5
+    },
+    {
+      "items": [
+        {
+          "available": true,
+          "max": 7,
+          "name": "Buybacks vs. dilution",
+          "points": 7
+        },
+        {
+          "available": true,
+          "max": 7,
+          "name": "Dividend safety & coverage",
+          "points": 5.5
+        },
+        {
+          "available": true,
+          "max": 6,
+          "name": "Asset turnover efficiency",
+          "points": 6
+        }
+      ],
+      "max": 20,
+      "measured": 3,
+      "name": "Capital Allocation & Returns",
+      "of": 3,
+      "pct": 93,
+      "score": 18.5
+    }
+  ],
+  "piotroskiDetails": [
+    {
+      "available": true,
+      "id": "f1",
+      "name": "Positive net income",
+      "passed": true
+    },
+    {
+      "available": true,
+      "id": "f2",
+      "name": "Positive operating cash flow",
+      "passed": true
+    },
+    {
+      "available": true,
+      "id": "f3",
+      "name": "Return on assets improved",
+      "passed": true
+    },
+    {
+      "available": true,
+      "id": "f4",
+      "name": "Operating cash flow exceeds net income",
+      "passed": false
+    },
+    {
+      "available": true,
+      "id": "f5",
+      "name": "Leverage steady or lower",
+      "passed": true
+    },
+    {
+      "available": true,
+      "id": "f6",
+      "name": "Current ratio improved",
+      "passed": true
+    },
+    {
+      "available": true,
+      "id": "f7",
+      "name": "No share dilution",
+      "passed": true
+    },
+    {
+      "available": true,
+      "id": "f8",
+      "name": "Gross margin expanded",
+      "passed": true
+    },
+    {
+      "available": true,
+      "id": "f9",
+      "name": "Asset turnover improved",
+      "passed": true
+    }
+  ],
+  "piotroskiScore": 8,
+  "risks": [],
+  "roicPct": 95.4
+}

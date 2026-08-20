@@ -527,3 +527,72 @@ spike a measurement rather than an impression.
 use. It lives in `tools/` rather than `test/` because Node's test runner treats
 every `.js` under `test/` as a test file, and a helper counted as a passing test
 inflates the suite for no reason.
+
+---
+
+## 18. QuickJS spike — results
+
+**D1 is validated.** `core/scoring.js` runs unmodified under QuickJS and
+produces output byte-identical to Node for all three fixtures, including the
+bank whose Altman Z must stay `null` and the depositary receipt with its two
+currencies.
+
+Run it with `cd android && ./gradlew :engine:test`.
+
+| Measurement | Value |
+|---|---|
+| First score, cold interpreter | ~5 ms |
+| Per score, mean of 10 | ~3.3 ms |
+| Scoring parity, NOK / AAPL / JPM | byte-identical to Node |
+
+Both figures include **building a whole new interpreter per call** (see below),
+so they are an upper bound rather than a warm-path number. Against a 6-hourly
+sweep of a 20-holding watchlist — 60 ms of scoring in total — the cost is not a
+consideration. This closes the cold-start half of the §13 open question; APK
+size is still unmeasured, because the spike is a JVM module and carries no APK.
+
+`:engine` is deliberately plain Kotlin/JVM. QuickJS is the same engine on both
+targets, so the parity question was answerable without an emulator, in seconds,
+in CI. The Android variant follows.
+
+### The dependency is pre-release
+
+`io.github.dokar3:quickjs-kt` is at **1.0.0-alpha13**, which doc 13 did not
+account for when D1 was decided. The spike found two defects in it. Neither
+changes the decision — the binding is a thin JNI layer over QuickJS itself,
+which is mature and widely embedded — but both had to be worked around, and
+both are the kind that fail silently rather than loudly.
+
+**Non-BMP characters truncate the returned string.** The binding sizes the
+Kotlin string by code-point count rather than UTF-16 code-unit count, so every
+surrogate pair costs one character off the *end*. Measured exactly: two emoji,
+two characters lost; one emoji, one character. This app is squarely in the
+blast radius — scoring output carries 💎 and 🚀 in catalysts and ⚠️ in risks —
+and because the loss lands on the tail, it destroys the closing braces and
+surfaces as unparseable JSON rather than as a visibly wrong character.
+
+*Workaround*: nothing but ASCII crosses the bridge. The JavaScript side escapes
+every non-ASCII code unit as a `\uXXXX` sequence, which is valid JSON, and
+parsing on the Kotlin side restores it.
+
+**A second evaluate on one instance fails.** Calls alternate deterministically —
+first succeeds, second throws `TypeError: cannot read property 'value' of
+undefined`, third succeeds — independent of payload size and of what the
+bindings return.
+
+*Workaround*: one interpreter per scoring call. The measurements above show
+that is affordable.
+
+`QuickJsBindingQuirksTest` pins both defects. **A failure there is good news**:
+it means an upgrade fixed one, and `ScoringEngine` can drop the corresponding
+workaround. Without those tests the workarounds would be carried indefinitely
+on the strength of a comment.
+
+### What the spike did not cover
+
+* The `fetch` shim — `AbortSignal` and `Response` reconstruction for
+  `providers/yahoo.js`. Scoring needs no I/O; ingestion does.
+* Multi-module resolution. `scoring.js` imports nothing, so a flat module name
+  sufficed. `providers/yahoo.js` imports `../errors.js` and will need specifiers
+  registered under the exact strings it uses.
+* Anything on an actual device: APK size, ABI splits, cold start on ARM.
