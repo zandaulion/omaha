@@ -78,7 +78,18 @@ interface PersonalDataDao {
     }
 }
 
-@Database(entities = [ThesisRow::class, WatchlistRow::class], version = 1, exportSchema = false)
+@Database(
+    entities = [ThesisRow::class, WatchlistRow::class, StockCacheRow::class],
+    version = 1,
+    exportSchema = false
+)
 abstract class OmahaDatabase : RoomDatabase() {
     abstract fun personalData(): PersonalDataDao
+
+    /**
+     * Kept apart from [personalData] because the two are different in kind: one
+     * holds what a person wrote and must never be lost, the other holds what
+     * can be fetched again. Only the first belongs in a backup.
+     */
+    abstract fun stockCache(): StockCacheDao
 }

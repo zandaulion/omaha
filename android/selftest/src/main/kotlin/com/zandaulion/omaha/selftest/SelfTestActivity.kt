@@ -17,6 +17,8 @@ import android.widget.TextView
 import androidx.room.Room
 import com.zandaulion.omaha.data.OmahaDatabase
 import com.zandaulion.omaha.data.PersonalDataStore
+import com.zandaulion.omaha.data.RoomStockStore
+import com.zandaulion.omaha.data.StockEngine
 import com.zandaulion.omaha.engine.BackupEngine
 import com.zandaulion.omaha.engine.IngestEngine
 import com.zandaulion.omaha.engine.OkHttpBridge
@@ -123,7 +125,7 @@ class SelfTestActivity : Activity() {
         try {
             scoringChecks()
             backupChecks()
-            liveIngestion()
+            livePipeline()
         } catch (err: Throwable) {
             failures++
             line("  FAIL  unexpected: " + err.javaClass.simpleName + ": " + err.message, BAD)
@@ -223,51 +225,68 @@ class SelfTestActivity : Activity() {
     }
 
     /**
-     * Fetch a real ticker over the network, on this device.
+     * The whole pipeline, live, on this device: fetch, assemble, score, cache.
      *
      * The one check here that is not a repeat of CI. Everything above replays
-     * recorded bytes; this proves the shim, the socket and the parser work
-     * together against the live upstream — which is what the PWA needs a server
-     * for and this client does not.
+     * recorded bytes; this proves the shim, the socket, the store and the
+     * engine work together against the live upstream — which is what the PWA
+     * needs a server for and this client does not.
      *
      * A failure is reported as SKIP rather than FAIL. No network, or a rate
      * limit, says nothing about the code, and marking it red would train
      * whoever runs this to ignore red.
      */
-    private suspend fun liveIngestion() {
-        heading("Live ingestion  (core/providers/yahoo.js over OkHttp)")
+    private suspend fun livePipeline() {
+        heading("Live pipeline  (fetch, score and cache, on device)")
 
-        val engine = IngestEngine.fromSource(
-            asset("core/" + IngestEngine.BUNDLE_PATH),
-            OkHttpBridge()
-        )
+        val db = Room.inMemoryDatabaseBuilder(applicationContext, OmahaDatabase::class.java).build()
+        try {
+            val engine = StockEngine.fromSource(
+                asset("core/" + StockEngine.BUNDLE_PATH),
+                OkHttpBridge(),
+                RoomStockStore(db.stockCache())
+            )
 
-        val started = System.nanoTime()
-        val raw = withContext(Dispatchers.IO) { engine.ingest("NOK") }
-        val elapsed = (System.nanoTime() - started) / 1_000_000.0
+            val started = System.nanoTime()
+            val raw = withContext(Dispatchers.IO) { engine.stock("NOK", forceRefresh = true) }
+            val coldMs = (System.nanoTime() - started) / 1_000_000.0
 
-        val result = Json.parseToJsonElement(raw) as JsonObject
-        val succeeded = (result["ok"] as? JsonPrimitive)?.content == "true"
+            val result = Json.parseToJsonElement(raw) as JsonObject
+            if ((result["ok"] as? JsonPrimitive)?.content != "true") {
+                val error = result["error"] as? JsonObject
+                val kind = (error?.get("kind") as? JsonPrimitive)?.content ?: "unknown"
+                val message = (error?.get("message") as? JsonPrimitive)?.content ?: ""
+                line("  SKIP  no live data (" + kind + ") " + message.take(60), MUTED)
+                return
+            }
 
-        if (!succeeded) {
-            val error = result["error"] as? JsonObject
-            val kind = (error?.get("kind") as? JsonPrimitive)?.content ?: "unknown"
-            val message = (error?.get("message") as? JsonPrimitive)?.content ?: ""
-            line("  SKIP  no live data (" + kind + ") " + message.take(60), MUTED)
-            return
+            val data = result["data"] as JsonObject
+            val name = (data["name"] as? JsonPrimitive)?.content ?: "?"
+            val price = (data["price"] as? JsonPrimitive)?.content ?: "?"
+            val currency = (data["currency"] as? JsonPrimitive)?.content ?: ""
+            val score = (data["health_score"] as? JsonPrimitive)?.content ?: "null"
+            val checks = (data["checklist"] as? JsonArray)?.size ?: 0
+
+            line("  fetched    " + name)
+            line("  price      " + price + " " + currency)
+            line("  health     " + score + "/100 across " + checks + " checks")
+            line(String.format("  cold       %.0f ms", coldMs))
+
+            // The tier that had never worked in the PWA, exercised for real.
+            val warmStart = System.nanoTime()
+            val warm = withContext(Dispatchers.IO) { engine.stock("NOK") }
+            val warmMs = (System.nanoTime() - warmStart) / 1_000_000.0
+            val warmOk = (Json.parseToJsonElement(warm) as JsonObject)["ok"]
+
+            line(String.format("  cached     %.0f ms", warmMs))
+            check("a live ticker fetches, scores and caches on device", checks > 0)
+            check(
+                "the second read is served from cache",
+                (warmOk as? JsonPrimitive)?.content == "true" && warmMs < coldMs / 2
+            )
+        } finally {
+            db.close()
         }
-
-        val quote = result["quote"] as? JsonObject
-        val name = (quote?.get("name") as? JsonPrimitive)?.content ?: "?"
-        val price = (quote?.get("price") as? JsonPrimitive)?.content ?: "?"
-        val currency = (quote?.get("currency") as? JsonPrimitive)?.content ?: ""
-        val periods = ((result["statements"] as? JsonObject)?.get("annual") as? JsonArray)?.size ?: 0
-
-        line("  fetched    " + name)
-        line("  price      " + price + " " + currency)
-        line("  filings    " + periods + " annual periods")
-        line(String.format("  round trip %.0f ms", elapsed))
-        check("a live ticker fetches and parses on device", periods > 0)
     }
 
     // ------------------------------------------------------------ helpers

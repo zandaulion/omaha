@@ -177,7 +177,7 @@ class JsBridgeException(message: String) : RuntimeException(message)
  * and checked rather than escaped: a hand-rolled escaper would be a liability
  * out of all proportion to the values it handles.
  */
-internal fun jsonString(value: String): String {
+fun jsonString(value: String): String {
     require(value.none { it == '"' || it == '\\' || it < ' ' }) {
         "Expected a plain value with no JSON metacharacters, got: $value"
     }
