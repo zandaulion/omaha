@@ -85,6 +85,21 @@ reported as inapplicable and a measure that does fit is used instead.
 
 ---
 
+## Reading the AI prompt
+
+```bash
+npm run prompt              # NOK — exercises the traded/reporting currency split
+npm run prompt -- AAPL      # any ticker
+```
+
+Writes `gemini-prompt.<TICKER>.md`: the exact instruction text and data package
+sent to the model, the response schema the API enforces, and a token breakdown.
+It fetches real data rather than a fixture, because the point of reading a
+prompt is to see what the model actually gets. Generated files are gitignored —
+regenerate rather than committing a snapshot that will drift.
+
+---
+
 ## Testing
 
 ```bash
@@ -163,6 +178,8 @@ Manage device invites and authorizations from the terminal:
 ```
 pocket-omaha/
 ├── docs/                      # 12 detailed architecture and product specifications
+├── scripts/
+│   └── dump-prompt.mjs        # Renders the exact Gemini prompt as Markdown
 ├── server/
 │   ├── index.js               # Express API and static server
 │   ├── db.js                  # SQLite database engine (node:sqlite)
