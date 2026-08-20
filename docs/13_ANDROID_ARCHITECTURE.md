@@ -1,0 +1,463 @@
+# Android Client — Architecture and Migration Plan
+
+> **Status**: agreed plan, nothing built yet. Written 2026-08-20.
+> **Purpose**: define how a native Android client reaches feature and visual
+> parity with the PWA and *stays* there, without a server and without an account.
+> **Scope**: this document decides architecture and sequencing. It does not
+> restate the scoring rules (doc 02), the visual tokens (doc 04), or the alert
+> semantics (doc 05); it says which side of the device boundary each of them
+> runs on.
+
+---
+
+## 1. Requirements, and the one that does not survive contact
+
+Stated requirements for the Android client:
+
+1. Data lives only on-device. No login, no account, no ads.
+2. Gemini analysis runs through Firebase and is a paid feature.
+3. Import/export, plus quality-of-life features.
+4. Feature set stays in sync with the PWA, permanently.
+5. Visual design stays in sync with the PWA, permanently.
+
+Requirement 2 was originally stated as *"the only thing leaving the device."*
+It cannot be. The app is inert without Yahoo statement and quote requests, and
+those leave the device on every cold ticker load. The accurate and still-strong
+claim is:
+
+> **No personal data leaves the device.** No account, no telemetry, no sync.
+> Watchlists, theses, journal entries and settings are never transmitted.
+> Market-data requests do leave the device, and the upstream sees the device IP
+> and which tickers are being researched.
+
+A second-order consequence, easy to miss: `buildPrompt(stock, thesis)` in
+`server/gemini.js` takes the user's thesis and journal entries as an argument.
+The AI feature therefore transmits **the most personal data in the app**. This
+requires an explicit, default-off toggle — "include my notes in the analysis" —
+not a line in a privacy policy.
+
+---
+
+## 2. Decisions
+
+| # | Decision | Choice | Rejected | Why |
+|---|---|---|---|---|
+| D1 | Scoring/ingestion engine | Ship `core/` as JS, run on-device in **QuickJS** (`quickjs-kt`) | Port to Kotlin; Kotlin Multiplatform | One implementation, one test suite. Drift becomes impossible rather than merely discouraged |
+| D2 | UI | **Compose native**, design tokens generated from one source | WebView shell; hybrid | Engine drift is silent and expensive; UI drift is visible and cheap. Share where failure is invisible |
+| D3 | Repository | **Monorepo** — Android lives in this repo under `android/` | Separate repo; git submodule; npm package | Parity requires one commit and one CI run to gate core plus both consumers |
+| D4 | User storage | **Room**, mirroring the existing SQLite schema minus the multi-device tables | DataStore only; files | Schema and queries already exist and are proven |
+| D5 | Alerts | **WorkManager** + local notifications | FCM; keep server push | No server, nothing transmitted, and `evaluateTriggers` is already pure |
+| D6 | AI transport | Firebase AI Logic behind a **Cloud Function relay** | Direct SDK call from app | The relay protects the Gemini quota; a local entitlement flag does not |
+| D7 | Market data | **Yahoo at launch, behind a provider interface** | EDGAR now; licensed provider now | Risk scales with install count; the seam is cheap, the migration is not |
+
+The rationale for D1 rests on a measured property rather than a preference:
+`server/scoring.js` is 1,422 lines with **zero imports**, and `server/yahoo.js`
+is 472 lines whose only environmental dependency is `fetch`. The engine was
+already portable; it had simply never been asked to leave Node.
+
+Verified during review: there is **no `Intl` usage and no `toLocaleString`**
+anywhere in the portable code. `formatMoney` is hand-rolled over a currency
+symbol table and `Number.prototype.toFixed`. QuickJS ships without full ICU, so
+this would otherwise have been a blocking incompatibility.
+
+---
+
+## 3. What becomes shared, and what Android simply does not have
+
+| Today | Destination | Change required |
+|---|---|---|
+| `server/scoring.js` (1422) | `core/scoring.js` | **none** — already pure |
+| `server/yahoo.js` (472) | `core/yahoo.js` | **none**, given a host `fetch` |
+| `server/finance.js` (661) | split | assembly to core; cache calls move behind an injected `cache` interface |
+| `server/gemini.js` (721) | split | `buildComprehensivePayload`, `buildPrompt`, `RESPONSE_SCHEMA` to core; transport to a per-host adapter |
+| `server/alerts.js` (504) | split | `evaluateTriggers` to core; sweep loop and delivery to host |
+| `server/*.test.js` (941) | `core/` | **none** — keeps running under `node --test` |
+
+Roughly **2,600 lines become shared**. The test suite moves with the engine and
+keeps its value: 32 assertions in `scoring.test.js`, each corresponding to a
+defect that shipped once already.
+
+Approximately **1,270 lines have no Android equivalent at all** — `auth.js`
+(401), `push.js` (127), and most of `index.js` (746). Invites, device binding,
+VAPID subscriptions and HTTP routing exist because the PWA is delivered over a
+network to multiple devices. A single-device on-device app needs none of it.
+
+---
+
+## 4. Host interface
+
+`core/` must not know which runtime it is in. It requires four things:
+
+| Capability | Node (PWA) | Browser (PWA) | Android |
+|---|---|---|---|
+| `fetch` | native | via server proxy | OkHttp, injected |
+| `cache.get/set` | SQLite | IndexedDB | Room |
+| `now()` | `Date.now` | `Date.now` | `Date.now` |
+| `log(level, msg)` | `console` | `console` | Timber bridge |
+
+`fetch` is provided as a **global**, not threaded through a factory. This is
+what keeps `yahoo.js` at a zero-line diff, and it matches how QuickJS injection
+works: `quickjs-kt` exposes `asyncFunction("fetch") { ... }`, which surfaces a
+Kotlin suspend function to JS as a Promise-returning async function. ES modules
+are supported via `asModule = true` with bytecode caching, so the existing
+`import` statements in `core/` need no bundler.
+
+**The one real integration wrinkle.** `yahoo.js` uses `AbortSignal.timeout(...)`
+and reads `res.headers.get('set-cookie')`. QuickJS has neither `AbortSignal` nor
+`Response`. The fix is a small JS shim over a single Kotlin
+`asyncFunction("__httpFetch")` returning `{status, ok, headers, body}`, with
+`Response` and `AbortSignal` reconstructed in JS. **Keep the shim on the JS side
+of the bridge** — that is what prevents `yahoo.js` from ever growing an
+Android-specific branch.
+
+Note that the browser is the constrained runtime here, not Android. `Cookie` and
+`User-Agent` are forbidden headers in `fetch`, and Yahoo sends no CORS headers,
+so the PWA can never call Yahoo directly. That restriction is the entire reason
+`server/` exists. Android, using OkHttp, has no such limit and can be genuinely
+serverless.
+
+---
+
+## 5. Repository layout
+
+```
+omaha/
+├── core/                    # shared JS engine + tests — single source of truth
+│   ├── scoring.js           #   moved verbatim
+│   ├── yahoo.js             #   moved verbatim
+│   ├── providers/           #   provider interface (§8)
+│   └── *.test.js            #   node --test, unchanged
+├── design/tokens.json       # single source for both palettes
+├── tools/gen-tokens.mjs     # emits web/tokens.css + Tokens.kt
+├── server/                  # PWA host: express, sqlite, auth, push
+├── web/                     # PWA client, unchanged
+└── android/
+    ├── core-js/             # core/ as assets + QuickJS engine + fetch bridge
+    ├── data/                # Room, DataStore, import/export
+    ├── design/              # generated Tokens.kt + shared composables
+    ├── work/                # WorkManager sweep + local notifications
+    ├── billing/             # Play Billing + entitlement
+    ├── ai/                  # Cloud Function client
+    └── app/                 # Compose UI — four views
+```
+
+A submodule or published package would put a version-skew window between a
+scoring change and its arrival in each consumer. That window is precisely the
+drift requirement 4 forbids, so it is designed out rather than managed.
+
+---
+
+## 6. Data and privacy model
+
+On-device, in Room, mirroring the current schema: `theses`, `watchlists`,
+`app_settings`, `stock_snapshots`, `notification_settings`,
+`notification_history`, `stock_cache`, `ai_summaries`. Dropped: `devices`,
+`invites`, `push_subscriptions`.
+
+What crosses the device boundary, exhaustively:
+
+| Traffic | Contains | When |
+|---|---|---|
+| Yahoo market data | ticker symbol, device IP | every cold load and every alert sweep |
+| Cloud Function to Gemini | financial data package, **and thesis/journal if opted in** | only on explicit user request, only when paid |
+| Play Billing | purchase token | at purchase and entitlement check |
+
+No telemetry, no crash reporting that carries user content, no analytics.
+
+---
+
+## 7. Paid AI feature
+
+Free app, paywall only on the component with a marginal cost. The paywall's
+purpose is **cost control, not revenue protection** — copying and forking are
+explicitly not a concern.
+
+That framing decides the design. If the app called Firebase AI Logic directly,
+App Check (Play Integrity) would prove the *app* is genuine but not that the
+*entitlement* is real; a flipped local flag on a rooted device spends the
+project's Gemini quota. A **Cloud Function** that verifies the Play purchase
+token against the Play Developer API before relaying is what actually protects
+the budget.
+
+* **Consumable credit packs**, not a one-time unlock. A permanent unlock against
+  a Re-Analyze button is unbounded cost liability.
+* **Anonymous Firebase Auth** provides an install identity for the credit
+  balance. It is not a login and requires no user action.
+* **Play Billing is mandatory** for a digital feature. A Play account is not an
+  app account, so requirement 1 holds.
+* The existing on-device `ai_summaries` cache is the primary cost control and
+  must be preserved.
+* Prompt construction stays in `core/` on-device; the function is a thin
+  verified relay, not a second implementation.
+
+Play requires disclosure of AI-generated content, and a financial app needs
+explicit "not investment advice" framing.
+
+---
+
+## 8. Market data
+
+### The position
+
+Yahoo's endpoints are unofficial. Yahoo shut the public finance API down in
+2017; `yahoo.js` sends a spoofed desktop User-Agent and a crumb harvested from
+`fc.yahoo.com`. On a self-hosted invite-only PWA this is unremarkable. Shipping
+it to Play changes the risk profile in four specific ways:
+
+* **Total** — ingestion failure blanks every number on every screen
+* **Not reproducible** — carrier CGNAT pools many subscribers behind one IP, so
+  failures correlate with carrier, not with anything observable locally
+* **Not fixable quickly** — staged rollout instead of a service restart
+* **Publicly attributed** — users see the app failing, and Play ratings persist
+
+The ToS exposure is real but secondary; the operational profile is the problem.
+
+### Why not simply switch providers
+
+Feature 8 in the README is *"Zero-Recurring-Cost Architecture ... no API keys."*
+Yahoo is load-bearing for the product's economics, not merely its data. And the
+substitution is not clean: a licensed provider needs a key, a key in a client
+binary gets extracted, protecting it needs a relay — and **free tiers are
+per-key, not per-user**, so a 250–800 request/day allowance shared across an
+install base is exhausted at single-digit user counts. "Use a proper provider"
+means "accept a permanent monthly bill."
+
+### The asymmetry
+
+The two data needs have different answers, and the split maps onto criticality:
+
+* **Statements** — a proper free solution exists. SEC EDGAR's XBRL
+  `companyfacts` API is official, unlimited, keyless, and returns the filed
+  number rather than Yahoo's re-derivation of it. Covers US registrants
+  including foreign private issuers filing 20-F/40-F; does not cover
+  non-US-listed companies. Tag variance across filers is real work — but it is
+  the same shape as the alias handling `FIELD_MAP` already performs.
+* **Quotes, prices, search, peers** — no credible free legitimate source.
+
+Moving statements to EDGAR would make a Yahoo outage *degrading* rather than
+*fatal*: solvency, moat quality, growth, capital allocation, the full checklist
+and every chart would survive; only the live price and the valuation pillar
+would be lost.
+
+### Decision
+
+**Ship Yahoo. Build the seam. Defer the migration.**
+
+Risk is a function of install count. The seam — a provider interface
+(`getStatements(ticker)`, `getQuote(ticker)`) with Yahoo as the sole
+implementation — costs an hour of care during a refactor already scheduled, and
+converts a future migration from a rewrite into a new file.
+
+**Migration trigger**: sustained 429 rates in the field, or a Yahoo schema
+break, whichever comes first.
+
+### Hotfix path
+
+Because `core/` is interpreted JS loaded from assets, an ingestion fix can ship
+out-of-band and take effect in minutes instead of days. Google Play permits OTA
+updates of interpreted code and assets provided they do not materially change
+the app's purpose or bypass review — the same mechanism React Native's CodePush
+and Expo Updates rely on. **Scope this strictly to `core/` ingestion fixes.**
+Shipping features this way is not permitted and would put the listing at risk.
+
+This is a second, independent argument for a clean `core/` boundary: it is the
+outage remedy.
+
+---
+
+## 9. Defects found during review — fix during extraction
+
+These are present in the PWA today. Each is survivable on a single-user server
+and becomes materially worse on mobile.
+
+**Status: all five fixed during step 1.** Two entries below were revised once
+the code was actually changed rather than only read — the corrections are
+recorded rather than silently replaced, since the original readings drove
+decisions above.
+
+| # | Defect | Location | Consequence | State |
+|---|---|---|---|---|
+| 1 | `getSession(force)` is **never called with `true`** — all five call sites pass no argument, so there is no crumb-expiry recovery | `yahoo.js` | A crumb invalidated before the local 6h timer leaves every request failing until the timer expires | fixed |
+| 2 | No 429/403 typing — every failure is a generic `Error` | `yahoo.js`, all fetches | Rate limiting indistinguishable from a dead ticker; no caller can back off | fixed |
+| 3 | ~~Alert sweep fires as an unjittered burst~~ **Corrected**: the sweep is already serialised at 1200 ms per ticker. The real defect is that it called `getStockData(ticker, true)`, force-refreshing past *both* cache tiers | `alerts.js` | Four requests per holding per sweep — full statement history re-fetched four times a day for filings that change quarterly | fixed |
+| 4 | `new Date(ts)` on a SQLite `'YYYY-MM-DD HH:MM:SS'` string | `finance.js:17` | **Corrected — worse than recorded.** Not merely a QuickJS portability risk: V8 reads that form as *local* time, so every cache age was inflated by the host's UTC offset. Measured at UTC+3: a row written 24 s earlier read as 180.4 minutes old. The 15-minute quote tier had **never** been reachable, and every page load re-fetched from Yahoo | fixed |
+| 5 | **Found during step 1.** A rate limit on an uncached ticker returned `null`, which the route rendered as `404 No listing found for <TICKER>` | `finance.js`, `index.js` | The app asserting a real company does not exist — the exact class of confident fiction the README's rule forbids. Now a 503 with `Retry-After` | fixed |
+
+Defect 4 is the largest single reduction in upstream traffic in this plan, and
+it was invisible from reading alone; it needed the value printed. Defect 3
+compounds it: between them the sweep's cost per holding drops from four
+requests to one on three sweeps in four.
+
+**Also worth recording**: `search()` already loops over `query1` and `query2` as
+a fallback, which is evidence of host-level flakiness handled in exactly one
+place. The peers endpoint is on **v6** while the rest of the surface is v8/v10,
+making it the most likely to disappear.
+
+### Request fan-out, for reference
+
+Measured from `getStockData` in `server/finance.js:86`:
+
+| Scenario | Requests |
+|---|---|
+| Warm (quote <15min, statements <24h) | 0 |
+| Quote stale, statements fresh | 1 |
+| Cold or forced | 4 — quote, then annual + quarterly statements, plus price history |
+| Currency mismatch | +1 (FX) |
+| Session expired | +2 (cookie + crumb) |
+
+Extending the statement TTL well past 24 hours is defensible — filings change
+quarterly — and cuts worst-case sweep cost proportionally.
+
+---
+
+## 10. Keeping the two clients in sync
+
+Parity is only real if a mechanism enforces it. Two gates:
+
+**Visual.** `design/tokens.json` is the single source. `tools/gen-tokens.mjs`
+emits both `web/tokens.css` and `android/design/.../Tokens.kt`. CI fails if
+generated output differs from what is committed, so neither side can be
+hand-edited. Bundle **Inter** and **JetBrains Mono** in the APK — Roboto will
+not reproduce the type scale in doc 04.
+
+Charts are lower risk than they appear: the revenue/FCF and liquidity charts are
+CSS-styled div columns, and only the margin trajectory uses inline SVG. Compose
+equivalents are weighted `Column`s and one `Canvas` path — not a charting
+library dependency.
+
+**Behavioural.** Record real Yahoo responses as fixtures. Run `core/` against
+them under Node and snapshot the complete stock model JSON. Then run **the same
+fixtures through QuickJS** in an Android instrumented test and assert
+byte-identical output.
+
+That test does not verify the scoring logic — the existing suite does that, and
+it is literally the same source file. It is an alarm for *engine* divergence:
+date parsing, number formatting, `toFixed` rounding edges. It is the mechanism
+that turns "always in sync" from an intention into a build failure.
+
+---
+
+## 11. Sequencing
+
+The test baseline is **61**, not the 32 the README cites — that figure counts
+`scoring.test.js` alone, and `alerts.test.js` (7) and `gemini.test.js` (6) also
+run. Step 1 took it to 76.
+
+| # | Milestone | Exit criterion |
+|---|---|---|
+| 1 | Extract `core/`, keep the PWA green | No unintended behaviour change, `npm test` ≥ 61. Includes defects 1–5 and the provider seam — **substantially done**, see §16 |
+| 2 | QuickJS spike | `core/` + fetch shim in a bare Android module prints a full scorecard for `NOK` — the ticker that exercises the traded/reporting currency split |
+| 3 | Room + import/export | A PWA `/api/theses` backup imports into Android and back out, losslessly |
+| 4 | Compose UI | Watchlist → Deep Dive → Screener → Compare, tokens generated, screenshot diffs passing |
+| 5 | WorkManager sweep + local notifications | Alerts fire on-device with no network beyond market data |
+| 6 | Billing + relay + Firebase AI Logic | Paid analysis end-to-end |
+
+Step 1 carries the most risk and touches the working PWA, so it ships alone.
+Step 2 validates the entire D1 premise in a day or two — if QuickJS proves
+unworkable, that is when to find out, before any UI exists. Steps 1–5 are
+shippable without any infrastructure at all; only step 6 needs Firebase.
+
+---
+
+## 12. Import / export
+
+The interchange format is shared with the PWA's existing `/api/theses` backup,
+in both directions.
+
+* `schemaVersion` field on every export; refuse to import an unknown major
+* Last-write-wins per ticker on `updated_at`
+* Journal entries merged by id — they are append-only, so union is correct
+* Android side via SAF, so the user picks the destination
+* Optional passphrase encryption, since journals are personal
+
+Getting the format aligned in step 3 is what makes the two clients usable
+together rather than as alternatives.
+
+---
+
+## 13. Open questions
+
+* **EDGAR coverage** against the actual watchlist — worth measuring before
+  committing to it as the statement path, since non-US listings fall outside it.
+* **QuickJS APK size and cold-start cost** — unmeasured. `quickjs-kt` documents
+  neither. Step 2 should record both, including bytecode-cache warm start.
+* **Sweep reliability under Doze and OEM task killers** (Samsung, Xiaomi). A 6h
+  cadence will be approximate. Whether to prompt for a battery-optimisation
+  exemption is a UX decision deferred to step 5.
+* **Android 13+ `POST_NOTIFICATIONS`** — where in the flow to request it.
+* **Credit pack pricing** — needs a measured cost-per-analysis from real Gemini
+  token counts before it can be set.
+
+---
+
+## 14. Risks
+
+| Risk | Likelihood | Mitigation |
+|---|---|---|
+| Yahoo breaks ingestion again | High — it already happened once (doc 10 §2) | OTA hotfix via `core/`; provider seam; EDGAR migration trigger |
+| Rate limiting via carrier CGNAT | Medium | Jittered serialised sweep, `Retry-After`, longer statement TTL, legible stale-data messaging |
+| Compose UI drifts from the PWA | Medium | Generated tokens, screenshot diffs, one view at a time |
+| QuickJS proves unworkable | Low | Discovered at step 2, before UI investment |
+| Gemini quota drained by modified clients | Low | Cloud Function verifies the Play purchase token server-side |
+| Play policy on OTA updates | Low | Scope strictly to ingestion fixes, never features |
+
+---
+
+## 15. What this does not change
+
+The PWA keeps needing `server/`, permanently. Browsers cannot set `Cookie` or
+`User-Agent` and Yahoo sends no CORS headers, so the proxy is not removable.
+This plan makes the *engine* shared; it does not retire the PWA's host.
+
+---
+
+## 16. Step 1 status
+
+Done, on branch `extract-core`. 76 tests pass, up from a 61 baseline; the
+end-to-end path was verified against live Yahoo via `npm run prompt` on `NOK`,
+which returned 19 of 19 sub-scores measurable against FY2025 with the
+EUR-reporting / USD-trading conversion exercised.
+
+| Item | State |
+|---|---|
+| `core/scoring.js` + tests | moved verbatim, zero diff |
+| `core/providers/yahoo.js` | moved, typed errors and crumb recovery added |
+| `core/providers/index.js` | provider seam — `getStatements`/`getQuote`/… |
+| `core/errors.js` + `core/time.js` | new, both pure, both tested |
+| `core/analysis/prompt.js` | 587 lines out of `gemini.js` (721 → 156) |
+| `core/alerts/triggers.js` | `evaluateTriggers` and its rule tables |
+| Defects 1–5 | fixed, each pinned by a test |
+
+**Deliberate behaviour changes** — all four are corrections, but none is a pure
+refactor and each should be read as a change:
+
+1. The 15-minute quote cache now functions (defect 4). Upstream request volume
+   falls sharply; nothing else about the data changes.
+2. The alert sweep no longer force-refreshes (defect 3).
+3. A rate limit on an uncached ticker is a 503 with `Retry-After`, not a 404
+   (defect 5). Clients treating any non-200 as "unknown ticker" will need to
+   distinguish the two.
+4. The sweep abandons its run on `rate_limited` rather than continuing down the
+   watchlist into a block that just rejected it.
+
+### Not done
+
+`finance.js` still imports `db` directly, at four call sites: the cached search
+(`searchStocks`), the sector median (`sectorMedianAssetTurnover`),
+`saveStockToCache` and `readCache`. The storage contract Android needs is
+therefore not yet defined, and the pure model-assembly half of the file
+(`buildModel`, `buildHistory`, `buildPeHistory`, `toRecord` and their helpers,
+roughly 450 lines) has not moved to `core/`.
+
+Left as its own change on purpose. It is a large mechanical move that alters no
+behaviour and carries no defect fix, so it reviews far better on its own than
+buried among the four behaviour changes above — and `getStockData` is the app's
+main path, which had just been edited.
+
+### Follow-up found but not fixed
+
+`search()` returns `[]` when every host fails, so a rate-limited search is
+indistinguishable from a genuine no-results — the same conflation as defect 5,
+in a place where fixing it changes a function's contract. `stale` is also set on
+every cached response and no client reads it, so the age-stamped banner doc 09
+specifies is not actually driven by it.

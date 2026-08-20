@@ -12,6 +12,8 @@
  * worse than an honest gap.
  */
 
+import { IngestError, kindForStatus, parseRetryAfter } from '../errors.js';
+
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
   '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -65,6 +67,76 @@ function authHeaders(sess) {
   const h = { 'User-Agent': UA };
   if (sess.cookie) h.Cookie = sess.cookie;
   return h;
+}
+
+/**
+ * Drop the cached session.
+ *
+ * Exists for the tests: the crumb-recovery path is only observable from a
+ * known starting state, and the session is module-level by design so that one
+ * bootstrap serves every request. Not called on any production path.
+ */
+export function __resetSession() {
+  session = { cookie: null, crumb: null, expires: 0 };
+}
+
+/**
+ * One request, with transport failures typed.
+ *
+ * A thrown fetch (DNS, timeout, no route) is a `network` failure and is
+ * retryable; a response that arrives is classified by status. Nothing here
+ * decides *whether* to retry — that is the caller's business.
+ */
+async function doFetch(url, sess, timeoutMs, label) {
+  let res;
+  try {
+    res = await fetch(url, {
+      headers: authHeaders(sess),
+      signal: AbortSignal.timeout(timeoutMs)
+    });
+  } catch (err) {
+    throw new IngestError('network', `${label} unreachable: ${err.message}`, {
+      cause: err
+    });
+  }
+  return res;
+}
+
+/**
+ * An authenticated Yahoo request, with one crumb recovery.
+ *
+ * The session is cached locally for six hours, but Yahoo can invalidate a
+ * crumb well before that — routinely so once it starts rate-limiting. Until
+ * now `getSession` was only ever called with its default argument, so the
+ * `force` path existed and was never reachable: every request after an early
+ * invalidation failed until the local timer happened to expire.
+ *
+ * The crumb is a query parameter rather than a header, so the retry has to
+ * rebuild the URL against the new session — hence a builder rather than a
+ * string.
+ *
+ * @param {(sess: {cookie: string|null, crumb: string|null}) => string} buildUrl
+ */
+async function authedFetch(buildUrl, { timeoutMs, label }) {
+  let sess = await getSession();
+  let res = await doFetch(buildUrl(sess), sess, timeoutMs, label);
+
+  if (res.status === 401 || res.status === 403) {
+    sess = await getSession(true);
+    res = await doFetch(buildUrl(sess), sess, timeoutMs, label);
+  }
+
+  if (!res.ok) {
+    throw new IngestError(
+      kindForStatus(res.status),
+      `${label} HTTP ${res.status}`,
+      {
+        status: res.status,
+        retryAfterMs: parseRetryAfter(res.headers.get('retry-after'))
+      }
+    );
+  }
+  return res;
 }
 
 /**
@@ -208,20 +280,22 @@ function parseTimeseries(json, prefix) {
   return { periods, currency, latestReported };
 }
 
-async function timeseriesRequest(ticker, types, sess) {
-  const params = new URLSearchParams({
-    symbol: ticker,
-    type: types.join(','),
-    period1: '1200000000',
-    period2: String(Math.floor(Date.now() / 1000))
-  });
-  if (sess.crumb) params.set('crumb', sess.crumb);
+async function timeseriesRequest(ticker, types) {
+  const buildUrl = (sess) => {
+    const params = new URLSearchParams({
+      symbol: ticker,
+      type: types.join(','),
+      period1: '1200000000',
+      period2: String(Math.floor(Date.now() / 1000))
+    });
+    if (sess.crumb) params.set('crumb', sess.crumb);
+    return `${TIMESERIES_BASE}${encodeURIComponent(ticker)}?${params}`;
+  };
 
-  const res = await fetch(
-    `${TIMESERIES_BASE}${encodeURIComponent(ticker)}?${params}`,
-    { headers: authHeaders(sess), signal: AbortSignal.timeout(9000) }
-  );
-  if (!res.ok) throw new Error(`timeseries HTTP ${res.status}`);
+  const res = await authedFetch(buildUrl, {
+    timeoutMs: 9000,
+    label: 'timeseries'
+  });
   return res.json();
 }
 
@@ -231,12 +305,9 @@ async function timeseriesRequest(ticker, types, sess) {
  * ticker, and the caller needs to be able to tell those apart.
  */
 export async function fetchFundamentals(ticker) {
-  const sess = await getSession();
-
   const annualJson = await timeseriesRequest(
     ticker,
-    ANNUAL_KEYS.map((k) => `annual${k}`),
-    sess
+    ANNUAL_KEYS.map((k) => `annual${k}`)
   );
   const { periods: annual, currency, latestReported } = parseTimeseries(
     annualJson,
@@ -247,13 +318,18 @@ export async function fetchFundamentals(ticker) {
   try {
     const qJson = await timeseriesRequest(
       ticker,
-      QUARTERLY_KEYS.map((k) => `quarterly${k}`),
-      sess
+      QUARTERLY_KEYS.map((k) => `quarterly${k}`)
     );
     quarterly = parseTimeseries(qJson, 'quarterly').periods;
-  } catch {
+  } catch (err) {
     // The quarterly series only feeds one checklist item; its absence is
     // recorded as an unavailable check rather than treated as a failure.
+    // Logged rather than silent so a rate limit reaching only this request is
+    // still diagnosable — the annual call above would already have thrown if
+    // the whole endpoint were blocked.
+    console.warn(
+      `[Yahoo] quarterly series unavailable for ${ticker}: ${err.kind || 'error'}`
+    );
   }
 
   return { annual, quarterly, latestReported, reportingCurrency: currency };
@@ -261,17 +337,19 @@ export async function fetchFundamentals(ticker) {
 
 /** Live price and the market-derived multiples. */
 export async function fetchQuote(ticker) {
-  const sess = await getSession();
   const modules =
     'price,summaryProfile,summaryDetail,financialData,defaultKeyStatistics';
-  const params = new URLSearchParams({ modules });
-  if (sess.crumb) params.set('crumb', sess.crumb);
 
-  const res = await fetch(
-    `${QUOTESUMMARY_BASE}${encodeURIComponent(ticker)}?${params}`,
-    { headers: authHeaders(sess), signal: AbortSignal.timeout(8000) }
-  );
-  if (!res.ok) throw new Error(`quoteSummary HTTP ${res.status}`);
+  const buildUrl = (sess) => {
+    const params = new URLSearchParams({ modules });
+    if (sess.crumb) params.set('crumb', sess.crumb);
+    return `${QUOTESUMMARY_BASE}${encodeURIComponent(ticker)}?${params}`;
+  };
+
+  const res = await authedFetch(buildUrl, {
+    timeoutMs: 8000,
+    label: 'quoteSummary'
+  });
 
   const result = (await res.json())?.quoteSummary?.result?.[0];
   if (!result) return null;
@@ -340,16 +418,11 @@ export async function fetchQuote(ticker) {
  * a stock's own history, which needs price history to compute.
  */
 export async function fetchPriceHistory(ticker) {
-  const sess = await getSession();
-  const url =
+  const buildUrl = () =>
     `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}` +
     '?interval=1mo&range=5y';
 
-  const res = await fetch(url, {
-    headers: authHeaders(sess),
-    signal: AbortSignal.timeout(8000)
-  });
-  if (!res.ok) throw new Error(`chart HTTP ${res.status}`);
+  const res = await authedFetch(buildUrl, { timeoutMs: 8000, label: 'chart' });
 
   const result = (await res.json())?.chart?.result?.[0];
   const stamps = result?.timestamp || [];
@@ -385,13 +458,15 @@ export async function fetchFxRate(from, to) {
   const hit = fxCache.get(pair);
   if (hit && Date.now() < hit.expires) return hit.rate;
 
-  const sess = await getSession();
   try {
-    const res = await fetch(
-      `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(pair)}?interval=1d&range=5d`,
-      { headers: authHeaders(sess), signal: AbortSignal.timeout(6000) }
-    );
-    if (!res.ok) throw new Error(`chart HTTP ${res.status}`);
+    const buildUrl = () =>
+      `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(pair)}` +
+      '?interval=1d&range=5d';
+
+    const res = await authedFetch(buildUrl, {
+      timeoutMs: 6000,
+      label: `FX ${pair}`
+    });
 
     const meta = (await res.json())?.chart?.result?.[0]?.meta;
     const rate = meta?.regularMarketPrice;
@@ -450,17 +525,15 @@ export async function search(query) {
  * an authoritative list available without a paid classification feed.
  */
 export async function fetchPeers(ticker) {
-  const sess = await getSession();
-  const url =
+  const buildUrl = () =>
     'https://query2.finance.yahoo.com/v6/finance/recommendationsbysymbol/' +
     encodeURIComponent(ticker);
 
   try {
-    const res = await fetch(url, {
-      headers: authHeaders(sess),
-      signal: AbortSignal.timeout(6000)
+    const res = await authedFetch(buildUrl, {
+      timeoutMs: 6000,
+      label: 'peers'
     });
-    if (!res.ok) return [];
     const rows = (await res.json())?.finance?.result?.[0]?.recommendedSymbols || [];
     return rows
       .map((r) => r.symbol)

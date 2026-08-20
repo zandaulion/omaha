@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { initDatabase, db } from './db.js';
 import { getStockData, searchStocks } from './finance.js';
-import { fetchPeers } from './yahoo.js';
+import { getPeers as fetchPeers } from '../core/providers/index.js';
 import {
   requireAdmin,
   requireDeviceAuth,
@@ -187,6 +187,21 @@ app.get('/api/stock/:ticker', requireDeviceAuth, async (req, res) => {
     }
     return res.json(data);
   } catch (err) {
+    // A blocked upstream is not a missing company and not a bug in this
+    // server. 503 with Retry-After so the client can wait rather than retry.
+    if (err?.kind === 'rate_limited' || err?.kind === 'network') {
+      if (err.retryAfterMs) {
+        res.set('Retry-After', String(Math.ceil(err.retryAfterMs / 1000)));
+      }
+      return res.status(503).json({
+        error:
+          err.kind === 'rate_limited'
+            ? 'Market data is rate-limited upstream. Try again shortly.'
+            : 'Market data is unreachable. Try again shortly.',
+        kind: err.kind,
+        ticker: ticker.toUpperCase()
+      });
+    }
     console.error(`Error fetching ${ticker}:`, err);
     return res.status(500).json({ error: 'Failed to fetch financial data' });
   }

@@ -6,7 +6,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildComprehensivePayload } from './gemini.js';
+import { buildComprehensivePayload } from './prompt.js';
 
 /** Minimal shaped stock, resembling what finance.js emits. */
 function stockFixture(overrides = {}) {

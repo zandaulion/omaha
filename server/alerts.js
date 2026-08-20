@@ -13,8 +13,14 @@
 import { db } from './db.js';
 import { getStockData } from './finance.js';
 import { broadcastPush } from './push.js';
+import { minutesSince } from '../core/time.js';
+import { evaluateTriggers } from '../core/alerts/triggers.js';
 
-const SCORE_SHIFT_THRESHOLD = 3;
+// The rules themselves are pure and live in core/, so the Android host can run
+// exactly the same ones. Re-exported here because the route layer has always
+// reached for them at this path.
+export { evaluateTriggers };
+
 
 /**
  * Minimum days between repeats of the same alert type for the same ticker.
@@ -33,7 +39,6 @@ const COOLDOWN_DAYS = {
   WEEKLY_DIGEST: 6
 };
 const DEFAULT_COOLDOWN_DAYS = 3;
-const GROSS_MARGIN_DROP_BPS = 300;
 const SWEEP_INTERVAL_MS = 6 * 60 * 60 * 1000; // four sweeps a day
 const DIGEST_WEEKDAY = 0; // Sunday
 const DIGEST_HOUR = 9;
@@ -136,152 +141,6 @@ function writeSnapshot(ticker, stock) {
   );
 }
 
-// ------------------------------------------------------------------- rules
-
-const CHECK_NAMES = {
-  1: 'Altman Z-Score', 2: 'Interest coverage', 3: 'Current ratio',
-  4: 'Debt to equity', 5: 'Free cash flow', 6: 'Piotroski F-Score',
-  7: 'ROIC vs cost of capital', 8: 'Gross margin', 9: 'Share count',
-  10: 'Cash conversion', 11: 'PEG ratio', 12: 'Revenue growth'
-};
-
-const RANK = { pass: 3, watch: 2, fail: 1 };
-
-/** Both values present and numeric — the precondition for any comparison. */
-const both = (a, b) => typeof a === 'number' && typeof b === 'number';
-
-export function evaluateTriggers(stock, prev, settings) {
-  const alerts = [];
-  if (!prev) return alerts; // First sighting is a baseline, not an event.
-
-  const m = stock.summary?.metrics || {};
-  const t = stock.ticker;
-
-  // --- Trigger 1: health score shift or checklist state change -------------
-  if (settings.notify_earnings_filings) {
-    const delta =
-      both(stock.health_score, prev.health_score)
-        ? stock.health_score - prev.health_score
-        : null;
-
-    const flips = [];
-    for (const check of stock.checklist || []) {
-      const before = prev.checklist[check.id];
-      const after = check.status;
-      // Movement in or out of "na" is a coverage change, not a fundamental one.
-      if (!before || before === after) continue;
-      if (before === 'na' || after === 'na') continue;
-      flips.push({ id: check.id, from: before, to: after, worse: RANK[after] < RANK[before] });
-    }
-
-    if ((delta !== null && Math.abs(delta) >= SCORE_SHIFT_THRESHOLD) || flips.length) {
-      const up = delta !== null && delta > 0;
-      const worsened = flips.filter((f) => f.worse);
-      const parts = [];
-      if (delta !== null && Math.abs(delta) >= SCORE_SHIFT_THRESHOLD) {
-        parts.push(`Health ${up ? 'up' : 'down'} ${Math.abs(delta)} points to ${stock.health_score}/100.`);
-      }
-      for (const f of flips.slice(0, 2)) {
-        parts.push(`${CHECK_NAMES[f.id] || `Check ${f.id}`}: ${f.from} → ${f.to}.`);
-      }
-
-      alerts.push({
-        type: 'EARNINGS_HEALTH_SHIFT',
-        ticker: t,
-        title: `${t} ${up && !worsened.length ? 'health upgrade' : 'health change'}${stock.health_score !== null ? ` (${stock.health_score}/100)` : ''}`,
-        body: parts.join(' '),
-        severity: worsened.length ? 'warning' : 'positive',
-        url: `/?tab=deepdive&ticker=${t}`
-      });
-    }
-  }
-
-  // --- Trigger 2: distress thresholds breached -----------------------------
-  if (settings.notify_red_flags) {
-    const breaches = [];
-
-    if (both(stock.altman_z, prev.altman_z) && stock.altman_z < 1.8 && prev.altman_z >= 1.8) {
-      breaches.push(`Altman Z fell to ${stock.altman_z.toFixed(2)}, into the distress zone.`);
-    }
-    if (both(m.currentRatio, prev.current_ratio) && m.currentRatio < 1.0 && prev.current_ratio >= 1.0) {
-      breaches.push(`Current ratio dropped below 1.0 to ${m.currentRatio.toFixed(2)}.`);
-    }
-    if (both(m.grossMargin, prev.gross_margin)) {
-      const dropBps = Math.round((prev.gross_margin - m.grossMargin) * 10000);
-      if (dropBps > GROSS_MARGIN_DROP_BPS) {
-        breaches.push(`Gross margin compressed ${dropBps} bps to ${(m.grossMargin * 100).toFixed(1)}%.`);
-      }
-    }
-    if (both(stock.piotroski_score, prev.piotroski_score) &&
-        stock.piotroski_score <= 4 && prev.piotroski_score > 4) {
-      breaches.push(`Piotroski F-Score downgraded to ${stock.piotroski_score}/9.`);
-    }
-
-    if (breaches.length) {
-      alerts.push({
-        type: 'RED_FLAG_WARNING',
-        ticker: t,
-        title: `⚠️ ${t}: ${breaches.length > 1 ? `${breaches.length} warning signs` : 'warning sign'}`,
-        body: breaches.join(' '),
-        severity: 'critical',
-        url: `/?tab=deepdive&ticker=${t}&subtab=checklist`
-      });
-    }
-  }
-
-  // --- Trigger 3: margin-of-safety entry -----------------------------------
-  //
-  // Both conditions below are edge-triggered. "PEG is under 1.3" is a state
-  // that holds for months; announcing it on every sweep is not an alert, it is
-  // a subscription to the same sentence. Only the crossing is news.
-  if (settings.notify_margin_of_safety && typeof stock.health_score === 'number' && stock.health_score >= 85) {
-    // A P/E history too short to be a valuation range cannot signal cheapness:
-    // a low percentile there reflects earnings recovering off a trough.
-    const peUsable = stock.summary?.peHistory?.scoreable === true;
-    const pePercentile = peUsable ? stock.summary.peHistory.percentile ?? null : null;
-    const peg = m.pegRatio;
-
-    const crossedIntoCheapPe =
-      typeof pePercentile === 'number' &&
-      pePercentile <= 20 &&
-      typeof prev.pe_percentile === 'number' &&
-      prev.pe_percentile > 20;
-
-    const crossedIntoCheapPeg =
-      typeof peg === 'number' && peg > 0 && peg <= 1.3 &&
-      typeof prev.peg_ratio === 'number' && prev.peg_ratio > 1.3;
-
-    if (crossedIntoCheapPe || crossedIntoCheapPeg) {
-      const reason = crossedIntoCheapPe
-        ? `Its P/E has fallen into the cheapest ${pePercentile}% of its own history.`
-        : `Its PEG has fallen to ${peg.toFixed(2)}, from ${prev.peg_ratio.toFixed(2)}.`;
-      alerts.push({
-        type: 'MARGIN_OF_SAFETY',
-        ticker: t,
-        title: `🎯 ${t} entry point (${stock.health_score}/100)`,
-        body: `Health is strong and the price has come in. ${reason}`,
-        severity: 'info',
-        url: `/?tab=deepdive&ticker=${t}`
-      });
-    }
-  }
-
-  // --- Capital allocation (off by default) ---------------------------------
-  if (settings.notify_capital_returns && both(m.shareChangeYoY, prev.share_change)) {
-    if (m.shareChangeYoY < -0.02 && prev.share_change >= -0.02) {   // crossing only
-      alerts.push({
-        type: 'CAPITAL_RETURN',
-        ticker: t,
-        title: `📈 ${t} stepped up buybacks`,
-        body: `Diluted share count is down ${Math.abs(m.shareChangeYoY * 100).toFixed(1)}% year on year.`,
-        severity: 'positive',
-        url: `/?tab=deepdive&ticker=${t}`
-      });
-    }
-  }
-
-  return alerts;
-}
 
 // ------------------------------------------------------------- dispatching
 
@@ -351,8 +210,24 @@ export async function runSweep({ quiet = false } = {}) {
 
   for (const ticker of tickers) {
     try {
-      const stock = await getStockData(ticker, true);
+      // Deliberately *not* a forced refresh. Forcing bypassed both cache
+      // tiers, so every sweep re-fetched the full statement history — four
+      // requests per holding, four times a day, for filings that change once a
+      // quarter. Letting the TTLs apply still gives the sweep a current quote
+      // (the 15-minute tier has always expired across a 6-hour gap) while
+      // re-reading statements only once a day, which is the whole point of
+      // having tiered TTLs.
+      const stock = await getStockData(ticker);
       if (!stock) continue;
+
+      // Served from cache because the upstream is blocked. Evaluating triggers
+      // against data we already scored would compare a snapshot with itself;
+      // continuing down the list would keep asking a source that just said no.
+      if (stock.staleReason === 'rate_limited') {
+        console.warn(`[Alerts] Sweep abandoned at ${ticker}: upstream rate-limited.`);
+        break;
+      }
+      if (stock.stale) continue;
 
       const prev = readSnapshot(ticker);
       for (const alert of evaluateTriggers(stock, prev, settings)) {
@@ -365,6 +240,17 @@ export async function runSweep({ quiet = false } = {}) {
       }
       writeSnapshot(ticker, stock);
     } catch (err) {
+      // A rate limit applies to the endpoint, not to this ticker. Continuing
+      // down the watchlist would send another request every 1.2 seconds into
+      // the block that just rejected us, which is how a transient limit
+      // becomes a sustained one. Abandon the sweep; the next one is 6h out.
+      if (err?.kind === 'rate_limited') {
+        console.warn(
+          `[Alerts] Sweep abandoned at ${ticker}: upstream rate-limited` +
+          (err.retryAfterMs ? `, retry after ${Math.round(err.retryAfterMs / 1000)}s.` : '.')
+        );
+        break;
+      }
       console.warn(`[Alerts] sweep failed for ${ticker}:`, err.message);
     }
     await new Promise((r) => setTimeout(r, 1200));
@@ -447,7 +333,7 @@ export function startAlertWorker() {
       .prepare('SELECT MAX(captured_at) AS at FROM stock_snapshots')
       .get()?.at;
     const recentlySwept =
-      last && Date.now() - new Date(`${last.replace(' ', 'T')}Z`).getTime() < SWEEP_INTERVAL_MS / 2;
+      last && minutesSince(last) * 60_000 < SWEEP_INTERVAL_MS / 2;
 
     if (recentlySwept) {
       console.log(`[Alerts] Start-up sweep skipped; last ran at ${last}.`);

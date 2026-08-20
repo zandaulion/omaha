@@ -1,12 +1,13 @@
 import { db } from './db.js';
-import { computeComprehensiveHealth } from './scoring.js';
+import { minutesSince } from '../core/time.js';
+import { computeComprehensiveHealth } from '../core/scoring.js';
 import {
-  fetchQuote,
-  fetchFundamentals,
-  fetchPriceHistory,
-  fetchFxRate,
-  search as yahooSearch
-} from './yahoo.js';
+  getQuote as fetchQuote,
+  getStatements as fetchFundamentals,
+  getPriceHistory as fetchPriceHistory,
+  getFxRate as fetchFxRate,
+  searchTickers as yahooSearch
+} from '../core/providers/index.js';
 
 const QUOTE_TTL_MIN = 15;
 const FUNDAMENTALS_TTL_HOURS = 24;
@@ -14,7 +15,10 @@ const FUNDAMENTALS_TTL_HOURS = 24;
 /** Sectors where Altman Z and the working-capital ratios are not defined. */
 const NON_INDUSTRIAL_SECTORS = new Set(['Financial Services', 'Real Estate']);
 
-const minutesSince = (ts) => (Date.now() - new Date(ts).getTime()) / 60000;
+// Was `new Date(ts)`, which V8 reads as local time for the SQLite form the
+// cache columns are written in — inflating every age by the host's UTC offset
+// and putting the 15-minute quote tier permanently out of reach east of UTC.
+// See core/time.js.
 
 // ---------------------------------------------------------------- search
 
@@ -96,15 +100,29 @@ export async function getStockData(tickerSymbol, forceRefresh = false) {
   }
 
   let quote = null;
+  let failure = null;
   try {
     quote = await fetchQuote(ticker);
   } catch (err) {
+    failure = err;
     console.warn(`[Finance] quote fetch failed for ${ticker}: ${err.message}`);
   }
 
   if (!quote) {
-    // Offline or rate-limited: serve what we have, clearly marked stale.
-    if (cached) return formatCachedStock(cached, { stale: true });
+    // Offline or rate-limited: serve what we have, clearly marked stale, and
+    // say why — a caller that knows the reason can back off instead of asking
+    // again immediately.
+    if (cached) {
+      return formatCachedStock(cached, { stale: true, reason: failure?.kind ?? null });
+    }
+
+    // Nothing cached to fall back on. A retryable upstream failure must not be
+    // reported as an unresolvable symbol: returning null here surfaces as
+    // "No listing found for NVDA", which is a false statement about the world
+    // and precisely the class of confident fiction this app exists to avoid.
+    // A genuine unknown ticker reaches here with `failure` still null, because
+    // fetchQuote returns null rather than throwing for an empty result.
+    if (failure?.retryable) throw failure;
     return null;
   }
 
@@ -654,7 +672,11 @@ function formatCachedStock(row, opts = {}) {
     summary,
     last_fetched_at: row.last_fetched_at,
     financials_fetched_at: row.financials_fetched_at || null,
-    stale: Boolean(opts.stale)
+    stale: Boolean(opts.stale),
+    // Why the data is stale, when known: 'rate_limited', 'network', ...
+    // Lets the alert sweep stop rather than keep asking, and lets the client
+    // say something more useful than "offline".
+    staleReason: opts.reason ?? null
   };
 }
 
