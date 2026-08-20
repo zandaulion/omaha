@@ -46,7 +46,7 @@ export async function searchStocks(queryStr) {
   if (!query) return [];
   const upper = query.toUpperCase();
 
-  const cached = getStore().searchCached(query);
+  const cached = await getStore().searchCached(query);
   const cachedMap = new Map(cached.map((c) => [c.ticker, c]));
 
   let live = [];
@@ -94,7 +94,7 @@ export async function searchStocks(queryStr) {
  */
 export async function getStockData(tickerSymbol, forceRefresh = false) {
   const ticker = tickerSymbol.trim().toUpperCase();
-  const cached = readCache(ticker);
+  const cached = await readCache(ticker);
 
   if (!forceRefresh && cached) {
     const quoteFresh = minutesSince(cached.last_fetched_at) < QUOTE_TTL_MIN;
@@ -175,7 +175,7 @@ export async function getStockData(tickerSymbol, forceRefresh = false) {
 
   const model = buildModel(quote, fundamentals);
   await applyFxNormalisation(model);
-  model.sectorMedianAssetTurnover = sectorMedianAssetTurnover(quote.sector, ticker);
+  model.sectorMedianAssetTurnover = await sectorMedianAssetTurnover(quote.sector, ticker);
   const peHistory = buildPeHistory(fundamentals, quote);
   // Only a long enough history is allowed to move the valuation score.
   model.peVsHistoryPct = peHistory.scoreable ? peHistory.vsMedianPct : null;
@@ -191,7 +191,7 @@ export async function getStockData(tickerSymbol, forceRefresh = false) {
   score.peHistory = peHistory;
   const record = toRecord(ticker, quote, fundamentals, model, score);
 
-  saveStockToCache(record, Boolean(fundamentals.annual.length));
+  await saveStockToCache(record, Boolean(fundamentals.annual.length));
   return formatCachedStock(record);
 }
 
@@ -201,10 +201,10 @@ export async function getStockData(tickerSymbol, forceRefresh = false) {
 // same either side of the move into core/: the host decides where a record
 // lives, not this function.
 
-function saveStockToCache(r, hasFundamentals) {
-  getStore().save(r, hasFundamentals);
+async function saveStockToCache(r, hasFundamentals) {
+  await getStore().save(r, hasFundamentals);
 }
 
-function readCache(ticker) {
+async function readCache(ticker) {
   return getStore().read(ticker);
 }

@@ -956,7 +956,81 @@ same bytes.
 
 ### Still to build
 
-`core/stock.js` needs storage bridged as well as the network before the full
-pipeline runs on device — the store contract from §19, wired to Room. After
-that the Android client can fetch, score and persist a ticker on its own, which
-is the point at which step 4 has something real to render.
+~~Storage bridged as well as the network.~~ **Done — see §24.**
+
+---
+
+## 24. The store bridge — the pipeline runs whole
+
+`core/host/stock.js` runs the entire pipeline on device: cache check, fetch,
+assemble, score, persist. The model it produces is byte-identical to Node's for
+all three fixtures. Nine instrumented tests.
+
+Live, on a handset:
+
+```
+Live pipeline  (fetch, score and cache, on device)
+  fetched    Nokia Corporation Sponsored
+  price      10.075 USD
+  health     55/100 across 12 checks
+  cold       3000 ms
+  cached       13 ms
+```
+
+**The cached read is about 230 times faster than the cold one.** That is the
+fifteen-minute quote tier — the one that had never worked in the PWA, because
+`new Date()` read SQLite's timestamps as local time and inflated every cache age
+by the host's UTC offset. Fixed in step 1 as a portability concern; measured
+here as the difference between an instant screen and a three-second one.
+
+### Making the contract awaitable cost nothing
+
+`core/store.js` was written synchronously, which SQLite can satisfy and Room
+cannot. Rather than forcing the Android side to block a thread on every cache
+read, `core/` now awaits its store — and because `await` on a plain value is a
+no-op, **`server/store.js` needed no change at all**. Four call sites, all
+already inside async functions.
+
+The contract now documents that every method may return a promise. That is the
+sort of thing worth writing down at the time: it is invisible until a second
+host arrives, and by then it is expensive.
+
+### Kotlin does not parse the record
+
+`RoomStockStore` stores the scored record **as JSON, verbatim**, lifting out
+only the handful of fields something queries on — ticker, name, sector, health
+score, and the financials the sector median needs.
+
+A Kotlin mirror of the record's twenty-odd fields would be a second definition
+of a shape `core/model/record.js` already owns, and it would silently lose the
+first field added to one side and not the other. The PWA spreads the same record
+across twenty-odd SQLite columns, which is fine there because the same file
+writes and reads them. Here the writer is JavaScript and the reader is
+JavaScript; Kotlin is the filing cabinet.
+
+`hasFundamentals` is honoured the same way it is on the server: a quote-only
+refresh does not advance the statement timestamp, or stale filings would look
+fresh and the 24-hour tier would stop meaning anything.
+
+### A comparison that was asserting the wrong thing
+
+The parity test first *redacted* the two store-owned timestamps and compared
+the placeholders. It failed — the fixture had `last_fetched_at` and the device
+did not. Neither host sets one on a fresh fetch: `formatCachedStock` returns the
+in-memory record, whose timestamp is `undefined`. Node's fixture normaliser
+materialises that key; `JSON.stringify` drops it. So the test was comparing a
+present key against an absent one and calling it a scoring difference.
+
+They are now stripped from both sides. Nothing is lost: that the timestamps are
+read and written correctly is what the cache-tier test proves, and it proves it
+far better than an equality check on a placeholder could.
+
+### What the Android client can now do unaided
+
+Fetch a ticker, parse its filings, score it, cache it, serve the next read from
+that cache, fall back to stale data when the upstream refuses, and refuse to
+invent a company that does not exist. No server, no account.
+
+What remains is a user interface, a background sweep, and the paid analysis —
+steps 4, 5 and 6. None of them is an open question about whether the
+architecture works.

@@ -14,6 +14,12 @@
  * Deliberately not a class or an interface: there is one store per process, it
  * is chosen at startup, and threading it through every call site would be
  * ceremony without a second implementation to justify it.
+ *
+ * **Every method may return a promise.** SQLite answers synchronously and Room
+ * does not, and `core/` awaits either without caring — `await` on a plain value
+ * is a no-op, so the Node host needed no change when Android arrived. Writing
+ * the contract as synchronous would have forced the Android side to block a
+ * thread on every cache read.
  */
 
 /**
@@ -82,12 +88,12 @@ export function __clearStore() {
  * @param {string} excludeTicker
  * @returns {number|null}
  */
-export function sectorMedianAssetTurnover(sector, excludeTicker) {
+export async function sectorMedianAssetTurnover(sector, excludeTicker) {
   if (!sector) return null;
 
   let rows;
   try {
-    rows = getStore().sectorFinancials(sector, excludeTicker);
+    rows = await getStore().sectorFinancials(sector, excludeTicker);
   } catch (err) {
     console.warn('[Store] sector lookup failed:', err.message);
     return null;
