@@ -58,6 +58,8 @@ reported as inapplicable and a measure that does fit is used instead.
    - Target entry buy price tracking.
    - Pre-committed exit guardrails with interactive checklist triggers.
    - Dated chronological journal entries with JSON backup export and restore.
+   - Restore **merges** rather than replaces: the newer version of each thesis wins,
+     and journal notes from both sides are kept.
 
 6. **Fundamental Screener & Side-by-Side Peer Comparison**:
    - Multi-factor filtering with instant preset queries (*👑 Fortress Moats*, *🚀 ROIC ≥ 20%*, *💎 Net Cash*).
@@ -106,12 +108,13 @@ regenerate rather than committing a snapshot that will drift.
 npm test
 ```
 
-84 assertions. The 48 in `core/scoring.test.js` each correspond to a defect that
+120 assertions. The 48 in `core/scoring.test.js` each correspond to a defect that
 shipped in an earlier build of the scoring engine, and they are the reason the
 engine can be changed with any confidence — every one of them produced a
 plausible, wrong number that looked correct on screen. The rest cover ingestion
-failure handling (`core/providers/yahoo.test.js`), timestamp parsing
-(`core/time.test.js`), the alert rules and the Gemini payload.
+failure handling (`core/providers/yahoo.test.js`), portable decimal formatting
+(`core/format.test.js`), timestamp parsing (`core/time.test.js`), the backup
+merge rules (`core/backup.test.js`), the alert rules and the Gemini payload.
 
 `test/golden.test.js` runs the whole pipeline — raw upstream bytes to scored
 model — against recorded responses in `core/__fixtures__/`, for a bank, a
@@ -179,6 +182,7 @@ Manage device invites and authorizations from the terminal:
 | `/api/compare` | `GET` | Side-by-side comparison for multiple tickers |
 | `/api/theses/:ticker` | `GET`, `POST` | Personal investment thesis, sell triggers, and journal entries |
 | `/api/theses` | `GET` | Download full personal data backup JSON |
+| `/api/backup/import` | `POST` | Restore a backup, merging rather than replacing |
 | `/api/auth/redeem` | `POST` | Redeem invite code and bind device |
 | `/api/auth/session` | `GET` | Validate device authorization |
 | `/api/admin/devices` | `GET` | Admin: List registered devices (`X-Admin: 1`) |

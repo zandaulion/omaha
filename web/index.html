@@ -939,11 +939,16 @@
         <div class="card">
           <div class="section-title" style="margin-bottom: 8px;">💾 Backup & Restore</div>
           <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">
-            Download all your personal investment theses, sell guardrails, and journal notes.
+            Download all your personal investment theses, sell guardrails, and journal notes —
+            or restore them from a file. Restoring merges: the newer version of each thesis
+            wins, and journal notes from both sides are kept.
           </p>
           <div style="display: flex; gap: 8px;">
             <button class="btn-primary" id="exportBackupBtn" style="flex: 1;">📥 Export Backup JSON</button>
+            <button class="btn-secondary" id="importBackupBtn" style="flex: 1;">📤 Restore from file</button>
           </div>
+          <input type="file" id="importBackupFile" accept="application/json,.json" hidden>
+          <div id="importBackupResult" style="font-size: 12px; margin-top: 10px;"></div>
         </div>
 
       </div>

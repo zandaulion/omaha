@@ -368,7 +368,7 @@ without waiting for `finance.js`.
 | 1a | Golden model fixtures | Recorded upstream responses replay offline to a byte-identical model — **done**, see §17 |
 | 1b | `finance.js` split | Store contract defined; assembly in `core/`; golden snapshots unchanged — **done**, see §19 |
 | 2 | QuickJS spike | Reproduces the golden snapshots for `NOK`, `AAPL` and `JPM` — **done on JVM (§18) and on device (§20)** |
-| 3 | Room + import/export | A PWA `/api/theses` backup imports into Android and back out, losslessly |
+| 3 | Room + import/export | A PWA backup imports into Android and back out, losslessly — **format and PWA half done, see §21**; Room outstanding |
 | 4 | Compose UI | Watchlist → Deep Dive → Screener → Compare, tokens generated, screenshot diffs passing |
 | 5 | WorkManager sweep + local notifications | Alerts fire on-device with no network beyond market data |
 | 6 | Billing + relay + Firebase AI Logic | Paid analysis end-to-end |
@@ -737,3 +737,66 @@ today is not the same as one that is correct.
 * The `fetch` shim — `AbortSignal` and `Response` for `providers/yahoo.js`.
   Scoring needs no I/O; ingestion does, and `stock.js` bundles the same way.
 * R8 keep rules for the JNI surface, once there is an app to minify.
+
+---
+
+## 21. The interchange format
+
+`core/backup.js` defines the format and the merge rules; both clients apply the
+same ones, because a merge implemented twice is a merge that eventually loses
+somebody's note.
+
+The PWA half is wired end to end: `GET /api/theses` exports through
+`buildBackup`, and `POST /api/backup/import` merges. **Restore did not exist
+before this** — the README had promised "backup export and restore" while only
+export was built, so a person who exported a file had no way to use it.
+
+### Rules, and why they differ
+
+**A thesis takes the newer version whole; its journal entries are unioned.** A
+thesis is a document that gets rewritten, so the later `updatedAt` wins. Journal
+entries are append-only — nothing in either client deletes one — so entries from
+the *losing* side are kept. Editing a thesis on one device and writing a note on
+another must not cost you the note. That is the single most important line in
+the module.
+
+**A watchlist takes the newer version whole, tickers included.** Unioning them
+would be friendlier right up until it resurrected a holding someone deliberately
+sold. A list that will not let go is worse than one that occasionally needs
+re-adding.
+
+**Ties go to what is already here**, which is what makes a repeated import a
+no-op rather than a slow accumulation of duplicates.
+
+### Details that turned out to matter
+
+* **Entry ids are `Date.now()`** — unique on one device, not across two. Two
+  genuinely different notes can collide. Colliding entries with different
+  content are both kept, with the newcomer's id disambiguated, because silently
+  dropping one is the exact failure this module exists to prevent.
+* **`updatedAt` arrives from SQLite as `YYYY-MM-DD HH:MM:SS`**, so comparison
+  goes through `core/time.js` rather than `Date.parse`. Read as local time, a
+  close conflict would be resolved by the importing machine's timezone offset.
+* **Watchlists now carry `updatedAt` in the export.** Its absence meant every
+  watchlist conflict would have been a guess.
+* **Files exported before versioning are readable.** Version 1 is deliberately
+  the shape the PWA has always emitted, `is_default` spelling included. People
+  have those files already; refusing them would be a poor first act.
+* **A newer major version is refused, not partially read.** Dropping fields it
+  does not understand would lose data while reporting success.
+
+### The routing bug a live test caught
+
+The import endpoint was first written as `POST /api/theses/import`. Express
+matches in declaration order and `/api/theses/:ticker` is declared above it, so
+the whole backup was filed as a thesis for a company called **IMPORT**. Every
+unit test passed; only an HTTP call against a running server showed it.
+
+It now lives at `/api/backup/import`, a path that cannot collide however the
+routes are later reordered.
+
+### Still to build
+
+Room, and the Android side of import/export via SAF. The format, the merge and
+the PWA end are done and tested — `core/backup.test.js` for the rules,
+`test/backup-roundtrip.test.js` for the SQLite mapping either side of them.

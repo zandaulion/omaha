@@ -728,6 +728,59 @@ function initEventListeners() {
     window.location.href = '/api/theses';
   });
 
+  // Restore from file. The picker is hidden and driven by the visible button
+  // so it can be styled like the rest of the settings panel.
+  const importInput = document.getElementById('importBackupFile');
+  document.getElementById('importBackupBtn')?.addEventListener('click', () => {
+    importInput?.click();
+  });
+
+  importInput?.addEventListener('change', async () => {
+    const file = importInput.files?.[0];
+    if (!file) return;
+    const result = document.getElementById('importBackupResult');
+    const say = (text, colour) => {
+      if (result) {
+        result.textContent = text;
+        result.style.color = `var(${colour})`;
+      }
+    };
+
+    say('Restoring…', '--text-secondary');
+    try {
+      const text = await file.text();
+      const res = await apiFetch('/api/backup/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: text
+      });
+      const report = await res.json();
+      if (!res.ok) throw new Error(report.error || 'Restore failed.');
+
+      // Say what actually happened rather than "Done". A merge that silently
+      // kept the local copy looks identical to one that did nothing.
+      const parts = [];
+      const added = report.thesesAdded?.length || 0;
+      const updated = report.thesesUpdated?.length || 0;
+      const kept = report.thesesKept?.length || 0;
+      const notes = report.journalEntriesAdded || 0;
+      if (added) parts.push(`${added} thesis${added === 1 ? '' : 'es'} added`);
+      if (updated) parts.push(`${updated} updated`);
+      if (kept) parts.push(`${kept} already newer here`);
+      if (notes) parts.push(`${notes} journal note${notes === 1 ? '' : 's'} added`);
+      const lists = (report.watchlistsAdded?.length || 0) + (report.watchlistsUpdated?.length || 0);
+      if (lists) parts.push(`${lists} watchlist${lists === 1 ? '' : 's'} changed`);
+
+      say(parts.length ? `Restored: ${parts.join(', ')}.` : 'Nothing to restore — already up to date.', '--health-good');
+      await loadWatchlists();
+    } catch (err) {
+      say(err.message || 'Restore failed.', '--health-risk');
+    } finally {
+      // Cleared so choosing the same file twice fires the event again.
+      importInput.value = '';
+    }
+  });
+
   // Onboarding starter selection
   document.querySelectorAll('#onboardingModal [data-starter]').forEach((card) => {
     card.addEventListener('click', async () => {
