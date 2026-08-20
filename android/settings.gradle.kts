@@ -22,4 +22,5 @@ rootProject.name = "omaha-android"
 // APK whose size can be measured.
 include(":engine")
 include(":engine-android")
+include(":data")
 include(":probe")

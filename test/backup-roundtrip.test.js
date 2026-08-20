@@ -144,6 +144,22 @@ test('a malformed file is refused before anything is written', () => {
   assert.deepEqual(readPersonalData(), before, 'the database was not touched');
 });
 
+test('the committed PWA fixture is a valid backup and imports cleanly', () => {
+  // core/__fixtures__/backup.pwa.json is what the Android instrumented test
+  // imports. It was produced by this export path, and this asserts it still
+  // matches it — a fixture the other client reads must not drift.
+  const file = JSON.parse(
+    fs.readFileSync(new URL('../core/__fixtures__/backup.pwa.json', import.meta.url), 'utf8')
+  );
+
+  reset();
+  writePersonalData(mergeBackup(file, readPersonalData()));
+
+  const reExported = buildBackup(readPersonalData(), file.exportedAt);
+  assert.deepEqual(reExported.theses, file.theses, 'the fixture no longer round-trips');
+  assert.deepEqual(reExported.watchlists, file.watchlists);
+});
+
 test.after(() => {
   try {
     db.close();

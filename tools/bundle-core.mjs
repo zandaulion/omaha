@@ -29,11 +29,14 @@ const OUT_DIR = path.join(ROOT, 'core', 'dist');
 /**
  * Entry points the Android host loads.
  *
- * Only `scoring.js` for now: it is what the parity gate exercises and what the
- * spike proved. `stock.js` follows once the fetch and storage bridges exist,
- * and will bundle the same way.
+ * `scoring.js` is what the parity gate exercises. `backup.js` carries the merge
+ * rules, which have to be the same on both clients or a restore loses notes on
+ * one of them. `stock.js` follows once the fetch bridge exists.
  */
-export const ENTRIES = [{ entry: 'core/scoring.js', out: 'scoring.bundle.js' }];
+export const ENTRIES = [
+  { entry: 'core/scoring.js', out: 'scoring.bundle.js' },
+  { entry: 'core/backup.js', out: 'backup.bundle.js' }
+];
 
 /** Build one entry and return its contents, without writing. */
 async function render(entry) {

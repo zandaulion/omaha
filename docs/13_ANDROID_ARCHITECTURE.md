@@ -368,7 +368,7 @@ without waiting for `finance.js`.
 | 1a | Golden model fixtures | Recorded upstream responses replay offline to a byte-identical model — **done**, see §17 |
 | 1b | `finance.js` split | Store contract defined; assembly in `core/`; golden snapshots unchanged — **done**, see §19 |
 | 2 | QuickJS spike | Reproduces the golden snapshots for `NOK`, `AAPL` and `JPM` — **done on JVM (§18) and on device (§20)** |
-| 3 | Room + import/export | A PWA backup imports into Android and back out, losslessly — **format and PWA half done, see §21**; Room outstanding |
+| 3 | Room + import/export | A PWA backup imports into Android and back out, losslessly — **done, see §21 and §22**. SAF file picker outstanding |
 | 4 | Compose UI | Watchlist → Deep Dive → Screener → Compare, tokens generated, screenshot diffs passing |
 | 5 | WorkManager sweep + local notifications | Alerts fire on-device with no network beyond market data |
 | 6 | Billing + relay + Firebase AI Logic | Paid analysis end-to-end |
@@ -800,3 +800,65 @@ routes are later reordered.
 Room, and the Android side of import/export via SAF. The format, the merge and
 the PWA end are done and tested — `core/backup.test.js` for the rules,
 `test/backup-roundtrip.test.js` for the SQLite mapping either side of them.
+
+---
+
+## 22. Room, and the backup round trip on device
+
+A backup produced by the PWA imports into Android and exports again unchanged.
+Five instrumented tests, run on a Pixel 9a emulator.
+
+```bash
+cd android && ./gradlew :data:connectedDebugAndroidTest
+```
+
+The fixture is not hand-written: `core/__fixtures__/backup.pwa.json` was
+produced by the PWA's own export path, so the Android test reads what the other
+client actually emits. `test/backup-roundtrip.test.js` asserts that file still
+round-trips through Node, so it cannot drift away from the format it claims to
+represent.
+
+| Test | What it protects |
+|---|---|
+| imports and exports unchanged | every thesis, tag, trigger and journal entry survives |
+| emoji survive | the bridge truncation, in the place people actually use emoji |
+| repeated import is a no-op | ties resolve to what is already here |
+| a local note survives an older import | the rule the merge module exists for |
+| a newer schema is refused | and nothing is written |
+
+### Nothing about meaning was written in Kotlin
+
+`core/backup.js` runs in QuickJS through `JsBridge`; `PersonalDataStore` only
+moves rows between Room and the interchange shape, exactly as
+`server/backup-store.js` does for SQLite. Which version wins and which entries
+merge is decided in one place, by one implementation, for both clients.
+
+`JsBridge` generalises what `ScoringEngine` had been doing alone: JSON in, JSON
+out, one interpreter per call, ASCII across the wire, and errors reported
+through a binding so the message `core/` wrote survives instead of being
+flattened into a QuickJsException.
+
+### Two things the device found
+
+**Export order was not canonical.** `mergeBackup` sorted theses by ticker while
+`buildBackup` preserved input order — and the PWA reads theses with no
+`ORDER BY` while Room's DAO orders by ticker. The same data would have exported
+in two different orders from the two clients, making the files
+non-comparable and every diff noisy. `buildBackup` now sorts, so a merged
+export and a fresh one agree.
+
+**Room stores ISO-8601, SQLite stores `datetime('now')`.** Both are read through
+`core/time.js`, which is why a thesis edited on the phone and one edited in the
+browser compare correctly rather than by whichever host happened to write the
+timestamp.
+
+### Still to build
+
+The SAF file picker — choosing a file to import and a destination to export to.
+That is UI, and it belongs with the Compose work in step 4 rather than ahead of
+it. The storage, the format and the merge are done and tested on both clients.
+
+Room is deliberately narrow: two tables. The PWA's schema has ten, but the rest
+are either cache that will be re-fetched or the multi-device apparatus —
+devices, invites, push subscriptions — that exists only because the PWA is
+served over a network.

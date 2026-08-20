@@ -163,10 +163,18 @@ export function buildBackup(data, exportedAt) {
   return {
     schemaVersion: SCHEMA_VERSION,
     exportedAt,
-    theses: (data.theses || []).map(normaliseThesis).filter(Boolean),
-    watchlists: (data.watchlists || []).map(normaliseWatchlist).filter(Boolean)
+    // Sorted, and sorted here rather than left to the host. The PWA reads
+    // theses with no ORDER BY while Android's DAO orders by ticker, so without
+    // this the same data would export in two different orders and the files
+    // would not be comparable. `mergeBackup` produces the same order, so a
+    // merged export and a fresh one agree.
+    theses: (data.theses || []).map(normaliseThesis).filter(Boolean).sort(byTicker),
+    watchlists: (data.watchlists || []).map(normaliseWatchlist).filter(Boolean).sort(byId)
   };
 }
+
+const byTicker = (a, b) => (a.ticker < b.ticker ? -1 : a.ticker > b.ticker ? 1 : 0);
+const byId = (a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 
 // ------------------------------------------------------------------ merging
 
@@ -202,11 +210,11 @@ export function mergeBackup(incoming, current) {
   };
 
   // ---- theses
-  const byTicker = new Map(cur.theses.map((t) => [t.ticker, t]));
+  const byTicker_ = new Map(cur.theses.map((t) => [t.ticker, t]));
   for (const incomingThesis of inc.theses) {
-    const existing = byTicker.get(incomingThesis.ticker);
+    const existing = byTicker_.get(incomingThesis.ticker);
     if (!existing) {
-      byTicker.set(incomingThesis.ticker, incomingThesis);
+      byTicker_.set(incomingThesis.ticker, incomingThesis);
       report.thesesAdded.push(incomingThesis.ticker);
       report.journalEntriesAdded += incomingThesis.journalEntries.length;
       continue;
@@ -217,35 +225,35 @@ export function mergeBackup(incoming, current) {
 
     const incomingIsNewer = isAfter(incomingThesis.updatedAt, existing.updatedAt);
     const winner = incomingIsNewer ? incomingThesis : existing;
-    byTicker.set(incomingThesis.ticker, { ...winner, journalEntries: merged });
+    byTicker_.set(incomingThesis.ticker, { ...winner, journalEntries: merged });
 
     if (incomingIsNewer) report.thesesUpdated.push(incomingThesis.ticker);
     else report.thesesKept.push(incomingThesis.ticker);
   }
 
   // ---- watchlists
-  const byId = new Map(cur.watchlists.map((w) => [w.id, w]));
+  const byWatchlistId = new Map(cur.watchlists.map((w) => [w.id, w]));
   for (const incomingList of inc.watchlists) {
-    const existing = byId.get(incomingList.id);
+    const existing = byWatchlistId.get(incomingList.id);
     if (!existing) {
-      byId.set(incomingList.id, incomingList);
+      byWatchlistId.set(incomingList.id, incomingList);
       report.watchlistsAdded.push(incomingList.id);
       continue;
     }
     if (isAfter(incomingList.updatedAt, existing.updatedAt)) {
-      byId.set(incomingList.id, incomingList);
+      byWatchlistId.set(incomingList.id, incomingList);
       report.watchlistsUpdated.push(incomingList.id);
     } else {
       report.watchlistsKept.push(incomingList.id);
     }
   }
 
-  const watchlists = [...byId.values()];
+  const watchlists = [...byWatchlistId.values()];
   enforceSingleDefault(watchlists, cur.watchlists);
 
   return {
-    theses: [...byTicker.values()].sort((a, b) => (a.ticker < b.ticker ? -1 : 1)),
-    watchlists,
+    theses: [...byTicker_.values()].sort(byTicker),
+    watchlists: watchlists.sort(byId),
     report
   };
 }
