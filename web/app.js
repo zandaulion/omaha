@@ -1659,7 +1659,11 @@ function renderGeminiDashboard(data) {
     <div class="ai-buyzone-card">
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
         <div class="section-title" style="color: var(--brand-cyan);">🎯 Value Investor Buy Zone & Strategy</div>
-        ${data.buyZone?.targetRange ? `<span class="score-badge pristine mono">${data.buyZone.targetRange}</span>` : ''}
+        ${isNum(data.buyZone?.maxPrice) ? `<span class="score-badge ${
+          data.buyZone.alreadyInZone ? 'pristine' : 'moderate'
+        } mono">${data.buyZone.alreadyInZone ? 'In zone' : 'Above zone'} · up to ${
+          fmtPrice(data.buyZone.maxPrice, data.buyZone.currency || data.currency)
+        }</span>` : ''}
       </div>
       ${data.buyZone?.perspective ? `<p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px;">${data.buyZone.perspective}</p>` : ''}
       <div style="font-size: 13px; color: var(--text-primary); line-height: 1.5; padding: 10px 12px; background: var(--bg-surface-subtle); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); margin-bottom: 8px;">
@@ -1674,6 +1678,39 @@ function renderGeminiDashboard(data) {
         </div>
       ` : ''}
     </div>
+
+    ${data.contextFromModelKnowledge?.hasContext && data.contextFromModelKnowledge.points?.length ? `
+      <div class="card ai-recall-card">
+        <div class="ai-recall-head">
+          <span class="ai-recall-title">Context the filings don't contain</span>
+          <span class="ai-recall-tag">from the model's own knowledge</span>
+        </div>
+        <p class="ai-recall-caveat">
+          Not measured from any filing — this is the model recalling what it knows about the
+          company${data.contextFromModelKnowledge.asOfCaveat
+            ? `. ${String(data.contextFromModelKnowledge.asOfCaveat).replace(/[.\s]+$/, '')}`
+            : ', and its knowledge has a cutoff date'}. Verify before acting on it.
+        </p>
+        <ul class="ai-recall-list">
+          ${data.contextFromModelKnowledge.points.map(p => `
+            <li>
+              <span class="ai-confidence is-${(p.confidence || 'low').toLowerCase()}">${p.confidence}</span>
+              <span>${p.claim}</span>
+            </li>`).join('')}
+        </ul>
+      </div>
+    ` : ''}
+
+    ${data.dataLimitations?.length ? `
+      <div class="card ai-limits-card">
+        <div class="ai-recall-head">
+          <span class="ai-recall-title">What limits this analysis</span>
+        </div>
+        <ul class="ai-limits-list">
+          ${data.dataLimitations.map(l => `<li>${l}</li>`).join('')}
+        </ul>
+      </div>
+    ` : ''}
 
     <!-- 7. Meta Bar -->
     <div class="ai-meta-bar">
