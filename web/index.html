@@ -886,12 +886,16 @@
 
         <!-- Push Notifications Toggle -->
         <div class="card" style="margin-bottom: 14px;">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div class="push-row">
             <div>
               <div class="section-title">🔔 Web Push Notifications</div>
-              <p style="font-size: 12px; color: var(--text-secondary);">Alerts on health score shifts & filings</p>
+              <p class="push-sub">Alerts on health score shifts, distress signals and entry points</p>
             </div>
             <button class="btn-secondary" id="enablePushBtn">Enable</button>
+          </div>
+          <div class="push-test-row">
+            <button class="btn-secondary" id="testPushBtn" disabled>Send a test notification</button>
+            <span class="push-test-status" id="testPushStatus"></span>
           </div>
         </div>
 

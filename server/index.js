@@ -19,7 +19,7 @@ import {
   redeemInvite,
   checkSession
 } from './auth.js';
-import { initVapid, getVapidPublicKey, saveSubscription, broadcastPush } from './push.js';
+import { initVapid, getVapidPublicKey, saveSubscription, broadcastPush, sendToDevice } from './push.js';
 import { generateStockAISummary, getCachedAISummary } from './gemini.js';
 import {
   startAlertWorker,
@@ -85,16 +85,52 @@ app.get('/api/auth/session', checkSession);
 // ----------------- PUSH NOTIFICATIONS API -----------------
 app.get('/api/push/vapid-key', getVapidPublicKey);
 app.post('/api/push/subscribe', requireDeviceAuth, saveSubscription);
-app.post('/api/push/test', requireAdmin, async (req, res) => {
-  const { title = 'Pocket Omaha Alert 🎩', body = 'Test health score update notification' } = req.body || {};
-  const results = await broadcastPush({
-    title,
-    body,
+/**
+ * Send a test notification to the calling device.
+ *
+ * Deliberately built from the same shape a real alert uses — same icon, badge,
+ * tag and payload — so it exercises the delivery path rather than proving only
+ * that the endpoint responds. Scoped to the caller: several devices are
+ * registered in this household and a test on one should not wake the rest.
+ * The admin listener, which has no device of its own, still broadcasts.
+ */
+app.post('/api/push/test', requireDeviceAuth, async (req, res) => {
+  const payload = {
+    title: '🎩 Pocket Omaha — test',
+    body: 'Notifications are working. Real alerts look like this: health changes, distress signals and entry points.',
     icon: '/icons/icon-192.png',
     badge: '/icons/badge-96.png',
-    data: { url: '/' }
-  });
-  res.json({ success: true, delivered: results.length });
+    tag: 'TEST_NOTIFICATION',
+    data: { url: '/', type: 'TEST_NOTIFICATION', severity: 'info' }
+  };
+
+  try {
+    if (!req.device) {
+      const results = await broadcastPush(payload);
+      return res.json({ success: true, scope: 'all devices', delivered: results.length });
+    }
+
+    const result = await sendToDevice(req.device.id, payload);
+
+    if (result.subscriptions === 0) {
+      return res.status(409).json({
+        error: 'This device has not subscribed to notifications yet. Enable them first.',
+        code: 'no-subscription'
+      });
+    }
+    if (result.delivered === 0) {
+      return res.status(502).json({
+        error: 'The push service rejected the message. Re-enable notifications and try again.',
+        code: 'delivery-failed',
+        detail: result.errors[0] || null
+      });
+    }
+
+    return res.json({ success: true, scope: 'this device', delivered: result.delivered });
+  } catch (err) {
+    console.error('Push test error:', err);
+    return res.status(500).json({ error: 'Could not send the test notification.' });
+  }
 });
 
 // ----------------- ALERTS & NOTIFICATIONS (PROTECTED) -----------------
