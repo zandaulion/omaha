@@ -427,7 +427,7 @@ export function buildComprehensivePayload(stock, thesis = null) {
  * inline JSON-shape prose from every call, and it is the reason the prompt
  * below can talk about analysis instead of formatting.
  */
-const RESPONSE_SCHEMA = {
+export const RESPONSE_SCHEMA = {
   type: 'OBJECT',
   properties: {
     verdict: { type: 'STRING' },
@@ -550,18 +550,16 @@ const RESPONSE_SCHEMA = {
 };
 
 /**
- * Generate in-depth Gemini analysis
+ * The instruction text sent alongside the data package.
+ *
+ * Exported so it can be rendered and read on its own — `npm run prompt`
+ * prints exactly what the model receives for a given ticker. A prompt that
+ * can only be read by reverse-engineering the code is a prompt nobody
+ * reviews.
  */
-export async function generateStockAISummary(stock, thesis = null) {
-  const apiKey = getGeminiApiKey();
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY is not configured on the server. Please provide a valid Gemini API key.');
-  }
-
-  const model = getGeminiModel();
+export function buildPrompt(stock, thesis = null) {
   const payloadData = buildComprehensivePayload(stock, thesis);
-
-  const promptText = `
+  return `
 You are a fundamental equity analyst working in the tradition of Buffett, Munger
 and Graham: business quality first, price second, and an unflinching account of
 what you do not know.
@@ -630,6 +628,20 @@ Three rules follow from it, in order of importance:
 
 ${JSON.stringify(payloadData, null, 2)}
 `.trim();
+}
+
+/**
+ * Generate in-depth Gemini analysis
+ */
+export async function generateStockAISummary(stock, thesis = null) {
+  const apiKey = getGeminiApiKey();
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY is not configured on the server. Please provide a valid Gemini API key.');
+  }
+
+  const model = getGeminiModel();
+
+  const promptText = buildPrompt(stock, thesis);
 
   const requestBody = {
     contents: [{ parts: [{ text: promptText }] }],

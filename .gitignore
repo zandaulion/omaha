@@ -5,3 +5,6 @@ data/*.db
 .admin.env
 .DS_Store
 npm-debug.log*
+
+# Generated prompt snapshots (npm run prompt)
+gemini-prompt.*.md
