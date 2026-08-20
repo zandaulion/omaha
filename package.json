@@ -1,23 +1,23 @@
 {
   "name": "pocket-omaha",
   "version": "1.0.0",
-  "description": "Pocket Omaha — PWA for Stock Health, Moats, and Fundamental Rigor",
+  "description": "Pocket Omaha \u2014 PWA for Stock Health, Moats, and Fundamental Rigor",
   "main": "server/index.js",
   "type": "module",
   "scripts": {
     "start": "node server/index.js",
-    "dev": "node --watch server/index.js"
+    "dev": "node --watch server/index.js",
+    "test": "node --test server/*.test.js"
   },
   "license": "GPL-3.0-or-later",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/marinmda/omaha.git"
+    "url": "git+https://github.com/zandaulion/omaha.git"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "web-push": "^3.6.7",
-    "yahoo-finance2": "^2.13.3"
+    "web-push": "^3.6.7"
   }
 }

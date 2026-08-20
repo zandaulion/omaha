@@ -27,132 +27,152 @@ This document outlines the scoring architecture used to convert raw financial st
 
 ---
 
-## 2. Pillar Scoring Model (100 Points Total)
+## 2. How an unmeasurable metric is handled
 
-Each pillar is scored from 0 to 20 points based on weighted sub-metrics and sector-normalized benchmarks.
+This comes before the pillars because it governs all of them.
 
-### Pillar 1: Financial Health & Solvency (Weight: 20 pts)
-*Measures insolvency risk, leverage, and liquidity cushion.*
-* **Altman Z-Score** (0–5 pts):
-  * $Z > 3.0$ (Safe Zone): **5 pts**
-  * $1.8 \le Z \le 3.0$ (Grey Zone): **3 pts**
-  * $Z < 1.8$ (Distress Zone): **0 pts**
-* **Net Debt to EBITDA** (0–5 pts):
-  * Net Cash (Cash > Debt): **5 pts**
-  * $< 1.5x$: **4 pts**
-  * $1.5x - 3.0x$: **2 pts**
-  * $> 3.0x$: **0 pts**
-* **Interest Coverage (EBIT / Interest Expense)** (0–5 pts):
-  * $> 8.0x$: **5 pts**
-  * $4.0x - 8.0x$: **3 pts**
-  * $1.5x - 4.0x$: **1 pt**
-  * $< 1.5x$: **0 pts**
-* **Current & Quick Ratios** (0–5 pts):
-  * Current $> 1.5$ & Quick $> 1.0$: **5 pts**
-  * Current $> 1.0$: **3 pts**
-  * Current $< 1.0$: **0 pts**
+A company's filings may not contain a given line item. A bank files no gross
+profit; a company with only one filed year has no Piotroski score; some filers
+stop disclosing interest expense. In every such case:
 
----
+1. The metric is `null` — never a default, a sector average, or a scaled copy
+   of an adjacent year.
+2. Its sub-score is marked **unavailable** and contributes nothing.
+3. The pillar's denominator shrinks accordingly, so the company is neither
+   credited nor penalised for the gap, and the pillar is rescaled to 20.
+4. If fewer than **60%** of all sub-scores can be measured, **no composite
+   score is emitted at all** — the app shows "Not enough filed data to score"
+   with the coverage ratio, rather than a number built mostly from absences.
 
-### Pillar 2: Profitability & Moat Quality (Weight: 20 pts)
-*Measures capital allocation efficiency and economic moat durability.*
-* **Piotroski F-Score (0–9 scale converted to 0–5 pts)**:
-  * 8–9 (Exceptional): **5 pts**
-  * 6–7 (Good): **3.5 pts**
-  * 4–5 (Average): **2 pts**
-  * $\le 3$ (Weak): **0 pts**
-* **Return on Invested Capital (ROIC)** (0–5 pts):
-  * $\text{ROIC} > 15\%$ (Substantial Moat): **5 pts**
-  * $10\% - 15\%$: **3.5 pts**
-  * $5\% - 10\%$: **2 pts**
-  * $< 5\%$: **0 pts**
-* **Operating Margin Stability (3-Year Trend)** (0–5 pts):
-  * Expanding margins $> +100\text{ bps}$: **5 pts**
-  * Stable ($\pm 50\text{ bps}$): **3.5 pts**
-  * Compressing margins: **0–1 pts**
-* **Free Cash Flow Conversion (FCF / Net Income)** (0–5 pts):
-  * $> 100\%$ (High quality earnings): **5 pts**
-  * $80\% - 100\%$: **3.5 pts**
-  * $< 50\%$ or Negative FCF: **0 pts**
+Metrics that are *inapplicable to the business model* rather than merely
+missing are removed from the scorecard entirely instead of counted as
+unmeasured. A bank is scored on equity/assets and return on equity; it is not
+marked down for having no working-capital cycle.
+
+The interface always states which fiscal year the fundamentals come from and,
+where coverage is below 100%, how many measures were available.
 
 ---
 
-### Pillar 3: Valuation & Margin of Safety (Weight: 20 pts)
-*Measures price paid relative to intrinsic value, historical multiples, and peers.*
-* **Forward P/E vs. 5-Year Historical Average** (0–5 pts):
-  * $> 15\%$ below historical average: **5 pts**
-  * Within $\pm 10\%$ of historical average: **3.5 pts**
-  * $> 25\%$ above historical average: **1 pt**
-* **PEG Ratio (P/E to Forward Growth)** (0–5 pts):
-  * $\text{PEG} < 1.0$ (Undervalued for growth): **5 pts**
-  * $1.0 \le \text{PEG} \le 1.8$: **3.5 pts**
-  * $1.8 < \text{PEG} \le 2.5$: **2 pts**
-  * $\text{PEG} > 2.5$: **0 pts**
-* **EV / Free Cash Flow Yield** (0–5 pts):
-  * FCF Yield $> 6.0\%$: **5 pts**
-  * $4.0\% - 6.0\%$: **3.5 pts**
-  * $2.0\% - 4.0\%$: **2 pts**
-  * $< 2.0\%$: **0.5 pts**
-* **DCF Fair Value Discount** (0–5 pts):
-  * Trading at $> 20\%$ discount to 2-stage DCF: **5 pts**
-  * At fair value ($\pm 10\%$): **3 pts**
-  * $> 20\%$ premium: **0 pts**
+## 3. Pillar Scoring Model (100 Points Total)
+
+Each pillar carries 20 points, scored over whichever of its sub-measures the
+filings support.
+
+### Pillar 1: Financial Health & Solvency
+
+*Operating companies* — four measures at 5 points each:
+
+| Measure | 5 pts | 3–4 pts | 0 pts |
+|---|---|---|---|
+| **Altman Z-Score** | $Z \ge 3.0$ | $1.8 \le Z < 3.0$ → 3 | $Z < 1.8$ |
+| **Net debt / EBITDA** | net cash | $< 1.5\times$ → 4; $\le 3.0\times$ → 2 | $> 3.0\times$ |
+| **Interest coverage** | $> 8\times$, or no debt | $4$–$8\times$ → 3; $1.5$–$4\times$ → 1 | $< 1.5\times$ |
+| **Current & quick ratio** | current $\ge 1.5$ and quick $\ge 1.0$ | current $\ge 1.0$ → 3 | current $< 1.0$ |
+
+*Banks, insurers and REITs* — one measure, the others being inapplicable:
+
+| Measure | 5 pts | 2.5–4 pts | 0 pts |
+|---|---|---|---|
+| **Equity / assets** | $\ge 10\%$ | $\ge 8\%$ → 4; $\ge 6\%$ → 2.5 | $< 6\%$ |
+
+### Pillar 2: Profitability & Moat Quality
+
+| Measure | 5 pts | 2–3.5 pts | 0 pts |
+|---|---|---|---|
+| **Piotroski F-Score** | 8–9 | 6–7 → 3.5; 4–5 → 2 | $\le 3$ |
+| **ROIC** (operating cos.) | $\ge 15\%$ | $\ge 10\%$ → 3.5; $\ge 5\%$ → 2 | $< 5\%$ |
+| **Return on equity** (financials) | $\ge 15\%$ | $\ge 10\%$ → 3.5; $\ge 6\%$ → 2 | $< 6\%$ |
+| **Operating margin trend** | $> +100$ bps YoY | $\ge -50$ bps → 3.5; $\ge -200$ bps → 1.5 | worse |
+| **FCF conversion** | $\ge 100\%$ | $\ge 80\%$ → 3.5; $\ge 50\%$ → 2 | $< 50\%$ |
+
+Note the operating-margin row measures the **trend**, not the level. A 25%
+margin compressing from 40% is a different business from one expanding towards
+25%, and only the trend distinguishes them.
+
+### Pillar 3: Valuation & Margin of Safety
+
+| Measure | 5 pts | 2–3.5 pts | 0 pts |
+|---|---|---|---|
+| **Forward P/E vs. its own 5-year range** | $> 15\%$ below median | within $\pm 10\%$ → 3.5; $\le 25\%$ above → 2 | further above |
+| **PEG ratio** | $< 1.0$ | $\le 1.8$ → 3.5; $\le 2.5$ → 2 | $> 2.5$ |
+| **EV / FCF yield** | $\ge 6\%$ | $\ge 4\%$ → 3.5; $\ge 2\%$ → 2 | $< 2\%$ |
+| **Discount to DCF fair value** | $\ge 20\%$ | $\ge -10\%$ → 3; $\ge -20\%$ → 1 | further above |
+
+The P/E row compares against the stock's own history, built from five years of
+monthly closes divided by the diluted EPS filed at each point. A negative PEG
+means earnings are shrinking, which is not a cheapness signal — that row is
+marked unavailable rather than scored.
+
+### Pillar 4: Growth & Operating Leverage
+
+| Measure | 5 pts | 1.5–3.5 pts | 0 pts |
+|---|---|---|---|
+| **Revenue CAGR** | $\ge 15\%$ | $\ge 8\%$ → 3.5; $\ge 3\%$ → 2 | $< 3\%$ |
+| **Diluted EPS CAGR** | $\ge 20\%$ | $\ge 10\%$ → 3.5; $\ge 0\%$ → 1.5 | negative |
+| **FCF per share CAGR** | $\ge 15\%$ | $\ge 5\%$ → 3.5; $\ge 0\%$ → 1.5 | negative |
+| **Gross margin trajectory** | expanding | $\ge -100$ bps → 3.5; $\ge -300$ bps → 1.5 | sharper fall |
+
+EPS and FCF per share are separate measurements taken from separate series.
+The margin trajectory uses the filed quarters where available, falling back to
+year-on-year. Financials are scored on the first two rows only.
+
+### Pillar 5: Capital Allocation & Shareholder Returns
+
+| Measure | Full marks | Partial | 0 |
+|---|---|---|---|
+| **Buybacks vs. dilution** (7 pts) | shares down $\ge 2\%$ | flat $\pm 0.5\%$ → 5; $\le +2\%$ → 2 | $> +2\%$ dilution |
+| **Dividend safety** (7 pts, payers) | FCF payout $< 60\%$ and $\ge 5$-year streak | covered but shorter streak → 5.5; payout $< 90\%$ → 3 | above 90% |
+| **Reinvestment quality** (7 pts, non-payers) | ROIC $\ge 15\%$ | $\ge 10\%$ → 5; $\ge 5\%$ → 3 | $< 5\%$ |
+| **Asset turnover** (6 pts) | $\ge 1.25\times$ sector median | $\ge 0.9\times$ → 4.5; $\ge 0.6\times$ → 3 | below |
+
+Asset turnover is scored against the median of cached peers in the same sector
+once at least three exist; below that it falls back to absolute thresholds. A
+grocer and a software company are not comparable on turnover in absolute terms.
+
+### The composite
+
+The composite is $\text{earned} / \text{possible} \times 100$ over the
+measurable sub-scores. **There is no floor.** A company that fails every
+measurable test scores 0, and the tier boundaries (85 / 70 / 50) are calibrated
+against a scale that genuinely reaches the bottom.
 
 ---
 
-### Pillar 4: Growth & Operating Leverage (Weight: 20 pts)
-*Measures top-line and bottom-line expansion velocity.*
-* **Revenue CAGR (3-Year)** (0–5 pts):
-  * $> 15\%$: **5 pts**
-  * $8\% - 15\%$: **3.5 pts**
-  * $3\% - 8\%$: **2 pts**
-  * $< 0\%$: **0 pts**
-* **EPS Growth (Diluted, 3-Year CAGR)** (0–5 pts):
-  * $> 20\%$: **5 pts**
-  * $10\% - 20\%$: **3.5 pts**
-  * $0\% - 10\%$: **1.5 pts**
-  * Negative: **0 pts**
-* **FCF per Share Growth (3-Year)** (0–5 pts):
-  * $> 15\%$: **5 pts**
-  * $5\% - 15\%$: **3.5 pts**
-  * Negative: **0 pts**
-* **Gross Margin Trend** (0–5 pts):
-  * Stable or expanding over 5 consecutive quarters: **5 pts**
+## 4. The 12-Point Traffic-Light Fundamental Checklist
 
----
+Each item resolves to 🟢 pass, 🟡 watch, 🔴 fail, or **not reported** — the
+fourth state being as informative as the others, and never silently folded
+into one of the first three.
 
-### Pillar 5: Capital Allocation & Shareholder Returns (Weight: 20 pts)
-*Measures how responsibly management allocates capital.*
-* **Share Count Dilution / Buyback Yield** (0–7 pts):
-  * Net share reduction $> 2\%$ / year (Accretive buybacks): **7 pts**
-  * Share count flat ($\pm 0.5\%$): **5 pts**
-  * Share dilution $> 2\%$ / year (Excessive SBC): **0 pts**
-* **Dividend Safety & Coverage (if paying dividend) OR Reinvestment Rate**:
-  * For dividend payers: FCF Payout Ratio $< 60\%$ + 5+ yr streak: **7 pts**
-  * For non-dividend payers: Reinvestment Rate with ROIC $> 15\%$: **7 pts**
-* **Return on Assets (ROA) / Asset Turnover Efficiency** (0–6 pts):
-  * High asset turnover relative to sector median: **6 pts**
-
----
-
-## 3. The 12-Point Traffic-Light Fundamental Checklist
-
-The checklist gives an instant binary/ternary health test:
-
-| # | Check Name | 🟢 Pass Criteria | 🟡 Watch Criteria | 🔴 Fail Criteria |
-|---|------------|-------------------|-------------------|------------------|
+| # | Check | 🟢 Pass | 🟡 Watch | 🔴 Fail |
+|---|-------|---------|----------|---------|
 | 1 | **Altman Z-Score** | $Z \ge 3.0$ | $1.8 \le Z < 3.0$ | $Z < 1.8$ |
-| 2 | **Interest Coverage** | $> 6.0x$ | $2.5x - 6.0x$ | $< 2.5x$ |
-| 3 | **Current Ratio** | $\ge 1.5$ | $1.0 - 1.49$ | $< 1.0$ |
-| 4 | **Debt to Equity** | $< 0.8$ or Net Cash | $0.8 - 1.8$ | $> 1.8$ |
-| 5 | **Positive Free Cash Flow** | Positive all 5 past yrs | Positive 3-4 yrs | Negative $\ge 2$ yrs |
-| 6 | **Piotroski F-Score** | 7, 8, 9 | 5, 6 | $\le 4$ |
-| 7 | **ROIC vs WACC** | $\text{ROIC} \ge \text{WACC} + 5\%$ | $\text{ROIC} \ge \text{WACC}$ | $\text{ROIC} < \text{WACC}$ |
-| 8 | **Gross Margin Consistency** | Expanding / Steady | $\le 100\text{ bps}$ drop | Sharp compression |
-| 9 | **Share Dilution** | Shrinking or $< 0.5\%$ | $0.5\% - 2.5\%$ | $> 2.5\%$ dilution |
-| 10| **FCF / Net Income Quality** | $> 90\%$ | $60\% - 90\%$ | $< 60\%$ |
-| 11| **Valuation PEG Ratio** | $\le 1.5$ | $1.5 - 2.2$ | $> 2.2$ |
-| 12| **Revenue 3Y Growth** | $> 8\%$ CAGR | $2\% - 8\%$ CAGR | Declining ($< 0\%$) |
+| 2 | **Interest coverage** | $> 6\times$, or no debt | $2.5$–$6\times$ | $< 2.5\times$ |
+| 3 | **Current ratio** | $\ge 1.5$ | $1.0$–$1.49$ | $< 1.0$ |
+| 4 | **Debt to equity** | $< 0.8$ or net cash | $0.8$–$1.8$ | $> 1.8$, or negative equity |
+| 5 | **Free cash flow history** | positive every filed year | one negative year | two or more |
+| 6 | **Piotroski F-Score** | $\ge 7$ | $5$–$6$ | $\le 4$ |
+| 7 | **ROIC vs. WACC** | spread $\ge +5$ pts | spread $\ge 0$ | ROIC below WACC |
+| 8 | **Gross margin consistency** | expanding or steady | $\le 100$ bps drop | sharper compression |
+| 9 | **Share dilution** | shrinking or $< 0.5\%$ | $0.5\%$–$2.5\%$ | $> 2.5\%$ |
+| 10 | **FCF / net income** | $> 90\%$ | $60\%$–$90\%$ | $< 60\%$ |
+| 11 | **PEG ratio** | $\le 1.5$ | $1.5$–$2.2$ | $> 2.2$ |
+| 12 | **Revenue growth** | $> 8\%$ CAGR | $2\%$–$8\%$ | $< 2\%$ |
+
+Items that report **not reported** rather than a status:
+
+* **#1** for banks, insurers and REITs — Altman is undefined for them.
+* **#3** likewise: those balance sheets are not classified current/non-current.
+* **#4** shows *negative book equity* as its own fail state. A ratio cannot be
+  formed against negative equity, and defaulting it into the pass band inverts
+  the single loudest leverage signal there is.
+* **#7** falls back to an absolute 15% threshold when beta or market cap is
+  unavailable and WACC cannot be estimated.
+* **#11** when expected growth is negative — a shrinking business is not cheap.
+
+Checks #5 and #8 measure history and direction rather than the latest level,
+which is what the words "history" and "consistency" mean.
 
 ---
 

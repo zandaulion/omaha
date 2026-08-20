@@ -5,6 +5,29 @@
 
 ---
 
+## The rule this app is built on
+
+**A number shown to you is a number that was measured.**
+
+Yahoo's free statement endpoints have been hollowed out — `balanceSheetHistory`
+now returns nothing but a date. Any app that reads them and quietly substitutes
+a default where a field is missing will render a complete, confident, mostly
+fictional scorecard. So Pocket Omaha does the opposite:
+
+* A value the filings do not contain is **`null`**, never a plausible constant.
+* An unmeasurable check reads **not reported** and is excluded from the score,
+  so it neither helps nor hurts.
+* Below 60% measurement coverage, **no composite score is produced at all**.
+* Charts leave a **gap** for an unreported year. No padding, no extrapolation.
+* An unknown ticker is a **404**, not an invented company.
+* Every scorecard states the fiscal year it was built from.
+
+Where a metric does not fit a business — Altman Z for a bank, free cash flow
+valuation for a lender, debt/equity against negative book equity — it is
+reported as inapplicable and a measure that does fit is used instead.
+
+---
+
 ## 🌟 Key Features
 
 1. **Composite Health Scorecard (0–100)**:
@@ -12,14 +35,14 @@
      - 🛡️ **Financial Health & Solvency** (Altman Z-Score, Net Debt / EBITDA, Current Ratio)
      - 🚀 **Profitability & Moat Quality** (ROIC, Operating Margins, Piotroski F-Score)
      - 🎯 **Valuation & Margin of Safety** (Historical P/E, PEG, EV/FCF, DCF Discount)
-     - 📈 **Growth & Operating Leverage** (Revenue & EPS 3-Year CAGR, Gross Margin Trend)
+     - 📈 **Growth & Operating Leverage** (Revenue, EPS and FCF-per-share CAGR, Gross Margin Trend)
      - 💰 **Capital Allocation & Returns** (Share Dilution / Buyback Yield, Dividend Safety)
 
 2. **12-Point Traffic-Light Fundamental Checklist**:
    - Instant 🟢 `PASS` / 🟡 `WATCH` / 🔴 `FAIL` assessment against rigorous value-investing benchmarks.
    - Interactive detail drawers explaining the economic moat logic behind each test.
 
-3. **5-Year Historical Financial Trajectory**:
+3. **Historical Financial Trajectory** (as many years as the company has filed):
    - Dual bar chart of **Revenue vs. Free Cash Flow ($B)** with real cash conversion analysis.
    - **Balance Sheet Cushion Stack** comparing Liquid Cash directly against Total Debt obligations.
    - Gross vs. Operating Margin expansion trends.
@@ -40,15 +63,38 @@
    - Multi-factor filtering with instant preset queries (*👑 Fortress Moats*, *🚀 ROIC ≥ 20%*, *💎 Net Cash*).
    - Side-by-side comparison matrix for up to 4 peer tickers.
 
-7. **Zero-Recurring-Cost Architecture & Offline-First PWA**:
-   - `yahoo-finance2` zero-cost financial statement ingestion.
-   - 15-minute quote caching and 24-hour financial statement caching in SQLite.
-   - Standalone mobile PWA installation for iOS (Safari) and Android (Chrome).
-   - Service worker offline cache and VAPID Web Push notifications.
+7. **Alert Engine**:
+   - Watchlist holdings re-checked four times a day against a stored snapshot.
+   - Health score moves of 3+ points, checklist state changes, distress
+     thresholds, and margin-of-safety entry points.
+   - Sunday morning portfolio digest.
+   - Per-alert-type preferences and a delivered-alert history in Settings.
 
-8. **Admin Integration with `pwa-invite-console`**:
-   - Exposes standard `/api/admin/*` endpoints protected by `X-Admin: 1` header.
-   - Passwordless invite code generation and single-device token binding.
+8. **Zero-Recurring-Cost Architecture & Offline-First PWA**:
+   - Statements from Yahoo's `fundamentals-timeseries` service; no API keys.
+   - 15-minute quote caching and 24-hour statement caching in SQLite.
+   - Last good API response held in IndexedDB, with an age-stamped banner when
+     serving it.
+   - Standalone PWA installation for iOS (Safari) and Android (Chrome).
+
+9. **Admin Integration with `pwa-invite-console`**:
+   - Standard `/api/admin/*` endpoints, reachable only on the private listener
+     that injects `X-Admin: 1`.
+   - Passwordless invites: 12-character CSPRNG codes, single-device binding,
+     per-IP and global redemption throttling.
+
+---
+
+## Testing
+
+```bash
+npm test
+```
+
+32 assertions in `server/scoring.test.js`, each one corresponding to a defect
+that shipped in an earlier build of the scoring engine. They are the reason the
+engine can be changed with any confidence — every one of these produced a
+plausible, wrong number that looked correct on screen.
 
 ---
 
@@ -120,9 +166,13 @@ pocket-omaha/
 ├── server/
 │   ├── index.js               # Express API and static server
 │   ├── db.js                  # SQLite database engine (node:sqlite)
-│   ├── scoring.js             # Quantitative scoring (Altman Z, Piotroski, ROIC, DCF)
-│   ├── finance.js             # yahoo-finance2 data provider and multi-tier cache
-│   ├── auth.js                # Device management and pwa-invite-console integration
+│   ├── scoring.js             # Scoring engine (Altman Z, Piotroski, ROIC, WACC, DCF)
+│   ├── scoring.test.js        # Regression suite — one test per historical defect
+│   ├── yahoo.js               # Statement ingestion; returns null for absent fields
+│   ├── finance.js             # Model assembly, cache tiers, sector and P/E context
+│   ├── alerts.js              # Trigger rules, delta engine, sweep and digest worker
+│   ├── gemini.js              # AI analysis payload and prompt
+│   ├── auth.js                # Invites, device binding, redemption throttle
 │   └── push.js                # Web Push VAPID notification service
 ├── web/
 │   ├── index.html             # Mobile-first PWA shell

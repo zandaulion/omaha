@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import { db } from './db.js';
+import { formatMoney } from './scoring.js';
 
 dotenv.config();
 
@@ -60,105 +61,184 @@ export function saveCachedAISummary(ticker, summary) {
  * Build a structured payload containing all available stock information and computed KPIs
  */
 export function buildComprehensivePayload(stock, thesis = null) {
-  const f = stock.financials || {};
-  const hist = f.historical || {};
   const sum = stock.summary || {};
+  const m = sum.metrics || {};
   const r = sum.ratios || {};
   const dcf = sum.dcf || {};
+  const hist = stock.financials?.historical || {};
+  const currency = stock.currency || 'USD';
 
-  const checklistFormatted = (stock.checklist || []).map(c => ({
+  // Anything the filings do not contain is sent as the string "not reported",
+  // never as a plausible-looking number. The previous payload asserted
+  // "Fortress (> 25x)" interest coverage for every company, so the model
+  // confidently explained a ratio that had never been measured.
+  const NR = 'not reported';
+  const n = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+  const pct = (v, dp = 1) => (n(v) === null ? NR : `${(v * 100).toFixed(dp)}%`);
+  const pctRaw = (v, dp = 1) => (n(v) === null ? NR : `${v.toFixed(dp)}%`);
+  const mult = (v, dp = 2) => (n(v) === null ? NR : `${v.toFixed(dp)}x`);
+  const money = (v) => (n(v) === null ? NR : formatMoney(v, currency));
+
+  const checklistFormatted = (stock.checklist || []).map((c) => ({
     id: c.id,
     name: c.name,
     category: c.category,
     value: c.value,
     benchmark: c.benchmark,
-    status: c.status,
+    // 'na' means the measure is absent from the filings, not that it failed.
+    status: c.status === 'na' ? 'not measurable from the filings' : c.status,
     explanation: c.explanation
   }));
 
-  const pillarsFormatted = (stock.pillars || []).map(p => ({
+  const pillarsFormatted = (stock.pillars || []).map((p) => ({
     name: p.name,
-    score: `${p.score}/${p.max}`,
-    percentage: `${p.pct}%`
+    score: p.score === null ? NR : `${p.score}/${p.max}`,
+    percentage: p.pct === null ? NR : `${p.pct}%`,
+    measuresAvailable: `${p.measured} of ${p.of}`
   }));
 
-  const pFScore = stock.piotroski_score;
-  const altmanZ = stock.altman_z;
-  const roic = stock.roic_pct;
-  const fcfConv = stock.fcf_conversion_pct;
-  const netCashB = stock.net_cash_b;
+  return {
+    dataIntegrityNotice:
+      'Every field below comes from filed statements. A value of "not reported" ' +
+      'means the company does not disclose that line item — do not estimate it, ' +
+      'do not infer it, and do not describe it as strong or weak. Say it is not disclosed.',
 
-  const payloadData = {
     company: {
       ticker: stock.ticker,
       name: stock.name,
-      sector: stock.sector,
-      industry: stock.industry,
-      price: `$${stock.price.toFixed(2)} ${stock.currency || 'USD'}`,
-      changePercent: `${stock.change_pct >= 0 ? '+' : ''}${stock.change_pct.toFixed(2)}%`,
-      marketCap: stock.market_cap ? `$${(stock.market_cap / 1e9).toFixed(2)} Billion` : 'N/A'
+      sector: stock.sector || NR,
+      industry: stock.industry || NR,
+      businessModel: m.isFinancial
+        ? 'Bank, insurer or REIT — working-capital ratios, gross margin and free-cash-flow valuation do not apply'
+        : 'Operating company',
+      reportingCurrency: currency,
+      fiscalPeriodEnd: m.fiscalPeriodEnd || NR,
+      price: `${formatMoney(stock.price, currency)}`,
+      changePercent: n(stock.change_pct) === null ? NR : `${stock.change_pct >= 0 ? '+' : ''}${stock.change_pct.toFixed(2)}%`,
+      marketCap: money(m.marketCap)
     },
+
     healthScoring: {
-      compositeHealthScore: `${stock.health_score}/100`,
-      grade: sum.healthGrade || 'N/A',
-      tier: sum.healthTier || 'N/A',
-      label: sum.healthLabel || 'N/A',
+      compositeHealthScore:
+        stock.health_score === null
+          ? 'not scored — too few line items filed to form a composite'
+          : `${stock.health_score}/100`,
+      grade: sum.healthGrade || NR,
+      label: sum.healthLabel || NR,
+      measurementCoverage: sum.coverage
+        ? `${sum.coverage.measured} of ${sum.coverage.total} sub-scores measurable (${sum.coverage.pct}%)`
+        : NR,
       pillars: pillarsFormatted
     },
-    advancedQuantitativeKPIs: {
+
+    quantitativeKPIs: {
       altmanZScore: {
-        score: altmanZ,
-        zone: altmanZ >= 3.0 ? 'Safe Zone (Low Distress Probability)' : altmanZ >= 1.8 ? 'Grey / Watch Zone' : 'Distress Alert'
+        score: n(stock.altman_z) === null ? NR : stock.altman_z,
+        zone:
+          n(stock.altman_z) === null
+            ? (m.isFinancial ? 'not defined for financial institutions' : NR)
+            : stock.altman_z >= 3 ? 'safe zone'
+            : stock.altman_z >= 1.8 ? 'grey zone'
+            : 'distress zone'
       },
-      piotroskiFScore: {
-        score: `${pFScore}/9`,
-        classification: pFScore >= 8 ? 'Exceptional Fundamental Momentum' : pFScore >= 6 ? 'Solid Quality' : 'Average / Weak'
-      },
-      returnOnInvestedCapital: `${roic.toFixed(2)}% (Target: >= 15% for durable economic moat)`,
-      freeCashFlowConversion: `${fcfConv}% of Net Income (Target: >= 90% for high earnings quality)`,
-      balanceSheetLiquidity: {
-        cashAndEquivalents: f.cashAndEquivalents ? `$${(f.cashAndEquivalents / 1e9).toFixed(2)} Billion` : 'N/A',
-        totalDebt: f.totalDebt ? `$${(f.totalDebt / 1e9).toFixed(2)} Billion` : '$0',
-        netCashPosition: netCashB >= 0 ? `+$${netCashB} Billion (Net Cash Fortress)` : `-$${Math.abs(netCashB)} Billion (Net Debt)`,
-        currentRatio: f.currentLiabilities > 0 ? (f.currentAssets / f.currentLiabilities).toFixed(2) : 'N/A',
-        interestCoverage: f.interestExpense > 0 && f.ebit ? (f.ebit / f.interestExpense).toFixed(1) + 'x' : 'Fortress (> 25x)'
-      }
+      piotroskiFScore:
+        n(stock.piotroski_score) === null
+          ? NR
+          : `${stock.piotroski_score}/9`,
+      returnOnInvestedCapital: pctRaw(m.roic),
+      estimatedWACC: pctRaw(m.wacc),
+      roicSpreadOverWACC: n(m.roicSpread) === null ? NR : `${m.roicSpread >= 0 ? '+' : ''}${m.roicSpread.toFixed(1)} points`,
+      returnOnEquity: pct(m.roe),
+      freeCashFlowConversion: n(stock.fcf_conversion_pct) === null ? NR : `${stock.fcf_conversion_pct}% of net income`,
+      grossMargin: pct(m.grossMargin),
+      operatingMargin: pct(m.operatingMargin),
+      effectiveTaxRate: m.taxRateEstimated ? `${NR} (statutory 21% assumed)` : pct(m.effectiveTaxRate)
     },
+
+    balanceSheet: {
+      cashAndShortTermInvestments: money(m.cash),
+      totalDebt: money(m.totalDebt),
+      netPosition:
+        n(m.netCash) === null ? NR
+          : m.netCash >= 0 ? `${money(m.netCash)} net cash`
+          : `${money(Math.abs(m.netCash))} net debt`,
+      shareholderEquity: m.negativeEquity ? 'negative book equity' : money(m.equity),
+      currentRatio: n(m.currentRatio) === null ? NR : m.currentRatio.toFixed(2),
+      quickRatio: n(m.quickRatio) === null ? NR : m.quickRatio.toFixed(2),
+      debtToEquity: m.negativeEquity ? 'undefined — book equity is negative' : mult(m.debtToEquity),
+      netDebtToEbitda: mult(m.netDebtToEbitda),
+      interestCoverage: m.interestCoverageUnburdened
+        ? 'no debt burden to cover'
+        : n(m.interestCoverage) === null ? NR : `${m.interestCoverage.toFixed(1)}x` +
+            (m.interestExpenseCarried ? ` (interest expense last filed ${m.interestExpenseAsOf})` : '')
+    },
+
+    valuation: {
+      trailingPE: mult(r.pe, 1),
+      forwardPE: mult(r.forwardPE, 1),
+      pegRatio: n(r.peg) === null ? NR : r.peg <= 0 ? 'undefined — expected growth is negative' : mult(r.peg),
+      priceToBook: mult(r.priceToBook),
+      dividendYield: pct(r.dividendYield, 2),
+      peVersusOwnHistory: sum.peHistory?.available
+        ? `${sum.peHistory.current}x now, five-year range ${sum.peHistory.min}x to ${sum.peHistory.max}x, ` +
+          `median ${sum.peHistory.median}x — currently at the ${sum.peHistory.percentile}th percentile`
+        : NR,
+      dcfFairValue: dcf.applicable
+        ? `${formatMoney(dcf.fairValue, currency)} per share`
+        : `not modelled (${dcf.reason || 'inputs unavailable'})`,
+      dcfAssumptions: dcf.applicable
+        ? `${(dcf.assumptions.growthRate * 100).toFixed(1)}% growth, ` +
+          `${dcf.assumptions.terminalMultiple}x terminal multiple, ` +
+          `${(dcf.assumptions.discountRate * 100).toFixed(1)}% discount rate`
+        : NR,
+      marginOfSafety:
+        !dcf.applicable ? NR
+          : n(dcf.marginOfSafetyPct) === null ? NR
+          : dcf.marginOfSafetyPct >= 0
+            ? `+${dcf.marginOfSafetyPct}% below fair value`
+            : `${dcf.premiumToFairValuePct}% above fair value`
+    },
+
+    growthAndHistory: {
+      fiscalYears: hist.periods || [],
+      revenueByYear: hist.revenue || [],
+      freeCashFlowByYear: hist.freeCashFlow || [],
+      grossMarginByYear: hist.grossMarginPct || [],
+      operatingMarginByYear: hist.operatingMarginPct || [],
+      dilutedSharesByYear: hist.sharesOutstanding || [],
+      note: 'Arrays carry null for a year the company did not report that line. Only the years listed are filed data — there is no padding or extrapolation.',
+      revenueCAGR: n(m.revenueCAGR) === null ? NR : `${(m.revenueCAGR * 100).toFixed(1)}% over ${m.cagrYears} years`,
+      epsCAGR: n(m.epsCAGR) === null ? NR : `${(m.epsCAGR * 100).toFixed(1)}%`,
+      fcfPerShareCAGR: n(m.fcfPerShareCAGR) === null ? NR : `${(m.fcfPerShareCAGR * 100).toFixed(1)}%`,
+      shareCountChangeYoY:
+        n(m.shareChangeYoY) === null ? NR
+          : `${(m.shareChangeYoY * 100).toFixed(1)}% (${m.shareChangeYoY < 0 ? 'buybacks' : 'dilution'})`,
+      grossMarginTrend: m.quarterlyGrossMarginTrend
+        ? `${m.quarterlyGrossMarginTrend.changeBps >= 0 ? '+' : ''}${m.quarterlyGrossMarginTrend.changeBps} bps across ${m.quarterlyGrossMarginTrend.quarters} filed quarters`
+        : n(m.grossMarginChangeBps) === null ? NR : `${m.grossMarginChangeBps >= 0 ? '+' : ''}${m.grossMarginChangeBps} bps year on year`
+    },
+
     twelvePointChecklist: {
       summary: sum.checklistSummary || {},
       items: checklistFormatted
     },
-    valuationAndDCF: {
-      trailingPE: r.pe ? `${r.pe.toFixed(1)}x` : 'N/A',
-      forwardPE: r.forwardPE ? `${r.forwardPE.toFixed(1)}x` : 'N/A',
-      pegRatio: r.peg ? `${r.peg.toFixed(2)}x` : 'N/A',
-      dividendYield: r.dividendYield ? `${(r.dividendYield * 100).toFixed(2)}%` : '0%',
-      dcfFairValueEstimated: dcf.fairValue ? `$${dcf.fairValue.toFixed(2)}` : 'N/A',
-      dcfMarginOfSafety: dcf.marginOfSafetyPct !== undefined ? `${dcf.marginOfSafetyPct >= 0 ? '+' : ''}${dcf.marginOfSafetyPct}% (${dcf.marginOfSafetyPct >= 0 ? 'Undervalued' : 'Overvalued'})` : 'N/A'
-    },
-    historical5YearTrends: {
-      years: hist.years || [],
-      revenueTrajectoryBillion: hist.revenue || [],
-      freeCashFlowTrajectoryBillion: hist.freeCashFlow || [],
-      grossMarginTrajectoryPercent: hist.grossMarginPct || [],
-      operatingMarginTrajectoryPercent: hist.operatingMarginPct || [],
-      sharesOutstandingTrajectoryBillion: hist.sharesOutstanding || [],
-      revenue3YearCAGR: hist.revenue3yCAGR ? `${(hist.revenue3yCAGR * 100).toFixed(1)}%` : 'N/A',
-      shareDilutionYoY: hist.shareDilutionYoY !== undefined ? `${(hist.shareDilutionYoY * 100).toFixed(1)}% (${hist.shareDilutionYoY < 0 ? 'Share Buybacks' : 'Stock Dilution'})` : 'N/A'
-    },
+
     systemGeneratedMoatsAndRisks: {
       catalysts: stock.catalysts || [],
       risks: stock.risks || []
     },
-    userInvestmentThesis: thesis ? {
-      conviction: thesis.conviction,
-      targetBuyPrice: thesis.target_buy_price ? `$${thesis.target_buy_price}` : null,
-      coreRationale: thesis.core_rationale,
-      sellGuardrails: thesis.sell_triggers_json ? JSON.parse(thesis.sell_triggers_json) : []
-    } : null
-  };
 
-  return payloadData;
+    userInvestmentThesis: thesis
+      ? {
+          conviction: thesis.conviction,
+          targetBuyPrice: thesis.target_buy_price
+            ? formatMoney(thesis.target_buy_price, currency)
+            : null,
+          coreRationale: thesis.core_rationale,
+          sellGuardrails: thesis.sell_triggers_json ? JSON.parse(thesis.sell_triggers_json) : []
+        }
+      : null
+  };
 }
 
 /**
@@ -176,14 +256,23 @@ export async function generateStockAISummary(stock, thesis = null) {
   const promptText = `
 You are the world's foremost fundamental equity analyst and value investing partner embodying the rigorous intellectual frameworks of Warren Buffett, Charlie Munger, and Benjamin Graham.
 
-Analyze the comprehensive fundamental data, quantitative KPIs, computed metrics, 12-point checklist, and 5-year trends for:
+Analyse the filed fundamentals, computed KPIs, 12-point checklist and multi-year trends for:
 Company: ${stock.name} (${stock.ticker})
-Sector / Industry: ${stock.sector} · ${stock.industry}
+Sector / Industry: ${stock.sector || 'not reported'} · ${stock.industry || 'not reported'}
+
+ABSOLUTE RULE ON DATA INTEGRITY
+Any field reading "not reported" is absent from this company's filings. You must
+not estimate it, infer it from a peer, or characterise it as strong or weak. Where
+a measure matters and is missing, say so plainly — "the company does not disclose
+X" is a useful finding, and inventing a figure is the one failure mode that makes
+this analysis worthless. The same applies to nulls inside the year-by-year arrays.
+Where the composite health score reads "not scored", do not substitute a grade of
+your own; explain which measures were unavailable and what that limits.
 
 Here is the complete quantitative data package:
 ${JSON.stringify(payloadData, null, 2)}
 
-Provide a deeply insightful, rigorous, and plain-English analysis tailored for disciplined long-term value investors.
+Provide a deeply insightful, rigorous, plain-English analysis for a disciplined long-term investor.
 Return a valid JSON object matching EXACTLY this structure:
 
 {
@@ -195,12 +284,12 @@ Return a valid JSON object matching EXACTLY this structure:
   "moatAndProfitability": {
     "rating": "string: 'WIDE_MOAT' | 'NARROW_MOAT' | 'NO_MOAT'",
     "ratingLabel": "string: e.g. 'Wide Moat (High Pricing Power & ROIC)'",
-    "explanation": "string: Detailed explanation evaluating ROIC (${stock.roic_pct}%), gross/operating margin stability, pricing power against inflation, customer lock-in, and competitive durability."
+    "explanation": "string: Detailed explanation evaluating return on invested capital, gross and operating margin stability, pricing power against inflation, customer lock-in, and competitive durability."
   },
   "solvencyAndSafety": {
     "rating": "string: 'FORTRESS' | 'SOLID' | 'MODERATE' | 'DISTRESSED'",
     "ratingLabel": "string: e.g. 'Fortress Balance Sheet (Zero Solvency Risk)'",
-    "explanation": "string: Plain-English explanation evaluating the Altman Z-score (${stock.altman_z}), Piotroski F-score (${stock.piotroski_score}/9), cash cushion vs total debt (${stock.net_cash_b}B net position), current ratio, and recession resilience."
+    "explanation": "string: Plain-English explanation evaluating the Altman Z-score, the Piotroski F-score, cash against total debt, the current ratio, and recession resilience."
   },
   "valuationAndDCF": {
     "rating": "string: 'ATTRACTIVE_DISCOUNT' | 'FAIRLY_VALUED' | 'RICH_PREMIUM' | 'HIGH_RISK_BUBBLE'",

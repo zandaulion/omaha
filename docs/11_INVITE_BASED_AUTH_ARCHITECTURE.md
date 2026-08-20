@@ -1,6 +1,6 @@
 # PWA Invite Console Integration & Device Administration Architecture
 
-This document specifies the exact API contracts, device lifecycle, and infrastructure security required to integrate **Pocket Omaha** with the central [pwa-invite-console](https://github.com/marinmda/pwa-invite-console.git).
+This document specifies the exact API contracts, device lifecycle, and infrastructure security required to integrate **Pocket Omaha** with the central [pwa-invite-console](https://github.com/zandaulion/pwa-invite-console.git).
 
 ---
 
@@ -78,16 +78,39 @@ Pocket Omaha backend must implement the following endpoints under its route pref
 * **Request**:
   ```json
   {
-    "code": "OMAHA-7F9A",
+    "code": "K7QM-3XRT-9WFB",
     "device_label": "Wife's iPhone",
     "push_subscription": { "endpoint": "...", "keys": { "p256dh": "...", "auth": "..." } }
   }
   ```
+* **Code format**: 12 characters from a 32-symbol alphabet with the ambiguous
+  glyphs (I, O, 0, 1) removed, drawn from the CSPRNG and grouped in fours for
+  legibility. Separators and case are ignored on redemption, so a code typed
+  by hand from a message resolves either way.
+
+  A short code behind a fixed prefix is the failure mode to avoid: six
+  characters over a known prefix is a keyspace of about a million, which a
+  scanner exhausts in under an hour. The code table carries a UNIQUE index so
+  a collision surfaces at insert rather than silently stranding an invite.
+
+* **Rate limiting**: sliding one-minute windows, **5 attempts per source
+  address** and **60 globally**, keyed on `CF-Connecting-IP` then
+  `X-Forwarded-For`. A wide keyspace still falls to a patient scanner without
+  this. Exceeding either returns `429`.
+
 * **Processing Rules**:
-  1. Verify `code` exists, is not expired, and `used_at` is NULL (or was used $< 1\text{ hour}$ ago on the same device).
-  2. Create a row in `devices` table with `revoked = false` and `has_push = (push_subscription != null)`.
-  3. Mark invite as used (`used_at = NOW()`, `device_id = device.id`, `code = NULL`).
-  4. Issue a long-lived device session token (HTTP-only cookie or Bearer token).
+  1. Verify `code` exists, is not expired, and `used_at` is NULL.
+  2. Create a row in `devices` with `revoked = false` and `has_push = (push_subscription != null)`.
+  3. Mark invite used (`used_at = NOW()`, `device_id = device.id`, `code = NULL`, `url = NULL`).
+  4. Issue a long-lived device token as an `HttpOnly; SameSite=Lax` cookie,
+     with `Secure` set whenever the request arrived over HTTPS.
+
+* **One redemption path only.** The gate screen runs an inline script that
+  fires before the module bundle finishes loading, and the module also reads
+  the `?invite=` parameter. Both attempting a redemption sends two requests for
+  the same code — one succeeds, the other returns 400, and together they spend
+  half the rate-limit budget on every activation. The inline runner owns the
+  URL-parameter path and signals the module via `window.__omahaInviteHandled`.
 * **Response**:
   ```json
   {
@@ -114,6 +137,9 @@ Pocket Omaha backend must implement the following endpoints under its route pref
 ## 5. Security & Reverse Proxy (Caddy / Tailscale)
 
 * **No Passwords on Console**: `pwa-invite-console` carries zero stored passwords.
+* **No environment escape hatch**: `requireAdmin` has no development bypass.
+  A `NODE_ENV`-conditional exemption is one stray variable away from an open
+  admin API on a host that is otherwise correctly firewalled.
 * **Header Injection**: The private listener (accessible only via Tailscale HTTPS) injects `X-Admin: 1` before passing requests to the backend:
 
 ```caddyfile
