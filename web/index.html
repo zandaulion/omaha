@@ -28,113 +28,241 @@
   <div id="gateScreen" class="gate-container">
     <div class="gate-card">
       <div class="gate-brand-row">
-        <img src="/icons/icon.svg" alt="Logo" class="gate-logo" width="36" height="36">
+        <img src="/icons/icon.svg" alt="" class="gate-logo" width="36" height="36">
         <div>
-          <h1 class="gate-title">Pocket Omaha</h1>
+          <h1 class="gate-title" id="gateTitle">Pocket Omaha</h1>
           <p class="gate-subtitle">Acces pe bază de invitație</p>
         </div>
       </div>
 
-      <p class="gate-lead">
-        Introdu codul de invitație pentru a înregistra acest dispozitiv.
+      <p class="gate-lead" id="gateLead">
+        Aplicația funcționează doar pe bază de invitație. Dacă ai primit un link
+        sau un cod, introdu-l mai jos ca să înregistrezi acest dispozitiv.
       </p>
 
-      <form id="gateForm" class="gate-form" action="javascript:void(0);" onsubmit="if(window.manualRedeem)window.manualRedeem();return false;">
+      <form id="gateForm" class="gate-form">
         <div class="gate-input-row">
-          <input type="text" id="gateCodeInput" class="form-input mono gate-code-input" 
-                 placeholder="OMAHA-XXXX" autocomplete="off" autocapitalize="characters" 
-                 spellcheck="false" required>
-          <button type="button" class="btn-primary gate-submit-btn" id="gateSubmitBtn" onclick="if(window.manualRedeem)window.manualRedeem();">
+          <input type="text" id="gateCodeInput" class="form-input mono gate-code-input"
+                 placeholder="ABCD-EFGH-JKLM" autocomplete="one-time-code"
+                 autocapitalize="characters" autocorrect="off" spellcheck="false"
+                 inputmode="latin" maxlength="14" aria-label="Cod de invitație" required>
+          <button type="submit" class="btn-primary gate-submit-btn" id="gateSubmitBtn">
             Activează
           </button>
         </div>
       </form>
 
-      <div id="gateErrorText" class="gate-error hidden"></div>
+      <p id="gateErrorText" class="gate-error" hidden></p>
 
-      <div id="gateInAppNotice" class="gate-notice hidden">
-        <strong>💡 Pe iPhone / Android:</strong> adaugă întâi pagina pe ecranul principal (<em>Add to Home Screen</em>), apoi deschide-o și activează codul.
+      <!-- Shown only inside an in-app browser, where registering here would
+           strand the credential in a cookie jar the installed app cannot read. -->
+      <div id="gateInAppNotice" class="gate-warn" hidden>
+        <strong id="gateInAppTitle">Ai deschis pagina în browserul din aplicație.</strong>
+        <span id="gateInAppBody">
+          Acesta are cookie-uri proprii, așa că aplicația instalată ulterior nu va
+          fi autentificată. Continuă în browserul propriu-zis — codul te însoțește.
+        </span>
+        <div class="gate-warn-actions">
+          <a class="btn-primary gate-warn-btn" id="gateOpenChrome" href="#" hidden>Deschide în Chrome</a>
+          <button class="btn-secondary gate-warn-btn" id="gateCopyCode" type="button">Copiază codul</button>
+        </div>
+        <p class="gate-warn-note" id="gateInAppNote"></p>
       </div>
+
+      <p class="gate-hint">
+        Fiecare invitație înregistrează un singur dispozitiv. Alt telefon sau
+        laptop are nevoie de propria invitație.
+      </p>
+      <p class="gate-hint" id="gateIosHint" hidden>
+        <strong>Pe iPhone:</strong> adaugă întâi pagina pe ecranul principal
+        (Distribuie → Adaugă la ecranul principal), deschide-o de acolo, apoi
+        introdu codul. Notificările funcționează doar din aplicația instalată,
+        iar aceasta are stocare proprie, separată.
+      </p>
     </div>
   </div>
 
   <script>
-  (function() {
-    // 1. Instant check: if already authenticated, immediately display app shell!
-    if (localStorage.getItem('omaha_token')) {
-      var gateEl = document.getElementById('gateScreen');
-      var appEl = document.getElementById('appShell');
-      if (gateEl) gateEl.classList.add('hidden');
-      if (appEl) {
-        appEl.classList.remove('hidden');
-        appEl.classList.add('fade-in');
-      }
+  (function () {
+    var $ = function (id) { return document.getElementById(id); };
+
+    /* An in-app browser — WhatsApp, Instagram, Messenger, any Android WebView —
+       keeps its own cookie jar. Redeeming here spends the single-use invite and
+       leaves the credential somewhere the installed app can never read, so the
+       user ends up locked out of the very app they were invited to. */
+    function inAppBrowser() {
+      var ua = navigator.userAgent || '';
+      return /\bwv\b/.test(ua)
+        || /(FBAN|FBAV|Instagram|Line\/|WhatsApp|Snapchat|Messenger|Twitter|TikTok)/i.test(ua);
     }
+    var isAndroid = /Android/i.test(navigator.userAgent || '');
+    var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+    var standalone = window.matchMedia('(display-mode: standalone)').matches
+      || window.navigator.standalone === true;
+
+    /* Codes are 12 characters in groups of four. Formatting as the user types
+       means a code read off a phone screen and typed by hand still matches. */
+    function tidy(v) {
+      var clean = (v || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
+      return clean.replace(/(.{4})(?=.)/g, '$1-');
+    }
+
+    function copyText(text, btn) {
+      var done = function (ok) {
+        if (!btn) return;
+        var was = btn.dataset.label || btn.textContent;
+        btn.dataset.label = was;
+        btn.textContent = ok ? 'Copiat' : 'Selectează manual';
+        setTimeout(function () { btn.textContent = was; }, 1800);
+      };
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(function () { done(true); },
+                                                 function () { done(false); });
+        return;
+      }
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+      document.body.appendChild(ta);
+      ta.select(); ta.setSelectionRange(0, text.length);
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      document.body.removeChild(ta);
+      done(ok);
+    }
+
+    function setupInApp(code) {
+      var box = $('gateInAppNotice');
+      if (!inAppBrowser()) { box.hidden = true; return false; }
+      box.hidden = false;
+
+      var url = location.origin + '/?invite=' + encodeURIComponent(code || '');
+      if (isAndroid && code) {
+        /* intent:// hands the URL straight to Chrome. Android only; on iOS the
+           written instructions below are the whole answer. */
+        $('gateOpenChrome').href = 'intent://' + url.replace(/^https?:\/\//, '')
+          + '#Intent;scheme=https;package=com.android.chrome;'
+          + 'S.browser_fallback_url=' + encodeURIComponent(url) + ';end';
+        $('gateOpenChrome').hidden = false;
+      }
+      $('gateInAppNote').textContent = isAndroid
+        ? 'În Chrome: instalează aplicația din meniul ⋮, deschide-o de pe ecranul '
+          + 'principal, apoi introdu codul.'
+        : 'Deschide ' + location.host + ' în Safari, adaugă pagina pe ecranul '
+          + 'principal, deschide-o de acolo, apoi introdu codul.';
+      $('gateCopyCode').onclick = function () {
+        copyText(code || $('gateCodeInput').value, $('gateCopyCode'));
+      };
+      return true;
+    }
+
+    function showApp() {
+      var gate = $('gateScreen'), app = $('appShell');
+      if (gate) gate.classList.add('hidden');
+      if (app) { app.classList.remove('hidden'); app.classList.add('fade-in'); }
+    }
+
+    /* Already registered: show the app immediately rather than flashing the
+       gate while the module boots. */
+    if (localStorage.getItem('omaha_token')) showApp();
 
     var params = new URLSearchParams(window.location.search);
-    var code = (params.get('invite') || params.get('code') || '').trim().toUpperCase();
+    var code = tidy(params.get('invite') || params.get('code') || '');
 
-    // This inline runner owns the invite-link path — it fires before the module
-    // finishes loading, which is why it exists. app.js must not also redeem, or
-    // every activation sends two requests and the loser gets a 400 (and now
-    // spends half the rate-limit budget). The flag below is that handshake.
+    /* This inline runner owns the invite-link path — it fires before the module
+       finishes loading, which is why it exists. app.js must not also redeem, or
+       every activation sends two requests and the loser gets a 400. */
     window.__omahaInviteHandled = Boolean(code);
 
-    // An already-registered device must not burn a second code on refresh.
-    if (code && !localStorage.getItem('omaha_token')) {
-      var inp = document.getElementById('gateCodeInput');
-      if (inp) inp.value = code;
-      setTimeout(function() { redeem(code); }, 50);
-    } else if (code) {
-      try { window.history.replaceState({}, document.title, window.location.pathname); } catch (e) {}
+    var inApp = setupInApp(code);
+    $('gateIosHint').hidden = !(isIOS && !standalone);
+
+    var input = $('gateCodeInput');
+    input.addEventListener('input', function () {
+      var end = input.selectionEnd === input.value.length;
+      input.value = tidy(input.value);
+      if (end) input.setSelectionRange(input.value.length, input.value.length);
+    });
+
+    if (code) {
+      input.value = code;
+      $('gateTitle').textContent = 'Activează acest dispozitiv';
+      $('gateLead').textContent = inApp
+        ? 'Invitația e validă, dar nu o folosi aici — vezi mai jos.'
+        : 'Această invitație înregistrează dispozitivul pe care o citești acum.';
+      $('gateSubmitBtn').textContent = 'Activează acest dispozitiv';
     }
 
-    function redeem(c) {
-      var btn = document.getElementById('gateSubmitBtn');
-      var err = document.getElementById('gateErrorText');
-      if (btn) { btn.disabled = true; btn.textContent = 'Se activează…'; }
-      if (err) err.classList.add('hidden');
+    /* Redeem automatically from a link, but never inside an in-app browser:
+       spending the one-shot invite there is what strands the credential. */
+    if (code && !localStorage.getItem('omaha_token') && !inApp) {
+      setTimeout(function () { redeem(code); }, 50);
+    } else if (code && localStorage.getItem('omaha_token')) {
+      try { history.replaceState({}, document.title, location.pathname); } catch (e) {}
+    }
 
-      var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-      var isAndroid = /Android/i.test(navigator.userAgent);
-      var label = isIOS ? 'iPhone' : (isAndroid ? 'Android' : 'Web Browser');
+    if (!code && !inApp) { try { input.focus(); } catch (e) {} }
+
+    function redeem(c) {
+      var btn = $('gateSubmitBtn'), err = $('gateErrorText');
+      var label = btn.dataset.label || btn.textContent;
+      btn.dataset.label = label;
+      btn.disabled = true;
+      btn.textContent = 'Se activează…';
+      err.hidden = true;
 
       fetch('/api/auth/redeem', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: c, device_label: label })
-      }).then(function(r) { return r.json(); }).then(function(d) {
+        body: JSON.stringify({
+          code: c,
+          device_label: isIOS ? 'iPhone' : (isAndroid ? 'Android' : 'Web Browser')
+        })
+      }).then(function (r) {
+        return r.json().then(function (d) { return { status: r.status, body: d }; });
+      }).then(function (res) {
+        var d = res.body;
         if (d.success && d.token) {
           localStorage.setItem('omaha_token', d.token);
-          var gateEl = document.getElementById('gateScreen');
-          var appEl = document.getElementById('appShell');
-          if (gateEl) gateEl.classList.add('hidden');
-          if (appEl) {
-            appEl.classList.remove('hidden');
-            appEl.classList.add('fade-in');
-          }
-          try { window.history.replaceState({}, document.title, window.location.pathname); } catch(e) {}
+          showApp();
+          try { history.replaceState({}, document.title, location.pathname); } catch (e) {}
           window.location.reload();
-        } else {
-          if (err) {
-            err.textContent = d.error || 'Cod invalid sau expirat.';
-            err.classList.remove('hidden');
-          }
-          if (btn) { btn.disabled = false; btn.textContent = 'Activează'; }
+          return;
         }
-      }).catch(function(e) {
-        if (err) {
-          err.textContent = 'Eroare de rețea la activare.';
-          err.classList.remove('hidden');
-        }
-        if (btn) { btn.disabled = false; btn.textContent = 'Activează'; }
+        /* The API answers in English because the admin console and CLI read it
+           too; this screen is Romanian, so the states it can actually reach
+           are translated here rather than at the source. */
+        err.textContent =
+          res.status === 429
+            ? 'Prea multe încercări. Așteaptă un minut și încearcă din nou.'
+            : res.status === 400
+              ? 'Codul nu este valid sau a fost deja folosit.'
+              : 'Nu s-a putut activa. Încearcă din nou peste câteva momente.';
+        err.hidden = false;
+        btn.disabled = false;
+        btn.textContent = label;
+      }).catch(function () {
+        err.textContent = 'Eroare de rețea. Verifică conexiunea și încearcă din nou.';
+        err.hidden = false;
+        btn.disabled = false;
+        btn.textContent = label;
       });
     }
 
-    window.manualRedeem = function() {
-      var inp = document.getElementById('gateCodeInput');
-      var c = (inp ? inp.value : '').trim().toUpperCase();
-      if (c) redeem(c);
+    $('gateForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var c = tidy(input.value);
+      if (c.replace(/-/g, '').length !== 12) {
+        var err = $('gateErrorText');
+        err.textContent = 'Codul are 12 caractere, în grupuri de câte patru.';
+        err.hidden = false;
+        return;
+      }
+      redeem(c);
+    });
+
+    window.manualRedeem = function () {
+      $('gateForm').dispatchEvent(new Event('submit', { cancelable: true }));
     };
   })();
   </script>

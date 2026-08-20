@@ -1437,9 +1437,94 @@ body {
   margin-bottom: 0;
 }
 
-.gate-input-row {
+/* The in-app browser warning. Deliberately the loudest thing on the card when
+   it appears: activating here spends a one-shot invite into a cookie jar the
+   installed app cannot read, which is the one way to get properly stuck. */
+.gate-warn {
+  margin-top: 14px;
+  padding: 12px 13px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, #F59E0B 12%, transparent);
+  border: 1px solid color-mix(in srgb, #F59E0B 42%, transparent);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.gate-warn[hidden] { display: none; }
+.gate-warn strong { display: block; margin-bottom: 3px; }
+
+.gate-warn-actions {
   display: flex;
   gap: 8px;
+  margin-top: 11px;
+}
+
+.gate-warn-actions > * {
+  flex: 1 1 0;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.gate-warn-btn {
+  font-size: 12.5px;
+  padding: 7px 14px;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.gate-warn-btn[hidden] { display: none; }
+
+.gate-warn-note {
+  margin: 10px 0 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.gate-hint {
+  margin: 12px 0 0;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--text-tertiary);
+}
+
+.gate-hint[hidden] { display: none; }
+.gate-hint strong { color: var(--text-secondary); }
+
+/* The code is the one thing on this screen worth reading character by
+   character, so it gets tracking and a monospaced face. */
+.gate-code-input {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 700;
+  padding: 13px 12px;
+  width: 100%;
+}
+
+/* Placeholder keeps the shape of a real code without shouting it. */
+.gate-code-input::placeholder {
+  letter-spacing: 0.12em;
+  font-weight: 600;
+  opacity: 0.45;
+}
+
+.gate-error[hidden] { display: none; }
+
+/* Stacked rather than side by side: a 12-character code next to a button
+   labelled "Activează acest dispozitiv" leaves the code truncated to
+   "ZMM4-R…" on a phone, and the code is the part that must be readable. */
+.gate-input-row {
+  display: grid;
+  gap: 10px;
+}
+
+.gate-input-row .gate-submit-btn {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 14px;
 }
 
 .gate-code-input {
