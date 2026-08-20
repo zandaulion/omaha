@@ -2546,3 +2546,26 @@ body {
   border-radius: 50%;
   background: var(--text-tertiary);
 }
+
+/* A model far from the traded price is a warning, not an opportunity. */
+.margin-of-safety-meter.is-divergent {
+  background: color-mix(in srgb, #F59E0B 14%, transparent);
+  border: 1px solid color-mix(in srgb, #F59E0B 40%, transparent);
+  color: var(--text-primary);
+  font-weight: 600;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.dcf-implied {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface-subtle);
+  border: 1px solid var(--border-subtle);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.dcf-implied strong { color: var(--text-primary); }

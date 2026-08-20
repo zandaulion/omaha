@@ -526,3 +526,114 @@ test('a short P/E history does not move the valuation score', () => {
   assert.ok(rowOf(long).points >= rowOf(short).points,
     'a genuine discount to a long history should score at least as well');
 });
+
+// =====================================================================
+// Defects found reviewing BMBL's DCF sandbox
+// =====================================================================
+
+test('an outlier cash-flow year is not used as the projection base', () => {
+  // Bumble's FY2025 free cash flow was 2.5x the prior year while revenue fell
+  // 9.3%. Anchoring a five-year projection on it compounded a one-off into a
+  // $44.97 fair value on a $2.79 stock.
+  const model = healthyModel();
+  model.history = {
+    ...model.history,
+    freeCashFlowLatest: 238.7e6,
+    freeCashFlowNormalised: 167.2e6,
+    revenueChangeLatest: 0.04
+  };
+  const r = computeComprehensiveHealth(model);
+  assert.equal(r.dcf.assumptions.cashFlowBase, 167.2e6, 'should fall back to the median');
+  assert.match(r.dcf.assumptions.cashFlowBasis, /median/);
+  assert.equal(r.dcf.assumptions.latestFiledCashFlow, 238.7e6, 'the outlier is still reported');
+});
+
+test('a stable cash-flow year is used as filed', () => {
+  const model = healthyModel();
+  model.history = {
+    ...model.history,
+    freeCashFlowLatest: 26e9,
+    freeCashFlowNormalised: 24e9,
+    revenueChangeLatest: 0.05
+  };
+  const r = computeComprehensiveHealth(model);
+  assert.equal(r.dcf.assumptions.cashFlowBase, 26e9);
+  assert.match(r.dcf.assumptions.cashFlowBasis, /latest filed year/);
+});
+
+test('a shrinking business has its decline projected, not growth', () => {
+  // The blend of filed CAGRs put Bumble at +18% a year on revenue that had
+  // just fallen 9.3%, with negative EBIT and -65% ROIC.
+  const model = healthyModel();
+  model.history = {
+    ...model.history,
+    revenueCAGR: 0.0224, epsCAGR: null, fcfPerShareCAGR: 0.3371,
+    revenueChangeLatest: -0.093
+  };
+  const r = computeComprehensiveHealth(model);
+  assert.ok(r.dcf.assumptions.growthRate < 0,
+    `expected a projected decline, got ${r.dcf.assumptions.growthRate}`);
+  assert.ok(Math.abs(r.dcf.assumptions.growthRate - -0.093) < 0.001);
+  assert.match(r.dcf.assumptions.growthBasis, /declined/);
+  assert.ok(Math.abs(r.dcf.assumptions.growthBeforeBounding - 0.1797) < 0.001,
+    'the unbounded blend is still reported for transparency');
+});
+
+test('cash-flow growth is capped by what the top line supports', () => {
+  const model = healthyModel();
+  model.history = {
+    ...model.history,
+    revenueCAGR: 0.03, epsCAGR: 0.40, fcfPerShareCAGR: 0.45,
+    revenueChangeLatest: 0.02
+  };
+  const r = computeComprehensiveHealth(model);
+  assert.ok(r.dcf.assumptions.growthRate <= 0.08 + 1e-9,
+    `growth should be capped near revenue + 5 points, got ${r.dcf.assumptions.growthRate}`);
+  assert.match(r.dcf.assumptions.growthBasis, /capped/);
+});
+
+test('the reverse DCF reports what the market price implies', () => {
+  const model = healthyModel();
+  const r = computeComprehensiveHealth(model);
+  const implied = r.dcf.impliedGrowthRate;
+  assert.ok(implied !== null, 'an implied rate should be solvable for a normal company');
+
+  // Feeding the implied rate back through the model must reproduce the price.
+  const check = calculateDCFFairValue({
+    trailingFCF: r.dcf.assumptions.cashFlowBase,
+    growthRate: implied,
+    terminalMultiple: r.dcf.assumptions.terminalMultiple,
+    discountRate: r.dcf.assumptions.discountRate,
+    cashReserves: r.metrics.cash,
+    totalDebt: r.metrics.totalDebt,
+    sharesOutstanding: r.metrics.sharesOutstanding
+  });
+  assert.ok(Math.abs(check.fairValuePerShare - r.metrics.price) / r.metrics.price < 0.01,
+    `implied rate should reproduce the price: got ${check.fairValuePerShare} vs ${r.metrics.price}`);
+});
+
+test('a fair value far from the traded price is flagged, not celebrated', () => {
+  const model = healthyModel();
+  // Same business, priced at a tenth of it.
+  model.quote = { ...model.quote, price: 15, marketCap: 60e9 };
+  const r = computeComprehensiveHealth(model);
+  assert.equal(r.dcf.divergenceWarning, true);
+  assert.ok(r.dcf.divergenceFactor >= 3);
+});
+
+test('an ordinary gap between model and market is not flagged', () => {
+  const r = computeComprehensiveHealth(healthyModel());
+  assert.equal(r.dcf.divergenceWarning, false,
+    'the warning must stay quiet on normal valuations or it means nothing');
+});
+
+test('capital destruction cuts the terminal multiple further than low returns', () => {
+  const weak = healthyModel();
+  weak.latest = { ...weak.latest, ebit: 1e9, operatingIncome: 1e9 };   // low but positive ROIC
+  const destroying = healthyModel();
+  destroying.latest = { ...destroying.latest, ebit: -5e9, operatingIncome: -5e9 };
+
+  const a = computeComprehensiveHealth(weak).dcf.assumptions.terminalMultiple;
+  const b = computeComprehensiveHealth(destroying).dcf.assumptions.terminalMultiple;
+  assert.ok(b < a, `negative ROIC should score below merely low ROIC: ${b} vs ${a}`);
+});

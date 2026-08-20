@@ -1965,12 +1965,18 @@ function setDCFPreset(preset, stockOverride) {
 
   if (preset === 'bear') {
     document.getElementById('dcfBearPreset')?.classList.add('active');
-    state.dcf.growth = Math.max(0, Math.round(baseGrowth * 0.65));
+    // 35% worse than base, and able to go negative — a bear case for a
+    // shrinking business is a faster decline, not a slower expansion.
+    state.dcf.growth = Math.max(-25, Math.round(
+      baseGrowth >= 0 ? baseGrowth * 0.65 : baseGrowth * 1.35
+    ));
     state.dcf.multiple = 16;
     state.dcf.discount = 11.0;
   } else if (preset === 'bull') {
     document.getElementById('dcfBullPreset')?.classList.add('active');
-    state.dcf.growth = Math.min(45, Math.round(baseGrowth * 1.30));
+    state.dcf.growth = Math.min(45, Math.round(
+      baseGrowth >= 0 ? baseGrowth * 1.30 : baseGrowth * 0.70
+    ));
     state.dcf.multiple = 32;
     state.dcf.discount = 9.0;
   } else {
@@ -2018,7 +2024,7 @@ function calculateClientDCF() {
   // count. Where either is missing the model is not run at all — the previous
   // build substituted $1bn of free cash flow and produced a fair value for
   // companies that were burning cash.
-  const fcf0 = m.freeCashFlow;
+  const fcf0 = serverDcf.assumptions?.cashFlowBase ?? m.freeCashFlow;
   const shares = m.sharesOutstanding;
   const blocked =
     serverDcf.applicable === false
@@ -2073,10 +2079,23 @@ function calculateClientDCF() {
 
   fairValueEl.textContent = fmtPrice(fairValue, cur);
 
+  const factor = fairValue > 0 ? fairValue / price : null;
+  const wideDivergence = factor !== null && (factor >= 3 || factor <= 0.33);
+
   if (fairValue <= 0) {
     badge.className = 'margin-of-safety-meter overvalued';
     badge.textContent =
       'No equity value at these assumptions — the discounted cash flows do not cover the debt.';
+  } else if (wideDivergence) {
+    // A fair value several multiples from the traded price almost always means
+    // the assumptions are wrong, or the market is pricing something the
+    // filings do not show. Presenting that as a large margin of safety invites
+    // exactly the wrong conclusion.
+    badge.className = 'margin-of-safety-meter is-divergent';
+    badge.textContent =
+      `This model lands ${factor >= 3 ? factor.toFixed(1) + '× above' : (1 / factor).toFixed(1) + '× below'}` +
+      ' the traded price. A gap this wide usually means the assumptions need revisiting,' +
+      ' or the market is pricing in something the filings do not show.';
   } else if (fairValue > price) {
     const marginPct = ((fairValue - price) / fairValue) * 100;
     badge.className = 'margin-of-safety-meter undervalued';
@@ -2093,8 +2112,17 @@ function calculateClientDCF() {
   const line = (label, value, cls = '') =>
     `<div class="dcf-line"><span>${label}</span><span class="mono ${cls}">${value}</span></div>`;
 
+  const assumptions = serverDcf.assumptions || {};
   table.innerHTML =
-    line('Trailing free cash flow', fmtMoney(fcf0, cur)) +
+    line(
+      assumptions.cashFlowBasis?.startsWith('three-year')
+        ? 'Free cash flow base (3-year median)'
+        : 'Trailing free cash flow',
+      fmtMoney(fcf0, cur)
+    ) +
+    (assumptions.cashFlowBasis?.startsWith('three-year')
+      ? line('Latest filed year (outlier, not used)', fmtMoney(assumptions.latestFiledCashFlow, cur), 'text-muted')
+      : '') +
     line('Present value, years 1–5', fmtMoney(cumulativePV, cur)) +
     line(`Terminal value at ${mult.toFixed(1)}x, discounted`, fmtMoney(pvTerminal, cur)) +
     line('Net cash / (debt)', fmtMoney(netCash, cur), netCash >= 0 ? 'text-emerald' : 'text-coral') +
@@ -2102,6 +2130,18 @@ function calculateClientDCF() {
     line('Diluted shares', `${(shares / 1e9).toFixed(2)}B`) +
     `<div class="dcf-line is-total"><span>Fair value per share</span>
        <span class="mono">${fmtPrice(fairValue, cur)}</span></div>` +
+    // The rate that would make the model agree with the market. When the two
+    // disagree this is the more useful of the two numbers: it states what you
+    // would have to believe, rather than asserting who is right.
+    (isNum(serverDcf.impliedGrowthRate)
+      ? `<div class="dcf-implied">
+           <strong>What the market is pricing in:</strong> at ${fmtPrice(price, cur)} the traded price
+           implies free cash flow ${serverDcf.impliedGrowthRate < 0 ? 'shrinking' : 'growing'}
+           <span class="mono">${fmtPct(Math.abs(serverDcf.impliedGrowthRate))}</span> a year for five years,
+           against the <span class="mono">${fmtPct(state.dcf.growth, 1, { alreadyPercent: true, sign: true })}</span>
+           set on the slider.
+         </div>`
+      : '') +
     `<table class="dcf-years"><thead><tr><th>Year</th><th>Projected FCF</th><th>Present value</th></tr></thead><tbody>` +
     rows.map((row) =>
       `<tr><td class="mono">${row.year}</td><td class="mono">${fmtMoney(row.fcf, cur)}</td><td class="mono">${fmtMoney(row.pv, cur)}</td></tr>`

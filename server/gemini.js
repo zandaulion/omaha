@@ -312,10 +312,25 @@ export function buildComprehensivePayload(stock, thesis = null) {
         ? `${formatMoney(dcf.fairValue, currency)} per share`
         : `not modelled (${dcf.reason || 'inputs unavailable'})`,
       dcfAssumptions: dcf.applicable
-        ? `${(dcf.assumptions.growthRate * 100).toFixed(1)}% annual free cash flow growth for 5 years, ` +
-          `${dcf.assumptions.terminalMultiple}x terminal multiple on year-5 free cash flow, ` +
-          `${(dcf.assumptions.discountRate * 100).toFixed(1)}% discount rate`
+        ? {
+            cashFlowBase: `${formatMoney(dcf.assumptions.cashFlowBase, currency)} — ${dcf.assumptions.cashFlowBasis}`,
+            latestFiledCashFlow: money(dcf.assumptions.latestFiledCashFlow),
+            growth: `${(dcf.assumptions.growthRate * 100).toFixed(1)}% a year for 5 years — ${dcf.assumptions.growthBasis}`,
+            terminalMultiple: `${dcf.assumptions.terminalMultiple}x on year-5 free cash flow`,
+            discountRate: `${(dcf.assumptions.discountRate * 100).toFixed(1)}%`
+          }
         : NR,
+      // The rate that would reconcile the model with the traded price. Where
+      // the two disagree sharply this is the more informative number, and the
+      // model should reason from it rather than declaring the market wrong.
+      growthRateImpliedByMarketPrice: n(dcf.impliedGrowthRate) === null
+        ? NR
+        : `${(dcf.impliedGrowthRate * 100).toFixed(1)}% a year`,
+      modelVersusMarket: dcf.divergenceWarning
+        ? `The modelled fair value is ${dcf.divergenceFactor}x the traded price. A gap this wide ` +
+          'usually means the assumptions need revisiting or the market is pricing in something ' +
+          'the filings do not show. Say so plainly rather than presenting it as free money.'
+        : 'The model and the market are within a normal range of each other.',
       marginOfSafety:
         !dcf.applicable ? NR
           : n(dcf.marginOfSafetyPct) === null ? NR
