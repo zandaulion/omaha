@@ -6,7 +6,7 @@
  * each of these produced a confident, wrong number in production, and none of
  * them is the kind of bug that shows up by looking at the screen.
  *
- * Run with:  node --test server/
+ * Run with:  npm test
  */
 
 import test from 'node:test';
