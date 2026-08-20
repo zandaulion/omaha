@@ -19,6 +19,18 @@ const RISK_FREE_RATE = 0.042;
 const EQUITY_RISK_PREMIUM = 0.05;
 const DEFAULT_BETA = 1.0;
 
+/**
+ * Trailing beta is a five-year regression, and a structural break in that
+ * window can drive it far below anything a real equity investor would accept.
+ * Yahoo reports 0.15 for TAL, which by CAPM alone implies a 4.95% cost of
+ * equity for a Chinese ADR — below what its own government bonds pay. Betas
+ * are clamped to a range in which the model still means something.
+ */
+const MIN_BETA = 0.6;
+const MAX_BETA = 2.5;
+/** No equity is cheaper capital than a bond plus a real risk premium. */
+const MIN_WACC = 0.06;
+
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 
 /** Division that yields null rather than Infinity or NaN. */
@@ -173,8 +185,9 @@ export function estimateWACC({ beta, marketCap, totalDebt, interestExpense, taxR
   const total = equityValue + debt;
   if (total <= 0) return null;
 
-  const costOfEquity =
-    RISK_FREE_RATE + (num(beta) ?? DEFAULT_BETA) * EQUITY_RISK_PREMIUM;
+  const rawBeta = num(beta) ?? DEFAULT_BETA;
+  const usedBeta = Math.min(MAX_BETA, Math.max(MIN_BETA, rawBeta));
+  const costOfEquity = RISK_FREE_RATE + usedBeta * EQUITY_RISK_PREMIUM;
 
   let costOfDebt = ratio(interestExpense, debt);
   if (costOfDebt === null || costOfDebt <= 0 || costOfDebt > 0.25) {
@@ -184,9 +197,8 @@ export function estimateWACC({ beta, marketCap, totalDebt, interestExpense, taxR
   const tax = num(taxRate);
   const afterTaxDebt = costOfDebt * (1 - (tax !== null && tax >= 0 && tax < 0.6 ? tax : 0.21));
 
-  return round(
-    (costOfEquity * (equityValue / total) + afterTaxDebt * (debt / total)) * 100
-  );
+  const wacc = costOfEquity * (equityValue / total) + afterTaxDebt * (debt / total);
+  return round(Math.max(MIN_WACC, wacc) * 100);
 }
 
 // =====================================================================
@@ -425,6 +437,9 @@ function deriveMetrics(model) {
     debtToEquity: equity !== null && equity > 0 ? ratio(totalDebt, equity) : null,
     negativeEquity: equity !== null && equity <= 0,
 
+    beta: num(q.beta),
+    betaClamped:
+      num(q.beta) !== null && (q.beta < 0.6 || q.beta > 2.5),
     effectiveTaxRate,
     appliedTaxRate,
     taxRateEstimated: !taxRateUsable,
@@ -447,7 +462,19 @@ function deriveMetrics(model) {
     epsCAGR: hist.epsCAGR ?? null,
     fcfPerShareCAGR: hist.fcfPerShareCAGR ?? null,
     shareChangeYoY: hist.shareChangeYoY ?? null,
+    shareChangeYears: hist.shareChangeYears ?? null,
+    shareChangeIsAnnual: hist.shareChangeIsAnnual ?? null,
     cagrYears: hist.cagrYears ?? null,
+
+    // Compound annual rate implied by the change, so a multi-year span is
+    // comparable with a genuine one-year move.
+    shareChangeAnnualisedPct: (() => {
+      const change = hist.shareChangeYoY;
+      if (change === null || change === undefined) return null;
+      const years = hist.shareChangeYears || 1;
+      if (years <= 1) return Number((change * 100).toFixed(2));
+      return Number(((Math.pow(1 + change, 1 / years) - 1) * 100).toFixed(2));
+    })(),
 
     fcfPositiveYears: (hist.freeCashFlow || []).filter((v) => v !== null && v > 0).length,
     fcfReportedYears: (hist.freeCashFlow || []).filter((v) => v !== null).length,
@@ -658,7 +685,9 @@ function scorePillars(m) {
   const p5 = [];
   p5.push({
     name: 'Buybacks vs. dilution',
-    ...band(m.shareChangeYoY === null ? null : -m.shareChangeYoY * 100,
+    // Annualised where a filing gap makes the change span more than one year,
+    // so a two-year buyback is not scored as if it happened in twelve months.
+    ...band(m.shareChangeAnnualisedPct === null ? null : -m.shareChangeAnnualisedPct,
             [[2, 7], [-0.5, 5], [-2, 2]], 7)
   });
 
@@ -823,12 +852,17 @@ function buildChecklist(m, fmt) {
     item(9, 'Share Dilution & Buybacks', 'Capital Return',
       'Change in the diluted share count. Buybacks lift per-share value; stock compensation quietly erodes it.',
       m.shareChangeYoY === null
-        ? { ...NA, benchmark: 'Shrinking or < 0.5% YoY' }
+        ? { ...NA, benchmark: 'Shrinking or < 0.5% a year' }
         : {
             value: `${m.shareChangeYoY <= 0 ? '' : '+'}${(m.shareChangeYoY * 100).toFixed(1)}%` +
-              (m.shareChangeYoY < 0 ? ' (buybacks)' : ' dilution'),
-            benchmark: 'Shrinking or < 0.5% YoY',
-            status: m.shareChangeYoY <= 0.005 ? 'pass' : m.shareChangeYoY <= 0.025 ? 'watch' : 'fail'
+              (m.shareChangeYoY < 0 ? ' (buybacks)' : ' dilution') +
+              // Say so when a filing gap means this is not a one-year change.
+              (m.shareChangeIsAnnual === false && m.shareChangeYears
+                ? ` over ${m.shareChangeYears} years`
+                : ''),
+            benchmark: 'Shrinking or < 0.5% a year',
+            status: m.shareChangeAnnualisedPct <= 0.5 ? 'pass'
+              : m.shareChangeAnnualisedPct <= 2.5 ? 'watch' : 'fail'
           }),
 
     item(10, 'FCF / Net Income Quality', 'Earnings Quality',
@@ -903,10 +937,13 @@ function buildInsights(m, fmt) {
     });
   }
   if (m.shareChangeYoY !== null && m.shareChangeYoY < -0.01) {
+    const span = m.shareChangeIsAnnual === false && m.shareChangeYears
+      ? `over ${m.shareChangeYears} filed years`
+      : 'year on year';
     catalysts.push({
       icon: '📈',
       title: 'Accretive buybacks',
-      text: `Diluted share count fell ${Math.abs(m.shareChangeYoY * 100).toFixed(1)}% year on year.`
+      text: `Diluted share count fell ${Math.abs(m.shareChangeYoY * 100).toFixed(1)}% ${span}.`
     });
   }
   if (m.operatingMarginChangeBps !== null && m.operatingMarginChangeBps >= 150) {
@@ -931,11 +968,11 @@ function buildInsights(m, fmt) {
       text: `Net debt is ${m.netDebtToEbitda.toFixed(1)}× EBITDA, which limits flexibility if rates stay high.`
     });
   }
-  if (m.shareChangeYoY !== null && m.shareChangeYoY > 0.02) {
+  if (m.shareChangeAnnualisedPct !== null && m.shareChangeAnnualisedPct > 2) {
     risks.push({
       icon: '⚠️',
       title: 'Shareholder dilution',
-      text: `Diluted share count rose ${(m.shareChangeYoY * 100).toFixed(1)}% year on year.`
+      text: `Diluted share count rose ${m.shareChangeAnnualisedPct.toFixed(1)}% a year.`
     });
   }
   if (m.forwardPE !== null && m.forwardPE > 40) {

@@ -69,8 +69,9 @@ function authHeaders(sess) {
 
 /**
  * Statement fields we ask for, mapped to the names used inside the app.
- * Several Yahoo keys are aliases that appear on some filers and not others;
- * the first one that returns data wins.
+ * Several Yahoo keys are aliases that appear on some filers and not others.
+ * Order matters: earlier entries are preferred, and that preference is
+ * enforced by rank in parseTimeseries rather than by arrival order.
  */
 const FIELD_MAP = {
   revenue: ['TotalRevenue'],
@@ -110,12 +111,22 @@ const ANNUAL_KEYS = [...new Set(Object.values(FIELD_MAP).flat())];
 // Only the handful needed for the quarterly gross-margin trend check.
 const QUARTERLY_KEYS = ['TotalRevenue', 'GrossProfit', 'OperatingIncome', 'NetIncome'];
 
-/** Reverse index: Yahoo key -> our field name. */
+/**
+ * Reverse index: Yahoo key -> { field, rank }.
+ *
+ * `rank` is the position in that field's alias list, and it matters: Yahoo
+ * returns the series in arbitrary order, so resolving aliases by whichever
+ * arrives first silently picks the wrong one. For TAL, Yahoo emits
+ * BasicAverageShares before DilutedAverageShares and
+ * TotalEquityGrossMinorityInterest before StockholdersEquity — so the app was
+ * scoring on basic shares and gross-of-minority equity, which moved its
+ * Altman Z from 3.00 to 2.97 and with it a checklist item from pass to watch.
+ */
 const KEY_TO_FIELD = {};
 for (const [field, keys] of Object.entries(FIELD_MAP)) {
-  for (const k of keys) {
-    if (!(k in KEY_TO_FIELD)) KEY_TO_FIELD[k] = field;
-  }
+  keys.forEach((k, rank) => {
+    if (!(k in KEY_TO_FIELD)) KEY_TO_FIELD[k] = { field, rank };
+  });
 }
 
 function parseTimeseries(json, prefix) {
@@ -123,23 +134,30 @@ function parseTimeseries(json, prefix) {
   const byDate = new Map();
   let currency = null;
 
+  // Best alias rank seen per (date, field), so the declared preference wins
+  // regardless of the order Yahoo happens to emit the series in.
+  const rankUsed = new Map();
+
   for (const series of json?.timeseries?.result || []) {
     const type = series?.meta?.type?.[0];
     if (!type || !type.startsWith(prefix)) continue;
 
-    const yahooKey = type.slice(prefix.length);
-    const field = KEY_TO_FIELD[yahooKey];
-    if (!field) continue;
+    const mapping = KEY_TO_FIELD[type.slice(prefix.length)];
+    if (!mapping) continue;
+    const { field, rank } = mapping;
 
     for (const point of series[type] || []) {
       if (!point || point.reportedValue?.raw === undefined) continue;
       const date = point.asOfDate;
       if (!date) continue;
       if (!byDate.has(date)) byDate.set(date, { asOfDate: date });
+
       const row = byDate.get(date);
-      // First alias to supply a value wins; don't let a later alias clobber it.
-      if (row[field] === undefined || row[field] === null) {
+      const slot = `${date}|${field}`;
+      const bestSoFar = rankUsed.get(slot);
+      if (bestSoFar === undefined || rank < bestSoFar) {
         row[field] = point.reportedValue.raw;
+        rankUsed.set(slot, rank);
       }
       if (!currency && point.currencyCode) currency = point.currencyCode;
     }

@@ -152,7 +152,8 @@ export async function getStockData(tickerSymbol, forceRefresh = false) {
   const model = buildModel(quote, fundamentals);
   model.sectorMedianAssetTurnover = sectorMedianAssetTurnover(quote.sector, ticker);
   const peHistory = buildPeHistory(fundamentals, quote);
-  model.peVsHistoryPct = peHistory.vsMedianPct;
+  // Only a long enough history is allowed to move the valuation score.
+  model.peVsHistoryPct = peHistory.scoreable ? peHistory.vsMedianPct : null;
   model.peHistory = peHistory;
 
   const score = computeComprehensiveHealth(model);
@@ -225,7 +226,14 @@ function buildHistory(annual) {
           : null
       )
     ),
-    shareChangeYoY: yoyChange(annual.map((p) => p.dilutedShares)),
+    ...(() => {
+      const change = yoyChange(annual.map((p) => p.dilutedShares));
+      return {
+        shareChangeYoY: change.value,
+        shareChangeYears: change.years,
+        shareChangeIsAnnual: change.consecutive
+      };
+    })(),
     // The span the CAGRs actually cover, so the UI can label them honestly.
     cagrYears: countableSpan(annual.map((p) => p.revenue))
   };
@@ -253,13 +261,35 @@ function countableSpan(series) {
   return points.length >= 2 ? points.length - 1 : null;
 }
 
+/**
+ * Change between the two most recent *consecutive* filed periods.
+ *
+ * Filtering nulls and taking the last two values is wrong when a year is
+ * missing: TAL has no FY2025 share count, so that approach reported the
+ * FY2024-to-FY2026 change as if it were year on year. Where the latest period
+ * or the one before it is unreported, the change is not year on year and the
+ * span is returned alongside so the caller can label it honestly.
+ */
 function yoyChange(series) {
-  const points = series.filter((v) => v !== null && v !== undefined);
-  if (points.length < 2) return null;
-  const prev = points[points.length - 2];
-  const curr = points[points.length - 1];
-  if (!prev) return null;
-  return Number(((curr - prev) / prev).toFixed(4));
+  const last = series.length - 1;
+  if (last < 1) return { value: null, years: null, consecutive: false };
+
+  const curr = series[last];
+  if (curr === null || curr === undefined) {
+    return { value: null, years: null, consecutive: false };
+  }
+
+  // Walk back to the nearest earlier period that reported a value.
+  let idx = last - 1;
+  while (idx >= 0 && (series[idx] === null || series[idx] === undefined)) idx--;
+  if (idx < 0 || !series[idx]) return { value: null, years: null, consecutive: false };
+
+  const span = last - idx;
+  return {
+    value: Number(((curr - series[idx]) / series[idx]).toFixed(4)),
+    years: span,
+    consecutive: span === 1
+  };
 }
 
 // ------------------------------------------------- contextual comparisons
@@ -310,20 +340,36 @@ function sectorMedianAssetTurnover(sector, excludeTicker) {
  * against fixed absolute multiples instead.
  */
 function buildPeHistory(fundamentals, quote) {
-  const empty = { available: false, series: [], min: null, median: null, max: null, current: null, percentile: null, vsMedianPct: null };
+  // A P/E series only exists for months where the company had already filed a
+  // positive EPS. For a business recovering from losses that can be a small
+  // slice of the five years, computed against trough earnings — TAL's "range"
+  // was 18 months divided by a trough EPS, giving a median of 75x against a
+  // current 7.6x and a headline of "cheapest 0% of its five-year range". The
+  // arithmetic was right and the conclusion was nonsense: earnings recovered
+  // sixfold, the multiple did not compress. So the span is measured, reported,
+  // and required to be long enough before it is allowed to affect the score.
+  const MIN_MONTHS_TO_SCORE = 36;
+  const MIN_EPS_PERIODS = 3;
+
+  const empty = (reason) => ({
+    available: false, reason, series: [], months: 0,
+    min: null, p20: null, median: null, p80: null, max: null,
+    current: quote.trailingPE ?? null, percentile: null, vsMedianPct: null
+  });
+
   const prices = fundamentals.priceHistory || [];
   const annual = fundamentals.annual || [];
-  if (!prices.length || annual.length < 2) return empty;
+  if (!prices.length) return empty('no price history');
 
   const epsPeriods = annual
     .filter((p) => typeof p.dilutedEPS === 'number' && p.dilutedEPS > 0)
     .map((p) => ({ date: p.asOfDate, eps: p.dilutedEPS }));
-  if (epsPeriods.length < 2) return empty;
+  if (epsPeriods.length < 2) return empty('fewer than two profitable filed years');
 
   const series = [];
   for (const point of prices) {
-    // Use the most recently *filed* EPS as of that month — the multiple an
-    // investor could actually have computed at the time.
+    // The multiple an investor could actually have computed at the time: the
+    // most recently filed EPS as of that month.
     let eps = null;
     for (const period of epsPeriods) {
       if (period.date <= point.date) eps = period.eps;
@@ -332,26 +378,44 @@ function buildPeHistory(fundamentals, quote) {
     const pe = point.close / eps;
     if (pe > 0 && pe < 400) series.push({ date: point.date, pe: Number(pe.toFixed(2)) });
   }
-  if (series.length < 12) return empty;
 
   const values = series.map((s) => s.pe).sort((a, b) => a - b);
+  const current = quote.trailingPE ?? (series.length ? series[series.length - 1].pe : null);
+
+  const base = {
+    series,
+    months: series.length,
+    epsPeriods: epsPeriods.length,
+    current: current === null ? null : Number(current.toFixed(2))
+  };
+
+  if (series.length < 12) return { ...empty('too few months of comparable earnings'), ...base };
+
   const at = (q) => values[Math.min(values.length - 1, Math.floor(q * values.length))];
   const median = at(0.5);
-  const current = quote.trailingPE ?? series[series.length - 1].pe;
+  const below = current === null ? null : values.filter((v) => v <= current).length;
 
-  const below = values.filter((v) => v <= current).length;
+  // Long enough to be a fair comparison, or shown for context but not scored.
+  const scoreable = series.length >= MIN_MONTHS_TO_SCORE && epsPeriods.length >= MIN_EPS_PERIODS;
 
   return {
+    ...base,
     available: true,
-    series,
+    scoreable,
+    reason: scoreable
+      ? null
+      : `only ${series.length} months of comparable earnings across ` +
+        `${epsPeriods.length} profitable filed year${epsPeriods.length === 1 ? '' : 's'}`,
     min: values[0],
     p20: at(0.2),
     median,
     p80: at(0.8),
     max: values[values.length - 1],
-    current: Number(current.toFixed(2)),
-    percentile: Math.round((below / values.length) * 100),
-    vsMedianPct: median > 0 ? Number((((current - median) / median) * 100).toFixed(1)) : null
+    percentile: below === null ? null : Math.round((below / values.length) * 100),
+    vsMedianPct:
+      median > 0 && current !== null
+        ? Number((((current - median) / median) * 100).toFixed(1))
+        : null
   };
 }
 

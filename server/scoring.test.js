@@ -454,3 +454,75 @@ test('catalysts and risks are not manufactured to fill the cards', () => {
       'no filler catalyst should be emitted');
   }
 });
+
+// =====================================================================
+// Defects found by recomputing TAL by hand against the raw Yahoo response
+// =====================================================================
+
+test('a multi-year share-count change is annualised, not read as year on year', () => {
+  // TAL files no FY2025 diluted share count. Filtering nulls and taking the
+  // last two values reported the FY2024-to-FY2026 change as if it were a
+  // single year, which both mislabels it and overstates the buyback rate.
+  const model = healthyModel();
+  model.history = {
+    ...model.history,
+    shareChangeYoY: -0.0511,
+    shareChangeYears: 2,
+    shareChangeIsAnnual: false
+  };
+  const r = computeComprehensiveHealth(model);
+
+  assert.ok(Math.abs(r.metrics.shareChangeAnnualisedPct - -2.59) < 0.05,
+    `expected about -2.59% a year, got ${r.metrics.shareChangeAnnualisedPct}`);
+  const check = r.checklist.find((c) => c.id === 9);
+  assert.match(check.value, /over 2 years/, 'the span must be stated');
+});
+
+test('a genuine one-year share change is left alone', () => {
+  const model = healthyModel();
+  model.history = {
+    ...model.history,
+    shareChangeYoY: -0.024, shareChangeYears: 1, shareChangeIsAnnual: true
+  };
+  const r = computeComprehensiveHealth(model);
+  assert.ok(Math.abs(r.metrics.shareChangeAnnualisedPct - -2.4) < 0.01);
+  assert.doesNotMatch(r.checklist.find((c) => c.id === 9).value, /over \d+ years/);
+});
+
+test('an implausibly low beta cannot produce a cost of capital below a bond', () => {
+  // Yahoo reports beta 0.15 for TAL — a five-year regression across a
+  // structural break. Unclamped CAPM gives a 4.9% cost of equity for a
+  // Chinese ADR, which made a +18-point ROIC spread look like a moat.
+  const wacc = estimateWACC({
+    beta: 0.15, marketCap: 6.9e9, totalDebt: 387e6, interestExpense: 0, taxRate: 0.225
+  });
+  assert.ok(wacc >= 6, `WACC floor breached: ${wacc}%`);
+  assert.ok(wacc <= 9, `WACC unexpectedly high for a low-beta name: ${wacc}%`);
+});
+
+test('an implausibly high beta is clamped too', () => {
+  const high = estimateWACC({ beta: 6, marketCap: 1e9, totalDebt: 0, interestExpense: 0, taxRate: 0.21 });
+  const capped = estimateWACC({ beta: 2.5, marketCap: 1e9, totalDebt: 0, interestExpense: 0, taxRate: 0.21 });
+  assert.equal(high, capped, 'beta above the clamp must not keep raising WACC');
+});
+
+test('a short P/E history does not move the valuation score', () => {
+  // Only two profitable filed years gives TAL an 18-month "five-year range"
+  // computed against trough earnings: median 75x against a current 7.6x, and
+  // a headline of "cheapest 0% of its range" that reflects an earnings
+  // recovery rather than a valuation compression.
+  const withShortHistory = healthyModel({ peVsHistoryPct: null });
+  const withLongHistory = healthyModel({ peVsHistoryPct: -60 });
+
+  const short = computeComprehensiveHealth(withShortHistory);
+  const long = computeComprehensiveHealth(withLongHistory);
+
+  const rowOf = (r) => r.pillars
+    .find((p) => p.name.startsWith('Valuation'))
+    .items.find((i) => i.name.startsWith('Forward P/E'));
+
+  // With no usable history the row falls back to the absolute multiple.
+  assert.ok(rowOf(short).available, 'the row should still score on absolute P/E');
+  assert.ok(rowOf(long).points >= rowOf(short).points,
+    'a genuine discount to a long history should score at least as well');
+});
