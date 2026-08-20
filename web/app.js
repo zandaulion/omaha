@@ -2822,9 +2822,10 @@ async function handleEnablePush() {
     // Trigger an immediate confirmation notification via Service Worker
     if (reg.showNotification) {
       reg.showNotification('Pocket Omaha 🎩', {
-        body: '🔔 Notifications are active! You will receive fundamental upgrades & moat alerts.',
+        body: 'Notifications are on. You will hear about health changes, distress signals and entry points.',
         icon: '/icons/icon-192.png',
-        badge: '/icons/icon-192.png',
+        badge: '/icons/badge-96.png',
+        tag: 'push-enabled',
         data: { url: '/' }
       });
     }
