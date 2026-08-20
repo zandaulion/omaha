@@ -316,7 +316,7 @@ function recordAndSend(alert) {
     title: alert.title,
     body: alert.body,
     icon: '/icons/icon-192.png',
-    badge: '/icons/icon-192.png',
+    badge: '/icons/badge-96.png',
     data: { url: alert.url, type: alert.type, ticker: alert.ticker, severity: alert.severity }
   });
 }

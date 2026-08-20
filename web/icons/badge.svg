@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96">
+  <!--
+    Notification badge — the small glyph Android draws in the status bar and in
+    the corner of the notification.
+
+    Android renders this from the ALPHA CHANNEL ONLY, as a flat silhouette in
+    the system tint. So it must be a transparent-background shape, not the app
+    icon: a full-colour rounded-square icon is opaque edge to edge, and comes
+    out as a featureless white block.
+
+    Everything below is therefore solid white on nothing, drawn heavy enough to
+    survive being scaled down to about 18dp.
+  -->
+  <g fill="#FFFFFF">
+    <!-- Spark, held clear of the crown: at badge size the two merge into one
+         blob if they touch, and it stops reading as a hat. -->
+    <polygon points="48,4 52.5,12.5 61,17 52.5,21.5 48,30 43.5,21.5 35,17 43.5,12.5"/>
+
+    <!-- Crown. Straight-sided and wide, to survive scaling to ~18dp. -->
+    <path d="M32,64 L35,40 C35,37.8 36.8,36 39,36 L57,36 C59.2,36 61,37.8 61,40 L64,64 Z"/>
+
+    <!-- Brim. -->
+    <ellipse cx="48" cy="66" rx="31" ry="7.5"/>
+  </g>
+</svg>
