@@ -91,7 +91,7 @@ network to multiple devices. A single-device on-device app needs none of it.
 | Capability | Node (PWA) | Browser (PWA) | Android |
 |---|---|---|---|
 | `fetch` | native | via server proxy | OkHttp, injected |
-| `cache.get/set` | SQLite | IndexedDB | Room |
+| storage (`core/store.js`) | SQLite (`server/store.js`) | IndexedDB | Room |
 | `now()` | `Date.now` | `Date.now` | `Date.now` |
 | `log(level, msg)` | `console` | `console` | Timber bridge |
 
@@ -362,7 +362,7 @@ without waiting for `finance.js`.
 |---|---|---|
 | 1 | Extract `core/`, keep the PWA green | No unintended behaviour change. Includes defects 1–5 and the provider seam — **done**, see §16 |
 | 1a | Golden model fixtures | Recorded upstream responses replay offline to a byte-identical model — **done**, see §17 |
-| 1b | `finance.js` split | Store contract defined; assembly in `core/`; golden snapshots unchanged |
+| 1b | `finance.js` split | Store contract defined; assembly in `core/`; golden snapshots unchanged — **done**, see §19 |
 | 2 | QuickJS spike | `core/` + fetch shim in a bare Android module reproduces the golden snapshots for `NOK`, `AAPL` and `JPM` — no longer just "prints a scorecard", since there is now something exact to compare against |
 | 3 | Room + import/export | A PWA `/api/theses` backup imports into Android and back out, losslessly |
 | 4 | Compose UI | Watchlist → Deep Dive → Screener → Compare, tokens generated, screenshot diffs passing |
@@ -457,19 +457,10 @@ refactor and each should be read as a change:
 4. The sweep abandons its run on `rate_limited` rather than continuing down the
    watchlist into a block that just rejected it.
 
-### Not done
+### Not done at the time
 
-`finance.js` still imports `db` directly, at four call sites: the cached search
-(`searchStocks`), the sector median (`sectorMedianAssetTurnover`),
-`saveStockToCache` and `readCache`. The storage contract Android needs is
-therefore not yet defined, and the pure model-assembly half of the file
-(`buildModel`, `buildHistory`, `buildPeHistory`, `toRecord` and their helpers,
-roughly 450 lines) has not moved to `core/`.
-
-Left as its own change on purpose. It is a large mechanical move that alters no
-behaviour and carries no defect fix, so it reviews far better on its own than
-buried among the four behaviour changes above — and `getStockData` is the app's
-main path, which had just been edited.
+`finance.js` still reached for `db` directly, and the model-assembly half had
+not moved. Both were completed in step 1b — see §19.
 
 ### Follow-up found but not fixed
 
@@ -596,3 +587,58 @@ on the strength of a comment.
   sufficed. `providers/yahoo.js` imports `../errors.js` and will need specifiers
   registered under the exact strings it uses.
 * Anything on an actual device: APK size, ABI splits, cold start on ARM.
+
+---
+
+## 19. Step 1b — the finance.js split
+
+`core/` is now host-independent. It imports nothing from `server/`; the whole
+import graph is internal plus `node:assert` in the tests. A host supplies two
+things and gets a scored stock back.
+
+| | Before | After |
+|---|---|---|
+| `server/finance.js` | 661 lines, four direct `db` call sites | **19 lines** — registers the SQLite store, re-exports `core/` |
+| `core/stock.js` | — | 210 — `getStockData`, `searchStocks`, the cache-tier and staleness decisions |
+| `core/model/assemble.js` | — | 223 — `buildModel`, trend series, FX normalisation |
+| `core/model/pe-history.js` | — | 98 — the stock's own P/E range |
+| `core/model/record.js` | — | 122 — `toRecord` and `formatCachedStock`, a matched pair |
+| `core/store.js` | — | the storage contract, plus the sector median |
+
+`getStockData` moved rather than staying behind, because it is not plumbing:
+which cache tier is still valid, when stale data beats no data, and when a
+failure must be reported rather than papered over are judgements, and a Kotlin
+reimplementation of them would be a second set of answers to the same
+questions.
+
+### The storage contract
+
+Four calls. Android implements these against Room; `server/store.js` is the
+SQLite reference.
+
+| Call | Returns |
+|---|---|
+| `read(ticker)` | the cached row, or null |
+| `save(record, hasFundamentals)` | — upserts; the flag decides whether the statement timestamp advances |
+| `searchCached(query)` | locally known tickers, best match first |
+| `sectorFinancials(sector, excludeTicker)` | parsed `financials` for a sector's other constituents |
+
+The line is drawn so **queries live in the host and arithmetic lives in core**.
+`sectorFinancials` returns rows rather than a median, because the median is a
+scoring input: it is the threshold a company's asset turnover is judged
+against, and a host computing it independently would be a second definition of
+a number the user sees. `hasFundamentals` matters for the same kind of reason —
+a quote-only refresh that advanced the statement timestamp would make stale
+filings look fresh and quietly disable the 24-hour tier.
+
+### The golden gate earned its keep immediately
+
+Moving `applyFxNormalisation` into `core/model/assemble.js`, the provider was
+imported under its seam name `getFxRate` while the function body still called
+`fetchFxRate`. **Only NOK caught it.** AAPL and JPM return before the FX call
+because they report and trade in one currency, so both passed; the suite would
+have gone green and the defect would have shipped, breaking every depositary
+receipt and nothing else.
+
+That is the argument for §17's fixture selection in one line: three tickers
+chosen for materially different paths, not three tickers.
