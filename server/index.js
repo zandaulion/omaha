@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { initDatabase, db } from './db.js';
 import { getStockData, searchStocks } from './finance.js';
+import { fetchPeers } from './yahoo.js';
 import {
   requireAdmin,
   requireDeviceAuth,
@@ -20,6 +21,15 @@ import {
 } from './auth.js';
 import { initVapid, getVapidPublicKey, saveSubscription, broadcastPush } from './push.js';
 import { generateStockAISummary, getCachedAISummary } from './gemini.js';
+import {
+  startAlertWorker,
+  runSweep,
+  sendWeeklyDigest,
+  getNotificationSettings,
+  updateNotificationSettings,
+  getNotificationHistory,
+  markNotificationsRead
+} from './alerts.js';
 
 dotenv.config();
 
@@ -33,8 +43,10 @@ initVapid();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
-app.use(express.json());
+// The PWA is served from the same origin as the API, so no cross-origin
+// access is needed. A wide-open policy was a larger door than the app uses.
+app.use(cors({ origin: false }));
+app.use(express.json({ limit: '256kb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Serve static frontend files
@@ -85,6 +97,41 @@ app.post('/api/push/test', requireAdmin, async (req, res) => {
   res.json({ success: true, delivered: results.length });
 });
 
+// ----------------- ALERTS & NOTIFICATIONS (PROTECTED) -----------------
+app.get('/api/notifications', requireDeviceAuth, (req, res) => {
+  res.json({
+    settings: getNotificationSettings(),
+    history: getNotificationHistory(parseInt(req.query.limit || '50', 10))
+  });
+});
+
+app.post('/api/notifications/settings', requireDeviceAuth, (req, res) => {
+  res.json({ success: true, settings: updateNotificationSettings(req.body || {}) });
+});
+
+app.post('/api/notifications/read', requireDeviceAuth, (req, res) => {
+  markNotificationsRead();
+  res.json({ success: true });
+});
+
+// Manual trigger for the sweep and the digest, so both can be exercised
+// without waiting for the schedule.
+app.post('/api/admin/alerts/sweep', requireAdmin, async (req, res) => {
+  try {
+    res.json({ success: true, ...(await runSweep()) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/alerts/digest', requireAdmin, async (req, res) => {
+  try {
+    res.json({ success: true, alert: await sendWeeklyDigest() });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ----------------- FINANCIAL DATA & SCORING API (PROTECTED) -----------------
 
 // Single Stock Deep Dive
@@ -95,7 +142,12 @@ app.get('/api/stock/:ticker', requireDeviceAuth, async (req, res) => {
   try {
     const data = await getStockData(ticker, forceRefresh);
     if (!data) {
-      return res.status(404).json({ error: `Ticker ${ticker} not found` });
+      // An unresolvable symbol is an error. The previous build synthesised a
+      // company from the ticker string and cached it as though it were real.
+      return res.status(404).json({
+        error: `No listing found for ${ticker.toUpperCase()}.`,
+        ticker: ticker.toUpperCase()
+      });
     }
     return res.json(data);
   } catch (err) {
@@ -188,48 +240,127 @@ app.get('/api/compare', requireDeviceAuth, async (req, res) => {
   }
 });
 
+// Suggested peers for the comparison view.
+app.get('/api/stock/:ticker/peers', requireDeviceAuth, async (req, res) => {
+  const ticker = req.params.ticker.trim().toUpperCase();
+  try {
+    const symbols = await fetchPeers(ticker);
+    // Anything already scored comes back with its numbers attached, so the
+    // suggestion list can show why a peer is worth comparing.
+    const peers = symbols.map((sym) => {
+      const row = db
+        .prepare('SELECT ticker, name, sector, health_score FROM stock_cache WHERE ticker = ?')
+        .get(sym);
+      return {
+        ticker: sym,
+        name: row?.name || null,
+        sector: row?.sector || null,
+        health_score: row?.health_score ?? null,
+        isCached: Boolean(row)
+      };
+    });
+    return res.json({ ticker, peers });
+  } catch (err) {
+    console.warn(`Peer lookup failed for ${ticker}:`, err.message);
+    return res.json({ ticker, peers: [] });
+  }
+});
+
 // Screener Endpoint
+//
+// Screens the stocks this install has data for — the watchlists plus anything
+// looked up before. It is deliberately not presented as a market-wide screen:
+// there is no free universe endpoint behind it, and implying otherwise would
+// suggest the absence of a match means something it does not.
 app.get('/api/screener', requireDeviceAuth, async (req, res) => {
   const minHealth = parseInt(req.query.minHealth || '0', 10);
   const minPiotroski = parseInt(req.query.minPiotroski || '0', 10);
   const minRoic = parseFloat(req.query.minRoic || '0');
   const sector = req.query.sector || '';
+  const netCashOnly = req.query.netCash === '1' || req.query.netCash === 'true';
+  const fcfPositive = req.query.fcfPositive === '1' || req.query.fcfPositive === 'true';
+  const maxDebtToEquity = req.query.maxDebtToEquity
+    ? parseFloat(req.query.maxDebtToEquity)
+    : null;
 
-  const starterList = ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'BRK-B', 'TSLA', 'JNJ', 'PG', 'KO', 'V'];
-  for (const t of starterList) {
-    const cached = db.prepare('SELECT ticker FROM stock_cache WHERE ticker = ?').get(t);
-    if (!cached) {
+  // Make sure everything on a watchlist is present, so the screen covers the
+  // portfolio rather than an arbitrary subset of it.
+  try {
+    const lists = db.prepare('SELECT tickers_json FROM watchlists').all();
+    const wanted = new Set();
+    for (const l of lists) {
+      for (const t of JSON.parse(l.tickers_json || '[]')) wanted.add(t);
+    }
+    const missing = [...wanted].filter(
+      (t) => !db.prepare('SELECT 1 FROM stock_cache WHERE ticker = ?').get(t)
+    );
+    // Bounded so a large watchlist cannot turn one request into fifty fetches.
+    for (const t of missing.slice(0, 6)) {
       await getStockData(t).catch(() => {});
     }
+  } catch (err) {
+    console.warn('Screener warm-up warning:', err.message);
   }
 
-  let query = 'SELECT * FROM stock_cache WHERE health_score >= ? AND piotroski_score >= ? AND roic_pct >= ?';
+  let query = `SELECT * FROM stock_cache
+               WHERE health_score IS NOT NULL
+                 AND health_score >= ?
+                 AND COALESCE(piotroski_score, -1) >= ?
+                 AND COALESCE(roic_pct, -999) >= ?`;
   const params = [minHealth, minPiotroski, minRoic];
 
   if (sector && sector !== 'all') {
     query += ' AND sector = ?';
     params.push(sector);
   }
+  if (netCashOnly) query += ' AND net_cash_b > 0';
 
-  query += ' ORDER BY health_score DESC LIMIT 50';
+  query += ' ORDER BY health_score DESC LIMIT 100';
 
   const rows = db.prepare(query).all(...params);
-  const stocks = rows.map(r => ({
-    ticker: r.ticker,
-    name: r.name,
-    sector: r.sector,
-    price: r.price,
-    change_pct: r.change_pct,
-    health_score: r.health_score,
-    piotroski_score: r.piotroski_score,
-    altman_z: r.altman_z,
-    roic_pct: r.roic_pct,
-    fcf_conversion_pct: r.fcf_conversion_pct,
-    net_cash_b: r.net_cash_b,
-    summary: JSON.parse(r.summary_json || '{}')
-  }));
 
-  return res.json({ count: stocks.length, stocks });
+  const stocks = rows
+    .map((r) => {
+      const summary = JSON.parse(r.summary_json || '{}');
+      const financials = JSON.parse(r.financials_json || '{}');
+      return {
+        ticker: r.ticker,
+        name: r.name,
+        sector: r.sector,
+        currency: r.currency || 'USD',
+        price: r.price,
+        change_pct: r.change_pct,
+        health_score: r.health_score,
+        piotroski_score: r.piotroski_score,
+        altman_z: r.altman_z,
+        roic_pct: r.roic_pct,
+        fcf_conversion_pct: r.fcf_conversion_pct,
+        net_cash_b: r.net_cash_b,
+        debt_to_equity: summary.metrics?.debtToEquity ?? null,
+        free_cash_flow: financials.freeCashFlow ?? null,
+        summary
+      };
+    })
+    .filter((s) => {
+      if (fcfPositive && !(s.free_cash_flow > 0)) return false;
+      if (maxDebtToEquity !== null) {
+        const netCash = s.net_cash_b !== null && s.net_cash_b > 0;
+        if (!netCash && !(s.debt_to_equity !== null && s.debt_to_equity <= maxDebtToEquity)) {
+          return false;
+        }
+      }
+      return true;
+    });
+
+  const universe = db
+    .prepare('SELECT COUNT(*) AS n FROM stock_cache WHERE health_score IS NOT NULL')
+    .get();
+
+  return res.json({
+    count: stocks.length,
+    universe: universe?.n ?? stocks.length,
+    stocks
+  });
 });
 
 // ----------------- WATCHLISTS API (PROTECTED) -----------------
@@ -398,41 +529,60 @@ app.get('/api/watchlists/:id/health', requireDeviceAuth, async (req, res) => {
     });
   }
 
-  const avgHealth = Math.round(validStocks.reduce((sum, s) => sum + s.health_score, 0) / validStocks.length);
-  
-  const pillarSums = [0, 0, 0, 0, 0];
-  validStocks.forEach(s => {
-    if (s.pillars) {
-      s.pillars.forEach((p, idx) => {
-        pillarSums[idx] += p.score || 0;
-      });
-    }
-  });
+  // Weighted by market cap, as the spec asks: a composite that treats a
+  // $3tn position and a $2bn position alike is not a portfolio health index.
+  // Stocks with too little filed data to score are excluded and counted
+  // separately rather than being folded in as a zero.
+  const scored = validStocks.filter((s) => typeof s.health_score === 'number');
+  const unscored = validStocks.length - scored.length;
 
-  const avgPillars = [
-    { name: 'Solvency', score: Number((pillarSums[0] / validStocks.length).toFixed(1)), max: 20, pct: Math.round((pillarSums[0] / validStocks.length / 20) * 100) },
-    { name: 'Profitability', score: Number((pillarSums[1] / validStocks.length).toFixed(1)), max: 20, pct: Math.round((pillarSums[1] / validStocks.length / 20) * 100) },
-    { name: 'Valuation', score: Number((pillarSums[2] / validStocks.length).toFixed(1)), max: 20, pct: Math.round((pillarSums[2] / validStocks.length / 20) * 100) },
-    { name: 'Growth', score: Number((pillarSums[3] / validStocks.length).toFixed(1)), max: 20, pct: Math.round((pillarSums[3] / validStocks.length / 20) * 100) },
-    { name: 'Capital Return', score: Number((pillarSums[4] / validStocks.length).toFixed(1)), max: 20, pct: Math.round((pillarSums[4] / validStocks.length / 20) * 100) }
-  ];
+  const weightOf = (s) => (typeof s.market_cap === 'number' && s.market_cap > 0 ? s.market_cap : null);
+  const haveWeights = scored.every((s) => weightOf(s) !== null);
+  const totalWeight = haveWeights ? scored.reduce((sum, s) => sum + weightOf(s), 0) : scored.length;
+
+  const weighted = (pick) => {
+    if (!scored.length) return null;
+    const total = scored.reduce((sum, s) => {
+      const v = pick(s);
+      if (v === null || v === undefined) return sum;
+      return sum + v * (haveWeights ? weightOf(s) : 1);
+    }, 0);
+    return total / totalWeight;
+  };
+
+  const avgHealth = scored.length ? Math.round(weighted((s) => s.health_score)) : null;
+
+  const pillarNames = ['Solvency', 'Profitability', 'Valuation', 'Growth', 'Capital Return'];
+  const avgPillars = pillarNames.map((name, idx) => {
+    const value = weighted((s) => s.pillars?.[idx]?.score ?? null);
+    return {
+      name,
+      score: value === null ? null : Number(value.toFixed(1)),
+      max: 20,
+      pct: value === null ? null : Math.round((value / 20) * 100)
+    };
+  });
 
   let totalPass = 0;
   let totalWatch = 0;
   let totalFail = 0;
-  validStocks.forEach(s => {
-    if (s.summary?.checklistSummary) {
-      totalPass += s.summary.checklistSummary.passCount || 0;
-      totalWatch += s.summary.checklistSummary.watchCount || 0;
-      totalFail += s.summary.checklistSummary.failCount || 0;
-    }
+  let totalNa = 0;
+  validStocks.forEach((s) => {
+    const c = s.summary?.checklistSummary;
+    if (!c) return;
+    totalPass += c.passCount || 0;
+    totalWatch += c.watchCount || 0;
+    totalFail += c.failCount || 0;
+    totalNa += c.naCount || 0;
   });
 
-  let grade = 'EXCELLENT';
-  if (avgHealth >= 85) grade = 'EXCELLENT';
-  else if (avgHealth >= 70) grade = 'GOOD';
-  else if (avgHealth >= 50) grade = 'MODERATE';
-  else grade = 'CAUTION';
+  let grade = 'N/A';
+  if (avgHealth !== null) {
+    if (avgHealth >= 85) grade = 'EXCELLENT';
+    else if (avgHealth >= 70) grade = 'GOOD';
+    else if (avgHealth >= 50) grade = 'MODERATE';
+    else grade = 'CAUTION';
+  }
 
   return res.json({
     watchlistId: id,
@@ -441,10 +591,13 @@ app.get('/api/watchlists/:id/health', requireDeviceAuth, async (req, res) => {
     grade,
     stockCount: validStocks.length,
     pillars: avgPillars,
+    weighting: haveWeights ? 'market-cap' : 'equal',
+    unscoredCount: unscored,
     checklistAggregates: {
       totalPass,
       totalWatch,
-      totalFail
+      totalFail,
+      totalNa
     },
     stocks: validStocks
   });
@@ -536,7 +689,13 @@ app.get('/api/theses', requireDeviceAuth, (req, res) => {
   return res.json(exportData);
 });
 
-// Fallback to PWA index.html for client-side routing
+// Unmatched API routes get a JSON 404. Falling through to index.html made a
+// mistyped endpoint return 200 with an HTML body to a caller expecting JSON.
+app.use('/api', (req, res) => {
+  res.status(404).json({ error: `Unknown endpoint: ${req.method} /api${req.path}` });
+});
+
+// Everything else falls through to the PWA shell for client-side routing.
 app.get('*', (req, res) => {
   res.sendFile(path.join(WEB_DIR, 'index.html'));
 });
@@ -544,5 +703,6 @@ app.get('*', (req, res) => {
 // Start Server
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n🎩 Pocket Omaha backend is live at http://0.0.0.0:${PORT}`);
-  console.log(`   Admin endpoints ready under /api/admin/* (Protected by X-Admin: 1)`);
+  console.log('   Admin endpoints ready under /api/admin/* (X-Admin: 1, private listener only)');
+  startAlertWorker();
 });

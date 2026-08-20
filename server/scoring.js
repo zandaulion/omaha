@@ -1,610 +1,1228 @@
 /**
- * Pocket Omaha — Fundamental Quantitative Scoring Engine
- * Implements 5-Pillar Scorecard (0-100), 12-Point Checklist,
- * Altman Z-Score, Piotroski F-Score (9-pt), ROIC, DCF Fair Value,
- * and automated Moat Catalysts / Risk Flags.
+ * Pocket Omaha — fundamental scoring engine.
+ *
+ * Design rule, and the reason this file was rewritten: a metric that cannot be
+ * computed is reported as unavailable. It never falls back to a plausible
+ * constant, because a fabricated input produces a confident score that is
+ * simply wrong, and the user cannot tell the difference.
+ *
+ * Unavailable sub-scores are excluded from their pillar's denominator, so a
+ * bank is not punished for having no gross profit line. But if too little of
+ * the scorecard can be measured, no composite is emitted at all.
  */
 
-// 1. Altman Z-Score Calculation (Edward Altman formula for non-distressed manufacturing & corporate safety)
+/** Below this share of measurable sub-scores, a composite would be noise. */
+const MIN_COVERAGE = 0.6;
+
+/** CAPM inputs for the WACC estimate used by the ROIC-vs-cost-of-capital test. */
+const RISK_FREE_RATE = 0.042;
+const EQUITY_RISK_PREMIUM = 0.05;
+const DEFAULT_BETA = 1.0;
+
+const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+
+/** Division that yields null rather than Infinity or NaN. */
+function ratio(numerator, denominator, { allowNegativeDenominator = false } = {}) {
+  const a = num(numerator);
+  const b = num(denominator);
+  if (a === null || b === null || b === 0) return null;
+  if (!allowNegativeDenominator && b < 0) return null;
+  const r = a / b;
+  return Number.isFinite(r) ? r : null;
+}
+
+const round = (v, dp = 2) => (v === null ? null : Number(v.toFixed(dp)));
+
+// =====================================================================
+// 1. Altman Z-Score
+// =====================================================================
+
+/**
+ * Altman's 1968 model for public manufacturers. It is not defined for banks,
+ * insurers or REITs — their balance sheets have no working-capital cycle — so
+ * the caller passes `applicable: false` and the score is reported unavailable
+ * rather than computed on inapplicable inputs.
+ */
 export function calculateAltmanZScore(params) {
-  const { workingCapital, retainedEarnings, ebit, marketCap, totalLiabilities, totalRevenue, totalAssets } = params;
-  if (!totalAssets || totalAssets <= 0) return 0;
-
-  const X1 = (workingCapital || 0) / totalAssets;
-  const X2 = (retainedEarnings || 0) / totalAssets;
-  const X3 = (ebit || 0) / totalAssets;
-  const X4 = (marketCap || 0) / (totalLiabilities || 1);
-  const X5 = (totalRevenue || 0) / totalAssets;
-
-  const zScore = (1.2 * X1) + (1.4 * X2) + (3.3 * X3) + (0.6 * X4) + (0.999 * X5);
-  return Number(zScore.toFixed(2));
-}
-
-// 2. Piotroski F-Score (9 Fundamental Tests)
-export function calculatePiotroskiFScore(current, prior) {
-  let score = 0;
-  const details = [];
-
-  // 1. Profitability Signals (4 Points)
-  const netIncomePos = (current.netIncome || 0) > 0;
-  if (netIncomePos) score++;
-  details.push({ id: 'f1', name: 'Positive Net Income', passed: netIncomePos });
-
-  const ocfPos = (current.operatingCashFlow || 0) > 0;
-  if (ocfPos) score++;
-  details.push({ id: 'f2', name: 'Positive Operating Cash Flow', passed: ocfPos });
-
-  const roaCurrent = (current.netIncome || 0) / (current.totalAssets || 1);
-  const roaPrior = (prior?.netIncome || 0) / (prior?.totalAssets || 1);
-  const roaHigher = roaCurrent > roaPrior;
-  if (roaHigher) score++;
-  details.push({ id: 'f3', name: 'Higher Return on Assets YoY', passed: roaHigher });
-
-  const cashQuality = (current.operatingCashFlow || 0) > (current.netIncome || 0);
-  if (cashQuality) score++;
-  details.push({ id: 'f4', name: 'Cash Flow > Net Income (Quality)', passed: cashQuality });
-
-  // 2. Leverage, Liquidity & Source of Funds (3 Points)
-  const debtLower = (current.longTermDebt || 0) <= (prior?.longTermDebt || current.longTermDebt || 0) * 1.02;
-  if (debtLower) score++;
-  details.push({ id: 'f5', name: 'Lower or Flat Long-Term Debt', passed: debtLower });
-
-  const crCurrent = (current.currentAssets || 1) / (current.currentLiabilities || 1);
-  const crPrior = (prior?.currentAssets || 1) / (prior?.currentLiabilities || 1);
-  const crHigher = crCurrent >= crPrior * 0.98;
-  if (crHigher) score++;
-  details.push({ id: 'f6', name: 'Stable / Expanding Current Ratio', passed: crHigher });
-
-  const sharesCurrent = current.sharesOutstanding || 1;
-  const sharesPrior = prior?.sharesOutstanding || current.sharesOutstanding || 1;
-  const noDilution = sharesCurrent <= sharesPrior * 1.005;
-  if (noDilution) score++;
-  details.push({ id: 'f7', name: 'No Share Dilution (Buybacks/Flat)', passed: noDilution });
-
-  // 3. Operating Efficiency (2 Points)
-  const gmCurrent = ((current.grossProfit || current.totalRevenue || 1) / (current.totalRevenue || 1));
-  const gmPrior = ((prior?.grossProfit || prior?.totalRevenue || 1) / (prior?.totalRevenue || 1));
-  const gmHigher = gmCurrent >= gmPrior * 0.99;
-  if (gmHigher) score++;
-  details.push({ id: 'f8', name: 'Gross Margin Expansion / Stability', passed: gmHigher });
-
-  const atCurrent = (current.totalRevenue || 0) / (current.totalAssets || 1);
-  const atPrior = (prior?.totalRevenue || 0) / (prior?.totalAssets || 1);
-  const atHigher = atCurrent >= atPrior * 0.98;
-  if (atHigher) score++;
-  details.push({ id: 'f9', name: 'Asset Turnover Efficiency', passed: atHigher });
-
-  return { score, maxScore: 9, details };
-}
-
-// 3. ROIC Calculation (Return on Invested Capital)
-export function calculateROIC(ebit, taxRate, totalDebt, totalEquity, cash) {
-  const effectiveTax = taxRate > 0 && taxRate < 0.5 ? taxRate : 0.21;
-  const nopat = (ebit || 0) * (1 - effectiveTax);
-  const investedCapital = Math.max(1, (totalDebt || 0) + (totalEquity || 0) - (cash || 0));
-  const roic = (nopat / investedCapital) * 100;
-  return Number(roic.toFixed(2));
-}
-
-// 4. DCF Intrinsic Fair Value Calculation
-export function calculateDCFFairValue(params) {
   const {
-    trailingFCF, // Billions or raw $
-    growthRate = 0.12, // 5Y projected annual FCF growth
-    terminalMultiple = 20, // Terminal exit multiple at year 5
-    discountRate = 0.095, // Cost of equity / hurdle rate
-    cashReserves = 0,
-    totalDebt = 0,
-    sharesOutstanding = 1
+    workingCapital, retainedEarnings, ebit, marketCap,
+    totalLiabilities, totalRevenue, totalAssets
   } = params;
 
-  const fcf0 = trailingFCF > 0 ? trailingFCF : 1;
-  const pvCashFlows = [];
-  let currentFCF = fcf0;
+  const assets = num(totalAssets);
+  if (assets === null || assets <= 0) return null;
 
-  for (let t = 1; t <= 5; t++) {
-    currentFCF = currentFCF * (1 + growthRate);
-    const pv = currentFCF / Math.pow(1 + discountRate, t);
-    pvCashFlows.push({ year: t, projectedFCF: currentFCF, presentValue: pv });
-  }
+  const X1 = ratio(workingCapital, assets, { allowNegativeDenominator: true });
+  const X2 = ratio(retainedEarnings, assets);
+  const X3 = ratio(ebit, assets);
+  const X4 = ratio(marketCap, totalLiabilities);
+  const X5 = ratio(totalRevenue, assets);
 
-  const cumulativePV = pvCashFlows.reduce((sum, item) => sum + item.presentValue, 0);
-  const year5FCF = currentFCF;
-  const terminalValue = year5FCF * terminalMultiple;
-  const pvTerminalValue = terminalValue / Math.pow(1 + discountRate, 5);
+  // Every term is required; a missing one would silently bias the total.
+  if ([X1, X2, X3, X4, X5].some((t) => t === null)) return null;
 
-  const enterpriseValue = cumulativePV + pvTerminalValue;
-  const equityValue = enterpriseValue + cashReserves - totalDebt;
-  const fairValuePerShare = sharesOutstanding > 0 ? equityValue / sharesOutstanding : 0;
+  return round(1.2 * X1 + 1.4 * X2 + 3.3 * X3 + 0.6 * X4 + 0.999 * X5);
+}
+
+// =====================================================================
+// 2. Piotroski F-Score
+// =====================================================================
+
+/**
+ * Nine binary tests, six of which compare against the prior fiscal year. With
+ * no filed prior year the score is unavailable — the previous implementation
+ * synthesised a prior year scaled to be uniformly worse, which made all six
+ * comparisons pass by construction.
+ */
+export function calculatePiotroskiFScore(current, prior) {
+  if (!current || !prior) return null;
+
+  const details = [];
+  let score = 0;
+  let testable = 0;
+
+  const test = (id, name, passed) => {
+    if (passed === null) {
+      details.push({ id, name, passed: null, available: false });
+      return;
+    }
+    testable++;
+    if (passed) score++;
+    details.push({ id, name, passed, available: true });
+  };
+
+  const gt = (a, b) => (num(a) === null || num(b) === null ? null : a > b);
+  const lte = (a, b) => (num(a) === null || num(b) === null ? null : a <= b);
+
+  // Profitability
+  test('f1', 'Positive net income', num(current.netIncome) === null ? null : current.netIncome > 0);
+  test('f2', 'Positive operating cash flow', num(current.operatingCashFlow) === null ? null : current.operatingCashFlow > 0);
+  test('f3', 'Return on assets improved',
+    gt(ratio(current.netIncome, current.totalAssets), ratio(prior.netIncome, prior.totalAssets)));
+  test('f4', 'Operating cash flow exceeds net income', gt(current.operatingCashFlow, current.netIncome));
+
+  // Leverage, liquidity, source of funds.
+  // Piotroski measures leverage as long-term debt over assets, not the raw
+  // debt figure, so that growth through retained earnings is not penalised.
+  test('f5', 'Leverage steady or lower',
+    lte(ratio(current.longTermDebt ?? current.totalDebt, current.totalAssets),
+        ratio(prior.longTermDebt ?? prior.totalDebt, prior.totalAssets)));
+  test('f6', 'Current ratio improved',
+    gt(ratio(current.currentAssets, current.currentLiabilities),
+       ratio(prior.currentAssets, prior.currentLiabilities)));
+  test('f7', 'No share dilution', lte(current.dilutedShares, prior.dilutedShares));
+
+  // Operating efficiency
+  test('f8', 'Gross margin expanded',
+    gt(ratio(current.grossProfit, current.revenue), ratio(prior.grossProfit, prior.revenue)));
+  test('f9', 'Asset turnover improved',
+    gt(ratio(current.revenue, current.totalAssets), ratio(prior.revenue, prior.totalAssets)));
+
+  if (testable < 6) return null;
 
   return {
-    fairValuePerShare: Number(Math.max(0, fairValuePerShare).toFixed(2)),
-    cumulativePV: Number(cumulativePV.toFixed(2)),
-    terminalValue: Number(terminalValue.toFixed(2)),
-    pvTerminalValue: Number(pvTerminalValue.toFixed(2)),
-    enterpriseValue: Number(enterpriseValue.toFixed(2)),
-    equityValue: Number(equityValue.toFixed(2)),
+    score,
+    testable,
+    maxScore: 9,
+    // Scaled to the canonical 0-9 range when a filer omits a line item, so a
+    // bank's 7-of-7 is comparable with an industrial's 9-of-9.
+    normalised: testable === 9 ? score : Math.round((score / testable) * 9),
+    details
+  };
+}
+
+// =====================================================================
+// 3. ROIC and the cost of capital
+// =====================================================================
+
+/**
+ * NOPAT over invested capital. Invested capital can legitimately be zero or
+ * negative for companies that have bought back stock into negative book equity
+ * (AutoZone, Home Depot, McDonald's). ROIC is undefined there, and the old
+ * `Math.max(1, ...)` clamp turned that into a 395-billion-percent return.
+ */
+export function calculateROIC({ ebit, taxRate, totalDebt, equity, cash }) {
+  const operating = num(ebit);
+  if (operating === null) return null;
+
+  const rate = num(taxRate);
+  const effectiveTax = rate !== null && rate >= 0 && rate < 0.6 ? rate : null;
+  if (effectiveTax === null) return null;
+
+  const debt = num(totalDebt) ?? 0;
+  const eq = num(equity);
+  const liquid = num(cash) ?? 0;
+  if (eq === null) return null;
+
+  const invested = debt + eq - liquid;
+  if (invested <= 0) return null;
+
+  return round(((operating * (1 - effectiveTax)) / invested) * 100);
+}
+
+/**
+ * Weighted average cost of capital, estimated. Cost of equity from CAPM with
+ * the stock's own beta; cost of debt from what it actually pays on its debt.
+ * Reported as an estimate because the inputs are market-implied, not filed.
+ */
+export function estimateWACC({ beta, marketCap, totalDebt, interestExpense, taxRate }) {
+  const equityValue = num(marketCap);
+  if (equityValue === null || equityValue <= 0) return null;
+
+  const debt = num(totalDebt) ?? 0;
+  const total = equityValue + debt;
+  if (total <= 0) return null;
+
+  const costOfEquity =
+    RISK_FREE_RATE + (num(beta) ?? DEFAULT_BETA) * EQUITY_RISK_PREMIUM;
+
+  let costOfDebt = ratio(interestExpense, debt);
+  if (costOfDebt === null || costOfDebt <= 0 || costOfDebt > 0.25) {
+    costOfDebt = RISK_FREE_RATE + 0.015;
+  }
+
+  const tax = num(taxRate);
+  const afterTaxDebt = costOfDebt * (1 - (tax !== null && tax >= 0 && tax < 0.6 ? tax : 0.21));
+
+  return round(
+    (costOfEquity * (equityValue / total) + afterTaxDebt * (debt / total)) * 100
+  );
+}
+
+// =====================================================================
+// 4. Two-stage DCF
+// =====================================================================
+
+export function calculateDCFFairValue(params) {
+  const {
+    trailingFCF, growthRate = 0.12, terminalMultiple = 20,
+    discountRate = 0.095, cashReserves = 0, totalDebt = 0, sharesOutstanding
+  } = params;
+
+  const fcf0 = num(trailingFCF);
+  const shares = num(sharesOutstanding);
+
+  // A company burning cash has no discounted-cash-flow value. The previous
+  // implementation substituted $1 (server) or $1bn (client) of free cash flow
+  // and produced a real-looking intrinsic value for it.
+  if (fcf0 === null || fcf0 <= 0) {
+    return { applicable: false, reason: 'negative-fcf', fairValuePerShare: null };
+  }
+  if (shares === null || shares <= 0) {
+    return { applicable: false, reason: 'no-share-count', fairValuePerShare: null };
+  }
+  if (discountRate <= 0) {
+    return { applicable: false, reason: 'invalid-discount-rate', fairValuePerShare: null };
+  }
+
+  const pvCashFlows = [];
+  let currentFCF = fcf0;
+  for (let t = 1; t <= 5; t++) {
+    currentFCF *= 1 + growthRate;
+    pvCashFlows.push({
+      year: t,
+      projectedFCF: currentFCF,
+      presentValue: currentFCF / Math.pow(1 + discountRate, t)
+    });
+  }
+
+  const cumulativePV = pvCashFlows.reduce((s, i) => s + i.presentValue, 0);
+  const terminalValue = currentFCF * terminalMultiple;
+  const pvTerminalValue = terminalValue / Math.pow(1 + discountRate, 5);
+  const enterpriseValue = cumulativePV + pvTerminalValue;
+  const equityValue = enterpriseValue + (num(cashReserves) ?? 0) - (num(totalDebt) ?? 0);
+
+  // Negative equity value is a real result — the debt load exceeds the
+  // discounted cash flows — and is reported as such rather than clamped to 0.
+  return {
+    applicable: true,
+    fairValuePerShare: round(equityValue / shares),
+    cumulativePV: round(cumulativePV),
+    terminalValue: round(terminalValue),
+    pvTerminalValue: round(pvTerminalValue),
+    enterpriseValue: round(enterpriseValue),
+    equityValue: round(equityValue),
     pvCashFlows
   };
 }
 
-// 5. Complete 5-Pillar Scorecard and 12-Point Checklist Generator
-export function computeComprehensiveHealth(stock) {
-  const {
-    quote = {},
-    financials = {},
-    ratios = {},
-    historical = {}
-  } = stock;
+// =====================================================================
+// 5. Derived metrics
+// =====================================================================
 
-  const price = quote.regularMarketPrice || quote.price || 100;
-  const marketCap = quote.marketCap || 1e9;
-  const ebit = financials.ebit || financials.operatingIncome || 1e8;
-  const totalAssets = financials.totalAssets || 1e9;
-  const totalLiabilities = financials.totalLiabilities || 5e8;
-  const workingCapital = (financials.currentAssets || 0) - (financials.currentLiabilities || 0);
-  const retainedEarnings = financials.retainedEarnings || (financials.totalStockholderEquity || 1e8) * 0.7;
-  const totalRevenue = financials.totalRevenue || 1e9;
-  const cash = financials.cashAndEquivalents || 1e8;
-  const totalDebt = financials.totalDebt || financials.longTermDebt || 0;
-  const netCash = cash - totalDebt;
-  const netIncome = financials.netIncome || 1e8;
-  const operatingCashFlow = financials.operatingCashFlow || 1.1 * netIncome;
-  const freeCashFlow = financials.freeCashFlow || (operatingCashFlow - (financials.capitalExpenditures || 0));
-  const sharesOutstanding = quote.sharesOutstanding || (marketCap / price) || 1e8;
-  const peRatio = quote.trailingPE || ratios.pe || 25;
-  const forwardPE = quote.forwardPE || peRatio * 0.9;
-  const pegRatio = quote.pegRatio || ratios.peg || 1.5;
-  const roic = ratios.roic !== undefined ? ratios.roic : calculateROIC(ebit, 0.21, totalDebt, financials.totalStockholderEquity || 5e8, cash);
-  const grossMargin = financials.grossMargin || ratios.grossMargin || 0.45;
-  const operatingMargin = financials.operatingMargin || (ebit / totalRevenue) || 0.20;
-  const interestCoverage = totalDebt > 0 && financials.interestExpense > 0 ? ebit / financials.interestExpense : 25;
-  const currentRatio = financials.currentLiabilities > 0 ? (financials.currentAssets || cash) / financials.currentLiabilities : 2.5;
-  const debtToEquity = financials.totalStockholderEquity > 0 ? totalDebt / financials.totalStockholderEquity : 0.4;
-  const revenue3yCAGR = historical.revenue3yCAGR !== undefined ? historical.revenue3yCAGR : 0.12;
-  const eps3yCAGR = historical.eps3yCAGR !== undefined ? historical.eps3yCAGR : 0.15;
-  const fcfConversion = netIncome > 0 ? (freeCashFlow / netIncome) * 100 : 0;
-  const shareDilutionYoY = historical.shareDilutionYoY !== undefined ? historical.shareDilutionYoY : -0.012; // -1.2% buybacks
+function deriveMetrics(model) {
+  const q = model.quote || {};
+  const cur = model.latest || {};
+  const prior = model.prior || {};
+  const hist = model.history || {};
+  const carried = model.latestReported || {};
 
-  // 1. Calculate Altman Z-Score
-  const altmanZ = calculateAltmanZScore({
-    workingCapital,
-    retainedEarnings,
-    ebit,
-    marketCap,
-    totalLiabilities,
-    totalRevenue,
-    totalAssets
-  });
-
-  // 2. Calculate Piotroski F-Score
-  const currentYear = {
-    netIncome,
-    operatingCashFlow,
-    totalAssets,
-    longTermDebt: totalDebt,
-    currentAssets: financials.currentAssets || cash,
-    currentLiabilities: financials.currentLiabilities || 1,
-    sharesOutstanding,
-    grossProfit: financials.grossProfit || totalRevenue * grossMargin,
-    totalRevenue
+  /**
+   * Falls back to the most recent year a filer actually reported this line.
+   * Apple stopped populating interest expense after FY2023; treating that as
+   * "unavailable" loses a real, checkable number. The year it came from is
+   * carried alongside so the UI can label a carried-forward figure.
+   */
+  const withCarry = (field) => {
+    const direct = num(cur[field]);
+    if (direct !== null) return { value: direct, asOf: cur.asOfDate, carried: false };
+    const fallback = carried[field];
+    if (fallback && num(fallback.value) !== null) {
+      return { value: fallback.value, asOf: fallback.asOfDate, carried: true };
+    }
+    return { value: null, asOf: null, carried: false };
   };
-  const priorYear = historical.priorYear || {
-    netIncome: netIncome * 0.88,
-    operatingCashFlow: operatingCashFlow * 0.85,
-    totalAssets: totalAssets * 0.92,
-    longTermDebt: totalDebt * 1.05,
-    currentAssets: (financials.currentAssets || cash) * 0.95,
-    currentLiabilities: financials.currentLiabilities || 1,
-    sharesOutstanding: sharesOutstanding * 1.015,
-    grossProfit: (financials.grossProfit || totalRevenue * grossMargin) * 0.88,
-    totalRevenue: totalRevenue * 0.90
-  };
-  const piotroski = calculatePiotroskiFScore(currentYear, priorYear);
 
-  // 3. Calculate DCF Intrinsic Value
-  const dcfBase = calculateDCFFairValue({
-    trailingFCF: freeCashFlow,
-    growthRate: Math.min(0.25, Math.max(0.04, revenue3yCAGR)),
-    terminalMultiple: Math.min(30, Math.max(12, forwardPE * 0.85)),
-    discountRate: 0.095,
-    cashReserves: cash,
+  // Assets = liabilities + equity is an identity, not an estimate, so filling
+  // a missing third term from the other two is arithmetic rather than a guess.
+  // Yahoo omits TotalLiabilities for some filers (Alphabet among them).
+  const totalAssetsRaw = num(cur.totalAssets);
+  const equityRaw = num(cur.equity);
+  const liabilitiesRaw = num(cur.totalLiabilities);
+  const totalLiabilities =
+    liabilitiesRaw ??
+    (totalAssetsRaw !== null && equityRaw !== null ? totalAssetsRaw - equityRaw : null);
+
+  const cash = sum(cur.cash, cur.shortTermInvestments);
+  const totalDebt = num(cur.totalDebt);
+  const netCash = cash === null || totalDebt === null ? null : cash - totalDebt;
+
+  const workingCapital =
+    num(cur.currentAssets) === null || num(cur.currentLiabilities) === null
+      ? null
+      : cur.currentAssets - cur.currentLiabilities;
+
+  const reportedTaxRate = ratio(cur.taxProvision, cur.pretaxIncome);
+  // A loss-making year produces a meaningless effective rate (negative, or
+  // wildly over 100%). NOPAT is negative either way, so the statutory rate
+  // keeps ROIC computable and correctly negative rather than unavailable.
+  const taxRateUsable =
+    reportedTaxRate !== null && reportedTaxRate >= 0 && reportedTaxRate < 0.6;
+  const effectiveTaxRate = taxRateUsable ? reportedTaxRate : null;
+  const appliedTaxRate = taxRateUsable ? reportedTaxRate : 0.21;
+
+  const operatingIncome = num(cur.operatingIncome) ?? num(cur.ebit);
+  const grossMargin = ratio(cur.grossProfit, cur.revenue);
+  const operatingMargin = ratio(operatingIncome, cur.revenue);
+
+  const priorGrossMargin = ratio(prior.grossProfit, prior.revenue);
+  const priorOperatingMargin = ratio(
+    num(prior.operatingIncome) ?? num(prior.ebit),
+    prior.revenue
+  );
+
+  // Interest cover: a debt-free company has no interest burden to cover, which
+  // is a pass on the merits rather than a missing measurement.
+  const interest = withCarry('interestExpense');
+  let interestCoverage = null;
+  let interestCoverageUnburdened = false;
+  // Only a *reported* zero counts as debt-free. Absent data is not evidence
+  // of a clean balance sheet.
+  if (totalDebt === 0 || (totalDebt !== null && interest.value === 0)) {
+    interestCoverageUnburdened = true;
+  } else if (totalDebt !== null) {
+    interestCoverage = ratio(cur.ebit ?? operatingIncome, interest.value, {
+      allowNegativeDenominator: false
+    });
+  }
+
+  const equity = num(cur.equity);
+  // Yahoo omits marketCap for some listings (AutoZone among them). Price times
+  // the filed diluted share count is the same quantity, so the whole valuation
+  // pillar and Altman's X4 stay computable.
+  const sharesForCap = num(q.sharesOutstanding) ?? num(cur.dilutedShares);
+  const marketCap =
+    num(q.marketCap) ??
+    (num(q.price) !== null && sharesForCap !== null ? q.price * sharesForCap : null);
+  const enterpriseValue =
+    marketCap === null || totalDebt === null || cash === null
+      ? null
+      : marketCap + totalDebt - cash;
+
+  const roic = calculateROIC({
+    ebit: cur.ebit ?? operatingIncome,
+    taxRate: appliedTaxRate,
     totalDebt,
-    sharesOutstanding
+    equity,
+    cash
   });
-  const dcfDiscount = dcfBase.fairValuePerShare > 0
-    ? ((dcfBase.fairValuePerShare - price) / dcfBase.fairValuePerShare) * 100
-    : 0;
 
-  // ----------------- 5 PILLARS EVALUATION (0-20 PTS EACH) -----------------
-  // Pillar 1: Financial Health & Solvency (20 pts)
-  let p1Score = 0;
-  // Altman Z (0-5)
-  if (altmanZ >= 3.0) p1Score += 5;
-  else if (altmanZ >= 1.8) p1Score += 3;
-  else p1Score += 0.5;
+  const wacc = estimateWACC({
+    beta: q.beta,
+    marketCap,
+    totalDebt,
+    interestExpense: interest.value,
+    taxRate: appliedTaxRate
+  });
 
-  // Net Debt / EBITDA (0-5)
-  if (netCash > 0) p1Score += 5;
-  else if (ebit > 0 && (totalDebt - cash) / ebit < 1.5) p1Score += 4;
-  else if (ebit > 0 && (totalDebt - cash) / ebit <= 3.0) p1Score += 2;
-  else p1Score += 0.5;
+  const altmanZ = model.isFinancial
+    ? null
+    : calculateAltmanZScore({
+        workingCapital,
+        retainedEarnings: cur.retainedEarnings,
+        ebit: cur.ebit ?? operatingIncome,
+        marketCap,
+        totalLiabilities,
+        totalRevenue: cur.revenue,
+        totalAssets: cur.totalAssets
+      });
 
-  // Interest Coverage (0-5)
-  if (interestCoverage >= 8.0) p1Score += 5;
-  else if (interestCoverage >= 4.0) p1Score += 3.5;
-  else if (interestCoverage >= 1.5) p1Score += 1.5;
-  else p1Score += 0;
+  const piotroski = calculatePiotroskiFScore(
+    model.latest ? { ...cur, longTermDebt: cur.longTermDebt } : null,
+    model.prior ? { ...prior, longTermDebt: prior.longTermDebt } : null
+  );
 
-  // Current Ratio (0-5)
-  if (currentRatio >= 1.5) p1Score += 5;
-  else if (currentRatio >= 1.0) p1Score += 3;
-  else p1Score += 0.5;
+  const fcf = num(cur.freeCashFlow);
+  const dividendPayoutOnFcf = ratio(cur.dividendsPaid, cur.freeCashFlow);
 
-  // Pillar 2: Profitability & Moat Quality (20 pts)
-  let p2Score = 0;
-  // Piotroski (0-5)
-  if (piotroski.score >= 8) p2Score += 5;
-  else if (piotroski.score >= 6) p2Score += 3.5;
-  else if (piotroski.score >= 4) p2Score += 2;
-  else p2Score += 0.5;
+  return {
+    fiscalPeriodEnd: cur.asOfDate || null,
+    isFinancial: Boolean(model.isFinancial),
 
-  // ROIC (0-5)
-  if (roic >= 15) p2Score += 5;
-  else if (roic >= 10) p2Score += 3.5;
-  else if (roic >= 5) p2Score += 2;
-  else p2Score += 0.5;
+    revenue: num(cur.revenue),
+    netIncome: num(cur.netIncome),
+    ebit: num(cur.ebit) ?? operatingIncome,
+    ebitda: num(cur.ebitda),
+    freeCashFlow: fcf,
+    operatingCashFlow: num(cur.operatingCashFlow),
 
-  // Operating Margin (0-5)
-  if (operatingMargin >= 0.25) p2Score += 5;
-  else if (operatingMargin >= 0.15) p2Score += 3.5;
-  else if (operatingMargin >= 0.08) p2Score += 2;
-  else p2Score += 1;
+    cash,
+    totalDebt,
+    netCash,
+    netCashB: netCash === null ? null : round(netCash / 1e9),
+    equity,
+    workingCapital,
 
-  // FCF Conversion (0-5)
-  if (fcfConversion >= 100) p2Score += 5;
-  else if (fcfConversion >= 80) p2Score += 3.5;
-  else if (fcfConversion >= 50) p2Score += 2;
-  else p2Score += 0.5;
+    grossMargin,
+    operatingMargin,
+    fcfMargin: ratio(cur.freeCashFlow, cur.revenue),
+    grossMarginChangeBps:
+      grossMargin === null || priorGrossMargin === null
+        ? null
+        : Math.round((grossMargin - priorGrossMargin) * 10000),
+    operatingMarginChangeBps:
+      operatingMargin === null || priorOperatingMargin === null
+        ? null
+        : Math.round((operatingMargin - priorOperatingMargin) * 10000),
 
-  // Pillar 3: Valuation & Margin of Safety (20 pts)
-  let p3Score = 0;
-  // Forward P/E (0-5)
-  if (forwardPE <= 18) p3Score += 5;
-  else if (forwardPE <= 26) p3Score += 3.5;
-  else if (forwardPE <= 35) p3Score += 2;
-  else p3Score += 1;
+    currentRatio: ratio(cur.currentAssets, cur.currentLiabilities),
+    quickRatio:
+      num(cur.currentAssets) === null || num(cur.currentLiabilities) === null
+        ? null
+        : ratio(cur.currentAssets - (num(cur.inventory) ?? 0), cur.currentLiabilities),
+    interestCoverage,
+    interestCoverageUnburdened,
+    interestExpense: interest.value,
+    interestExpenseAsOf: interest.asOf,
+    interestExpenseCarried: interest.carried,
+    equityToAssets: ratio(cur.equity, cur.totalAssets),
+    totalLiabilities,
+    totalLiabilitiesDerived: liabilitiesRaw === null && totalLiabilities !== null,
+    netDebtToEbitda:
+      netCash === null || num(cur.ebitda) === null || cur.ebitda <= 0
+        ? null
+        : round(-netCash / cur.ebitda),
+    debtToEquity: equity !== null && equity > 0 ? ratio(totalDebt, equity) : null,
+    negativeEquity: equity !== null && equity <= 0,
 
-  // PEG Ratio (0-5)
-  if (pegRatio > 0 && pegRatio <= 1.2) p3Score += 5;
-  else if (pegRatio <= 1.8) p3Score += 3.5;
-  else if (pegRatio <= 2.5) p3Score += 2;
-  else p3Score += 0.5;
+    effectiveTaxRate,
+    appliedTaxRate,
+    taxRateEstimated: !taxRateUsable,
+    roic,
+    wacc,
+    roicSpread: roic === null || wacc === null ? null : round(roic - wacc),
+    roa: ratio(cur.netIncome, cur.totalAssets),
+    roe: equity !== null && equity > 0 ? ratio(cur.netIncome, equity) : null,
+    assetTurnover: ratio(cur.revenue, cur.totalAssets),
 
-  // FCF Yield (0-5)
-  const fcfYield = marketCap > 0 ? (freeCashFlow / marketCap) * 100 : 0;
-  if (fcfYield >= 6.0) p3Score += 5;
-  else if (fcfYield >= 4.0) p3Score += 3.5;
-  else if (fcfYield >= 2.0) p3Score += 2;
-  else p3Score += 1;
+    fcfConversion: ratio(cur.freeCashFlow, cur.netIncome),
+    fcfYield: ratio(cur.freeCashFlow, marketCap),
+    evToFcfYield: ratio(cur.freeCashFlow, enterpriseValue),
+    enterpriseValue,
 
-  // DCF Fair Value Discount (0-5)
-  if (dcfDiscount >= 15) p3Score += 5;
-  else if (dcfDiscount >= -5) p3Score += 3.5;
-  else if (dcfDiscount >= -20) p3Score += 2;
-  else p3Score += 0.5;
+    altmanZ,
+    piotroski,
 
-  // Pillar 4: Growth & Operating Leverage (20 pts)
-  let p4Score = 0;
-  // Revenue CAGR 3Y (0-5)
-  if (revenue3yCAGR >= 0.15) p4Score += 5;
-  else if (revenue3yCAGR >= 0.08) p4Score += 3.5;
-  else if (revenue3yCAGR >= 0.03) p4Score += 2;
-  else p4Score += 0.5;
+    revenueCAGR: hist.revenueCAGR ?? null,
+    epsCAGR: hist.epsCAGR ?? null,
+    fcfPerShareCAGR: hist.fcfPerShareCAGR ?? null,
+    shareChangeYoY: hist.shareChangeYoY ?? null,
+    cagrYears: hist.cagrYears ?? null,
 
-  // EPS Growth 3Y (0-5)
-  if (eps3yCAGR >= 0.20) p4Score += 5;
-  else if (eps3yCAGR >= 0.10) p4Score += 3.5;
-  else if (eps3yCAGR >= 0.02) p4Score += 2;
-  else p4Score += 0.5;
+    fcfPositiveYears: (hist.freeCashFlow || []).filter((v) => v !== null && v > 0).length,
+    fcfReportedYears: (hist.freeCashFlow || []).filter((v) => v !== null).length,
+    quarterlyGrossMarginTrend: quarterlyMarginTrend(model.quarterly),
 
-  // FCF Growth 3Y (0-5)
-  if (eps3yCAGR >= 0.15) p4Score += 5;
-  else if (eps3yCAGR >= 0.05) p4Score += 3.5;
-  else p4Score += 1;
+    dividendYield: num(q.dividendYield),
+    dividendPayoutOnFcf,
+    dividendStreakYears: dividendStreak(model.annual),
 
-  // Gross Margin Stability (0-5)
-  if (grossMargin >= 0.50) p4Score += 5;
-  else if (grossMargin >= 0.30) p4Score += 3.5;
-  else p4Score += 2;
+    trailingPE: num(q.trailingPE),
+    forwardPE: num(q.forwardPE),
+    pegRatio: num(q.pegRatio),
+    priceToBook: num(q.priceToBook),
+    marketCap,
+    marketCapDerived: num(q.marketCap) === null && marketCap !== null,
+    price: num(q.price),
+    sharesOutstanding: sharesForCap
+  };
+}
 
-  // Pillar 5: Capital Allocation & Shareholder Returns (20 pts)
-  let p5Score = 0;
-  // Share Dilution / Buyback (0-7)
-  if (shareDilutionYoY <= -0.015) p5Score += 7; // Retired > 1.5% shares
-  else if (shareDilutionYoY <= 0.005) p5Score += 5; // Flat / gentle buybacks
-  else if (shareDilutionYoY <= 0.02) p5Score += 2;
-  else p5Score += 0;
+function sum(...values) {
+  const present = values.map(num).filter((v) => v !== null);
+  return present.length ? present.reduce((a, b) => a + b, 0) : null;
+}
 
-  // Dividend Safety / Capital Reinvestment (0-7)
-  const dividendYield = quote.dividendYield || ratios.dividendYield || 0;
-  const payoutRatio = quote.payoutRatio || ratios.payoutRatio || 0;
-  if (dividendYield > 0 && payoutRatio < 0.60) p5Score += 7;
-  else if (roic >= 15) p5Score += 7; // High reinvestment efficiency
-  else if (roic >= 10) p5Score += 5;
-  else p5Score += 2;
+/** Direction of gross margin across the filed quarters, in basis points. */
+function quarterlyMarginTrend(quarters) {
+  if (!Array.isArray(quarters) || quarters.length < 3) return null;
+  const margins = quarters
+    .map((q) => ratio(q.grossProfit, q.revenue))
+    .filter((m) => m !== null);
+  if (margins.length < 3) return null;
 
-  // Asset Turnover (0-6)
-  const assetTurnover = totalRevenue / (totalAssets || 1);
-  if (assetTurnover >= 0.8) p5Score += 6;
-  else if (assetTurnover >= 0.4) p5Score += 4;
-  else p5Score += 2;
+  let declines = 0;
+  for (let i = 1; i < margins.length; i++) {
+    if (margins[i] < margins[i - 1]) declines++;
+  }
+  return {
+    quarters: margins.length,
+    changeBps: Math.round((margins[margins.length - 1] - margins[0]) * 10000),
+    consecutiveDeclines: declines,
+    margins: margins.map((m) => Number((m * 100).toFixed(1)))
+  };
+}
 
-  // Composite 0-100 Health Score
-  const totalScore = Math.min(100, Math.max(0, Math.round(p1Score + p2Score + p3Score + p4Score + p5Score)));
+/** Consecutive most-recent fiscal years with a dividend paid. */
+function dividendStreak(annual) {
+  if (!Array.isArray(annual) || !annual.length) return null;
+  let streak = 0;
+  for (let i = annual.length - 1; i >= 0; i--) {
+    const paid = num(annual[i].dividendsPaid);
+    if (paid === null) break;
+    if (paid > 0) streak++;
+    else break;
+  }
+  return streak;
+}
 
-  // Health Rating Label & Color
-  let healthLabel = 'Pristine Health';
-  let healthGrade = 'EXCELLENT';
-  let healthTier = 'pristine';
-  if (totalScore >= 85) {
-    healthLabel = 'Pristine Financial Health';
+// =====================================================================
+// 6. Pillar scoring
+// =====================================================================
+
+/**
+ * Each sub-score is a band lookup that can return `null` for "not measurable".
+ * `bands` is ordered best-first as [threshold, points]; the value must be at
+ * or above the threshold to earn those points.
+ */
+function band(value, bands, max) {
+  if (value === null || value === undefined) {
+    return { points: null, max, available: false };
+  }
+  for (const [threshold, points] of bands) {
+    if (value >= threshold) return { points, max, available: true };
+  }
+  return { points: 0, max, available: true };
+}
+
+const fixed = (points, max) => ({ points, max, available: true });
+const unavailable = (max) => ({ points: null, max, available: false });
+
+function scorePillars(m) {
+  const pillars = [];
+
+  // --- Pillar 1: financial health and solvency -------------------------
+  // A bank has no working-capital cycle, no EBITDA and no gross profit. Those
+  // items are not *missing* for a lender, they are inapplicable — so they are
+  // left out of the scorecard entirely rather than counted as unmeasured,
+  // which would otherwise drag every financial below the coverage floor.
+  const p1 = [];
+  if (m.isFinancial) {
+    p1.push({
+      // The plain-language form of the regulatory leverage ratio, and the
+      // right solvency question to ask of a lender.
+      name: 'Equity to assets',
+      ...band(m.equityToAssets === null ? null : m.equityToAssets * 100,
+              [[10, 5], [8, 4], [6, 2.5]], 5)
+    });
+  } else {
+    p1.push({ name: 'Altman Z-Score', ...band(m.altmanZ, [[3.0, 5], [1.8, 3]], 5) });
+    p1.push({
+      name: 'Net debt / EBITDA',
+      ...(m.netCash !== null && m.netCash > 0
+        ? fixed(5, 5)
+        : band(m.netDebtToEbitda === null ? null : -m.netDebtToEbitda,
+               [[-1.5, 4], [-3.0, 2]], 5))
+    });
+    p1.push({
+      name: 'Interest coverage',
+      ...(m.interestCoverageUnburdened
+        ? fixed(5, 5)
+        : band(m.interestCoverage, [[8.0, 5], [4.0, 3], [1.5, 1]], 5))
+    });
+    p1.push({
+      name: 'Current & quick ratio',
+      ...(m.currentRatio === null
+        ? unavailable(5)
+        : m.currentRatio >= 1.5 && (m.quickRatio === null || m.quickRatio >= 1.0)
+          ? fixed(5, 5)
+          : band(m.currentRatio, [[1.5, 4], [1.0, 3]], 5))
+    });
+  }
+  pillars.push({ name: 'Financial Health & Solvency', items: p1 });
+
+  // --- Pillar 2: profitability and moat quality ------------------------
+  const p2 = [];
+  p2.push({
+    name: 'Piotroski F-Score',
+    ...band(m.piotroski?.normalised ?? null, [[8, 5], [6, 3.5], [4, 2]], 5)
+  });
+  if (m.isFinancial) {
+    // Invested capital is not a meaningful denominator for a bank; return on
+    // equity is the measure the industry and its investors actually use.
+    p2.push({
+      name: 'Return on equity',
+      ...band(m.roe === null ? null : m.roe * 100, [[15, 5], [10, 3.5], [6, 2]], 5)
+    });
+  } else {
+    p2.push({ name: 'Return on invested capital', ...band(m.roic, [[15, 5], [10, 3.5], [5, 2]], 5) });
+    p2.push({
+      // The spec scores the trend, not the level: a 25% margin compressing from
+      // 40% is a different business from one expanding towards 25%.
+      name: 'Operating margin trend',
+      ...band(m.operatingMarginChangeBps, [[100, 5], [-50, 3.5], [-200, 1.5]], 5)
+    });
+  }
+  p2.push({
+    name: 'Free cash flow conversion',
+    ...band(m.fcfConversion === null ? null : m.fcfConversion * 100,
+            [[100, 5], [80, 3.5], [50, 2]], 5)
+  });
+  pillars.push({ name: 'Profitability & Moat Quality', items: p2 });
+
+  // --- Pillar 3: valuation and margin of safety ------------------------
+  const p3 = [];
+  p3.push({
+    name: 'Forward P/E vs. own history',
+    ...(m.peVsHistoryPct === null || m.peVsHistoryPct === undefined
+      ? band(m.forwardPE === null ? null : -m.forwardPE, [[-18, 5], [-26, 3.5], [-35, 2]], 5)
+      : band(-m.peVsHistoryPct, [[15, 5], [-10, 3.5], [-25, 2]], 5))
+  });
+  p3.push({
+    // A negative PEG means earnings are shrinking; that is a growth signal,
+    // not a cheapness signal, so it is excluded rather than scored as cheap.
+    name: 'PEG ratio',
+    ...(m.pegRatio === null || m.pegRatio <= 0
+      ? unavailable(5)
+      : band(-m.pegRatio, [[-1.0, 5], [-1.8, 3.5], [-2.5, 2]], 5))
+  });
+  p3.push({
+    name: 'EV / free cash flow yield',
+    ...band(m.evToFcfYield === null ? null : m.evToFcfYield * 100,
+            [[6, 5], [4, 3.5], [2, 2]], 5)
+  });
+  p3.push({
+    name: 'Discount to DCF fair value',
+    ...band(m.dcfDiscountPct, [[20, 5], [-10, 3], [-20, 1]], 5)
+  });
+  pillars.push({ name: 'Valuation & Margin of Safety', items: p3 });
+
+  // --- Pillar 4: growth and operating leverage -------------------------
+  const p4 = [];
+  p4.push({
+    name: 'Revenue CAGR',
+    ...band(m.revenueCAGR === null ? null : m.revenueCAGR * 100, [[15, 5], [8, 3.5], [3, 2]], 5)
+  });
+  p4.push({
+    name: 'Diluted EPS CAGR',
+    ...band(m.epsCAGR === null ? null : m.epsCAGR * 100, [[20, 5], [10, 3.5], [0, 1.5]], 5)
+  });
+  if (!m.isFinancial) {
+    // Free cash flow and gross margin are not value drivers for a lender —
+    // deposit and loan flows dominate both — so neither is scored.
+    p4.push({
+      name: 'FCF per share CAGR',
+      ...band(m.fcfPerShareCAGR === null ? null : m.fcfPerShareCAGR * 100,
+              [[15, 5], [5, 3.5], [0, 1.5]], 5)
+    });
+    p4.push({
+      name: 'Gross margin trajectory',
+      ...(m.quarterlyGrossMarginTrend
+        ? band(m.quarterlyGrossMarginTrend.changeBps, [[0, 5], [-100, 3.5], [-300, 1.5]], 5)
+        : band(m.grossMarginChangeBps, [[0, 5], [-100, 3.5], [-300, 1.5]], 5))
+    });
+  }
+  pillars.push({ name: 'Growth & Operating Leverage', items: p4 });
+
+  // --- Pillar 5: capital allocation ------------------------------------
+  const p5 = [];
+  p5.push({
+    name: 'Buybacks vs. dilution',
+    ...band(m.shareChangeYoY === null ? null : -m.shareChangeYoY * 100,
+            [[2, 7], [-0.5, 5], [-2, 2]], 7)
+  });
+
+  const isPayer = m.dividendYield !== null && m.dividendYield > 0;
+  if (isPayer) {
+    const covered = m.dividendPayoutOnFcf !== null && m.dividendPayoutOnFcf < 0.6;
+    const longStreak = (m.dividendStreakYears ?? 0) >= 5;
+    p5.push({
+      name: 'Dividend safety & coverage',
+      ...(m.dividendPayoutOnFcf === null
+        ? unavailable(7)
+        : fixed(covered && longStreak ? 7 : covered ? 5.5 : m.dividendPayoutOnFcf < 0.9 ? 3 : 1, 7))
+    });
+  } else {
+    p5.push({
+      name: 'Reinvestment quality',
+      ...band(m.roic, [[15, 7], [10, 5], [5, 3]], 7)
+    });
+  }
+
+  p5.push({
+    // Scored against the sector when enough peers are cached, because a
+    // grocer and a software company are not comparable on turnover.
+    name: 'Asset turnover efficiency',
+    ...(m.sectorMedianAssetTurnover
+      ? band(
+          m.assetTurnover === null
+            ? null
+            : m.assetTurnover / m.sectorMedianAssetTurnover,
+          [[1.25, 6], [0.9, 4.5], [0.6, 3]],
+          6
+        )
+      : band(m.assetTurnover, [[0.8, 6], [0.4, 4]], 6))
+  });
+  pillars.push({ name: 'Capital Allocation & Returns', items: p5 });
+
+  return pillars;
+}
+
+// =====================================================================
+// 7. Twelve-point checklist
+// =====================================================================
+
+const NA = { status: 'na', value: 'Not reported' };
+
+function buildChecklist(m, fmt) {
+  const pct = (v, dp = 1) => (v === null ? null : `${(v * 100).toFixed(dp)}%`);
+
+  const item = (id, name, category, explanation, body) => ({
+    id, name, category, explanation, ...(body || NA)
+  });
+
+  return [
+    item(1, 'Altman Z-Score', 'Solvency',
+      'Probability of financial distress within two years, from working capital, retained earnings and asset efficiency. Not defined for banks, insurers or REITs.',
+      m.altmanZ === null
+        ? (m.isFinancial
+            ? { status: 'na', value: 'N/A for financials', benchmark: 'Z ≥ 3.0' }
+            : { status: 'na', value: 'Not reported', benchmark: 'Z ≥ 3.0' })
+        : {
+            value: m.altmanZ.toFixed(2),
+            benchmark: 'Z ≥ 3.0 safe zone',
+            status: m.altmanZ >= 3.0 ? 'pass' : m.altmanZ >= 1.8 ? 'watch' : 'fail'
+          }),
+
+    item(2, 'Interest Coverage', 'Solvency',
+      'Operating profit as a multiple of interest owed. A company with no debt has no interest burden to cover.',
+      m.interestCoverageUnburdened
+        ? { value: 'No debt burden', benchmark: '> 6.0× EBIT / interest', status: 'pass' }
+        : m.interestCoverage === null
+          ? { ...NA, benchmark: '> 6.0× EBIT / interest' }
+          : {
+              value: `${m.interestCoverage.toFixed(1)}×`,
+              benchmark: '> 6.0× EBIT / interest',
+              status: m.interestCoverage >= 6 ? 'pass' : m.interestCoverage >= 2.5 ? 'watch' : 'fail'
+            }),
+
+    item(3, 'Current Ratio', 'Liquidity',
+      'Short-term assets against short-term obligations. Banks do not classify their balance sheets this way.',
+      m.currentRatio === null
+        ? { status: 'na', value: m.isFinancial ? 'N/A for financials' : 'Not reported', benchmark: '≥ 1.50' }
+        : {
+            value: m.currentRatio.toFixed(2) + (m.quickRatio !== null ? ` (quick ${m.quickRatio.toFixed(2)})` : ''),
+            benchmark: '≥ 1.50 current assets / liabilities',
+            status: m.currentRatio >= 1.5 ? 'pass' : m.currentRatio >= 1.0 ? 'watch' : 'fail'
+          }),
+
+    item(4, 'Debt to Equity', 'Solvency',
+      'Leverage against book equity. Negative equity — usually from sustained buybacks — is reported as its own state rather than scored as low leverage.',
+      m.negativeEquity
+        ? { value: 'Negative book equity', benchmark: '< 0.8× or net cash', status: 'fail' }
+        : m.netCash !== null && m.netCash > 0
+          ? { value: `Net cash ${fmt(m.netCash)}`, benchmark: '< 0.8× or net cash', status: 'pass' }
+          : m.debtToEquity === null
+            ? { ...NA, benchmark: '< 0.8× or net cash' }
+            : {
+                value: `${m.debtToEquity.toFixed(2)}×`,
+                benchmark: '< 0.8× or net cash',
+                status: m.debtToEquity < 0.8 ? 'pass' : m.debtToEquity <= 1.8 ? 'watch' : 'fail'
+              }),
+
+    item(5, 'Free Cash Flow History', 'Cash Flow',
+      'Owner earnings after the capital spending needed to keep the business running, across every filed year.',
+      m.fcfReportedYears === 0
+        ? { ...NA, benchmark: 'Positive every filed year' }
+        : {
+            value: `${m.fcfPositiveYears} of ${m.fcfReportedYears} years positive`,
+            benchmark: 'Positive every filed year',
+            status:
+              m.fcfPositiveYears === m.fcfReportedYears ? 'pass'
+              : m.fcfReportedYears - m.fcfPositiveYears === 1 ? 'watch'
+              : 'fail'
+          }),
+
+    item(6, 'Piotroski F-Score', 'Quality',
+      'Nine fundamental tests across profitability, leverage and efficiency, six of which compare against the prior filed year.',
+      !m.piotroski
+        ? { ...NA, benchmark: '≥ 7 of 9' }
+        : {
+            value: `${m.piotroski.score}/${m.piotroski.testable}` +
+              (m.piotroski.testable < 9 ? ` (${m.piotroski.normalised}/9 scaled)` : ''),
+            benchmark: '≥ 7 of 9 points',
+            status: m.piotroski.normalised >= 7 ? 'pass' : m.piotroski.normalised >= 5 ? 'watch' : 'fail'
+          }),
+
+    item(7, 'ROIC vs. Cost of Capital', 'Economic Moat',
+      'Return on invested capital against an estimated WACC (CAPM cost of equity from the stock beta, plus its actual cost of debt). A durable moat earns well above its cost of capital.',
+      m.roic === null
+        ? { ...NA, benchmark: 'ROIC ≥ WACC + 5 pts' }
+        : m.wacc === null
+          ? {
+              value: `${m.roic.toFixed(1)}% ROIC`,
+              benchmark: 'ROIC ≥ 15%',
+              status: m.roic >= 15 ? 'pass' : m.roic >= 9 ? 'watch' : 'fail'
+            }
+          : {
+              value: `${m.roic.toFixed(1)}% vs ${m.wacc.toFixed(1)}% WACC`,
+              benchmark: 'ROIC ≥ WACC + 5 pts',
+              status: m.roicSpread >= 5 ? 'pass' : m.roicSpread >= 0 ? 'watch' : 'fail'
+            }),
+
+    item(8, 'Gross Margin Consistency', 'Pricing Power',
+      'Direction of gross margin, which is where pricing power shows up first. Measured across filed quarters where available, otherwise year on year.',
+      (() => {
+        const t = m.quarterlyGrossMarginTrend;
+        if (t) {
+          return {
+            value: `${t.changeBps >= 0 ? '+' : ''}${t.changeBps} bps over ${t.quarters} quarters`,
+            benchmark: 'Expanding or steady',
+            status: t.changeBps >= 0 ? 'pass' : t.changeBps >= -100 ? 'watch' : 'fail'
+          };
+        }
+        if (m.grossMarginChangeBps === null) return { ...NA, benchmark: 'Expanding or steady' };
+        return {
+          value: `${m.grossMarginChangeBps >= 0 ? '+' : ''}${m.grossMarginChangeBps} bps YoY` +
+            (m.grossMargin !== null ? ` (now ${pct(m.grossMargin)})` : ''),
+          benchmark: 'Expanding or steady',
+          status: m.grossMarginChangeBps >= 0 ? 'pass' : m.grossMarginChangeBps >= -100 ? 'watch' : 'fail'
+        };
+      })()),
+
+    item(9, 'Share Dilution & Buybacks', 'Capital Return',
+      'Change in the diluted share count. Buybacks lift per-share value; stock compensation quietly erodes it.',
+      m.shareChangeYoY === null
+        ? { ...NA, benchmark: 'Shrinking or < 0.5% YoY' }
+        : {
+            value: `${m.shareChangeYoY <= 0 ? '' : '+'}${(m.shareChangeYoY * 100).toFixed(1)}%` +
+              (m.shareChangeYoY < 0 ? ' (buybacks)' : ' dilution'),
+            benchmark: 'Shrinking or < 0.5% YoY',
+            status: m.shareChangeYoY <= 0.005 ? 'pass' : m.shareChangeYoY <= 0.025 ? 'watch' : 'fail'
+          }),
+
+    item(10, 'FCF / Net Income Quality', 'Earnings Quality',
+      'How much reported profit arrives as cash. A persistent gap points to aggressive accrual accounting.',
+      m.fcfConversion === null
+        ? { ...NA, benchmark: '> 90% conversion' }
+        : {
+            value: `${(m.fcfConversion * 100).toFixed(0)}% conversion`,
+            benchmark: '> 90% conversion',
+            status: m.fcfConversion >= 0.9 ? 'pass' : m.fcfConversion >= 0.6 ? 'watch' : 'fail'
+          }),
+
+    item(11, 'Valuation PEG Ratio', 'Valuation',
+      'Price/earnings against expected growth. Undefined when growth is negative — a shrinking business is not cheap, it is shrinking.',
+      m.pegRatio === null
+        ? { ...NA, benchmark: 'PEG ≤ 1.50' }
+        : m.pegRatio <= 0
+          ? { status: 'na', value: 'N/A — negative growth', benchmark: 'PEG ≤ 1.50' }
+          : {
+              value: `${m.pegRatio.toFixed(2)}×`,
+              benchmark: 'PEG ≤ 1.50',
+              status: m.pegRatio <= 1.5 ? 'pass' : m.pegRatio <= 2.2 ? 'watch' : 'fail'
+            }),
+
+    item(12, 'Revenue Growth', 'Growth',
+      'Compound revenue growth across the filed years.',
+      m.revenueCAGR === null
+        ? { ...NA, benchmark: '> 8% CAGR' }
+        : {
+            value: `${m.revenueCAGR >= 0 ? '+' : ''}${(m.revenueCAGR * 100).toFixed(1)}% CAGR` +
+              (m.cagrYears ? ` (${m.cagrYears}Y)` : ''),
+            benchmark: '> 8% CAGR',
+            status: m.revenueCAGR >= 0.08 ? 'pass' : m.revenueCAGR >= 0.02 ? 'watch' : 'fail'
+          })
+  ];
+}
+
+// =====================================================================
+// 8. Catalysts and risk flags
+// =====================================================================
+
+function buildInsights(m, fmt) {
+  const catalysts = [];
+  const risks = [];
+
+  if (m.netCash !== null && m.netCash > 0 && m.cash !== null && m.totalDebt !== null && !m.isFinancial) {
+    catalysts.push({
+      icon: '💎',
+      title: 'Fortress balance sheet',
+      text: `Cash and short-term investments of ${fmt(m.cash)} exceed total debt of ${fmt(m.totalDebt)}, leaving ${fmt(m.netCash)} net cash.`
+    });
+  }
+  if (m.roic !== null && m.roic >= 18) {
+    catalysts.push({
+      icon: '🚀',
+      title: 'Elite capital efficiency',
+      text: `ROIC of ${m.roic.toFixed(1)}%${m.wacc !== null ? `, ${(m.roic - m.wacc).toFixed(1)} points above its estimated ${m.wacc.toFixed(1)}% cost of capital` : ''}.`
+    });
+  }
+  if (m.fcfConversion !== null && m.fcfConversion >= 1) {
+    catalysts.push({
+      icon: '💰',
+      title: 'Earnings arrive as cash',
+      text: `Free cash flow is ${(m.fcfConversion * 100).toFixed(0)}% of reported net income.`
+    });
+  }
+  if (m.grossMargin !== null && m.grossMargin >= 0.6) {
+    catalysts.push({
+      icon: '⚡',
+      title: 'Pricing power',
+      text: `Gross margin of ${(m.grossMargin * 100).toFixed(1)}% absorbs input-cost inflation without repricing.`
+    });
+  }
+  if (m.shareChangeYoY !== null && m.shareChangeYoY < -0.01) {
+    catalysts.push({
+      icon: '📈',
+      title: 'Accretive buybacks',
+      text: `Diluted share count fell ${Math.abs(m.shareChangeYoY * 100).toFixed(1)}% year on year.`
+    });
+  }
+  if (m.operatingMarginChangeBps !== null && m.operatingMarginChangeBps >= 150) {
+    catalysts.push({
+      icon: '📊',
+      title: 'Operating leverage',
+      text: `Operating margin expanded ${m.operatingMarginChangeBps} bps year on year.`
+    });
+  }
+
+  if (m.negativeEquity) {
+    risks.push({
+      icon: '⚠️',
+      title: 'Negative book equity',
+      text: 'Liabilities exceed assets on a book basis. Common after sustained buybacks, but it removes the equity cushion and makes leverage ratios undefined.'
+    });
+  }
+  if (m.netDebtToEbitda !== null && m.netDebtToEbitda > 3) {
+    risks.push({
+      icon: '⚠️',
+      title: 'Elevated leverage',
+      text: `Net debt is ${m.netDebtToEbitda.toFixed(1)}× EBITDA, which limits flexibility if rates stay high.`
+    });
+  }
+  if (m.shareChangeYoY !== null && m.shareChangeYoY > 0.02) {
+    risks.push({
+      icon: '⚠️',
+      title: 'Shareholder dilution',
+      text: `Diluted share count rose ${(m.shareChangeYoY * 100).toFixed(1)}% year on year.`
+    });
+  }
+  if (m.forwardPE !== null && m.forwardPE > 40) {
+    risks.push({
+      icon: '⚠️',
+      title: 'Demanding valuation',
+      text: `A forward P/E of ${m.forwardPE.toFixed(1)}× leaves little room for execution error.`
+    });
+  }
+  if (m.altmanZ !== null && m.altmanZ < 1.8) {
+    risks.push({
+      icon: '🚨',
+      title: 'Altman Z distress zone',
+      text: `An Altman Z-Score of ${m.altmanZ.toFixed(2)} sits in the distress range.`
+    });
+  }
+  if (m.roicSpread !== null && m.roicSpread < 0) {
+    risks.push({
+      icon: '⚠️',
+      title: 'Returns below cost of capital',
+      text: `ROIC of ${m.roic.toFixed(1)}% is under the estimated ${m.wacc.toFixed(1)}% WACC, so growth is destroying value.`
+    });
+  }
+  if (m.fcfConversion !== null && m.fcfConversion < 0.6 && m.netIncome !== null && m.netIncome > 0) {
+    risks.push({
+      icon: '⚠️',
+      title: 'Weak cash conversion',
+      text: `Only ${(m.fcfConversion * 100).toFixed(0)}% of net income converted to free cash flow.`
+    });
+  }
+  if (m.quarterlyGrossMarginTrend && m.quarterlyGrossMarginTrend.changeBps <= -200) {
+    risks.push({
+      icon: '⚠️',
+      title: 'Margin compression',
+      text: `Gross margin fell ${Math.abs(m.quarterlyGrossMarginTrend.changeBps)} bps across the last ${m.quarterlyGrossMarginTrend.quarters} filed quarters.`
+    });
+  }
+
+  return { catalysts: catalysts.slice(0, 4), risks: risks.slice(0, 4) };
+}
+
+// =====================================================================
+// 9. Entry point
+// =====================================================================
+
+/**
+ * Growth for the projection stage: the median of whichever compound rates the
+ * filings support, so one noisy series cannot drive the whole valuation.
+ * Bounded because extrapolating an extreme trailing rate for five years is an
+ * artefact of the window, not a forecast.
+ */
+function dcfGrowthRate(m) {
+  const rates = [m.revenueCAGR, m.epsCAGR, m.fcfPerShareCAGR].filter(
+    (r) => r !== null && r !== undefined
+  );
+  if (!rates.length) return 0.04;
+  rates.sort((a, b) => a - b);
+  const mid = Math.floor(rates.length / 2);
+  const median =
+    rates.length % 2 ? rates[mid] : (rates[mid - 1] + rates[mid]) / 2;
+  return Number(Math.min(0.2, Math.max(0.0, median)).toFixed(4));
+}
+
+/**
+ * Terminal multiple keyed to business quality, not to the share price. The
+ * previous implementation derived it from forward P/E, which made the fair
+ * value a function of the market price — an expensive stock got a higher
+ * multiple and so could never look expensive.
+ */
+function dcfTerminalMultiple(m) {
+  let multiple = 15;
+  if (m.roic !== null) {
+    if (m.roic >= 25) multiple += 6;
+    else if (m.roic >= 15) multiple += 4;
+    else if (m.roic >= 10) multiple += 1;
+    else if (m.roic < 6) multiple -= 3;
+  }
+  if (m.grossMargin !== null && m.grossMargin >= 0.6) multiple += 2;
+  if (m.netCash !== null && m.netCash > 0) multiple += 1;
+  if (m.netDebtToEbitda !== null && m.netDebtToEbitda > 3) multiple -= 2;
+  return Math.min(26, Math.max(9, multiple));
+}
+
+export function computeComprehensiveHealth(model = {}) {
+  const metrics = deriveMetrics(model);
+  const currency = model.reportingCurrency || model.quote?.currency || 'USD';
+  const fmt = (v) => formatMoney(v, currency);
+
+  // Optional context supplied by the caller (sector peers, historical P/E).
+  metrics.sectorMedianAssetTurnover = model.sectorMedianAssetTurnover ?? null;
+  metrics.peVsHistoryPct = model.peVsHistoryPct ?? null;
+
+  // --- DCF -------------------------------------------------------------
+  const dcfInput = {
+    trailingFCF: metrics.freeCashFlow,
+    growthRate: dcfGrowthRate(metrics),
+    terminalMultiple: dcfTerminalMultiple(metrics),
+    discountRate: 0.095,
+    cashReserves: metrics.cash ?? 0,
+    totalDebt: metrics.totalDebt ?? 0,
+    sharesOutstanding: metrics.sharesOutstanding
+  };
+
+  // A bank's free cash flow is not owner earnings — deposits and loan books
+  // move it around with no relation to value — so the model is not run.
+  const dcf = model.isFinancial
+    ? { applicable: false, reason: 'not-meaningful-for-financials', fairValuePerShare: null }
+    : calculateDCFFairValue(dcfInput);
+
+  let dcfDiscountPct = null;
+  let premiumToFairValuePct = null;
+  if (dcf.applicable && dcf.fairValuePerShare !== null && metrics.price !== null) {
+    if (dcf.fairValuePerShare > 0) {
+      dcfDiscountPct = round(
+        ((dcf.fairValuePerShare - metrics.price) / dcf.fairValuePerShare) * 100, 1
+      );
+      // (P − FV)/FV reads naturally when the stock trades above fair value;
+      // the margin-of-safety form goes to −188% and stops meaning anything.
+      premiumToFairValuePct = round(
+        ((metrics.price - dcf.fairValuePerShare) / dcf.fairValuePerShare) * 100, 1
+      );
+    } else {
+      // Discounted cash flows do not cover the debt: no equity value at all.
+      dcfDiscountPct = -100;
+    }
+  }
+  metrics.dcfDiscountPct = dcfDiscountPct;
+
+  // --- Pillars ---------------------------------------------------------
+  const rawPillars = scorePillars(metrics);
+
+  let earned = 0;
+  let possible = 0;
+  let availableItems = 0;
+  let totalItems = 0;
+
+  const pillars = rawPillars.map((p) => {
+    let pEarned = 0;
+    let pPossible = 0;
+    for (const it of p.items) {
+      totalItems++;
+      if (!it.available) continue;
+      availableItems++;
+      pEarned += it.points;
+      pPossible += it.max;
+    }
+    earned += pEarned;
+    possible += pPossible;
+
+    // Rescale to 20 over what was measurable, so a missing line item neither
+    // credits nor penalises the company — it just does not vote.
+    const score = pPossible > 0 ? Number(((pEarned / pPossible) * 20).toFixed(1)) : null;
+    return {
+      name: p.name,
+      score,
+      max: 20,
+      pct: score === null ? null : Math.round((score / 20) * 100),
+      measured: p.items.filter((i) => i.available).length,
+      of: p.items.length,
+      items: p.items.map((i) => ({
+        name: i.name,
+        points: i.points,
+        max: i.max,
+        available: i.available
+      }))
+    };
+  });
+
+  const coveragePct = totalItems ? availableItems / totalItems : 0;
+  const sufficient = coveragePct >= MIN_COVERAGE && possible > 0;
+
+  const healthScore = sufficient
+    ? Math.min(100, Math.max(0, Math.round((earned / possible) * 100)))
+    : null;
+
+  let healthLabel, healthGrade, healthTier;
+  if (healthScore === null) {
+    healthLabel = 'Not enough filed data to score';
+    healthGrade = 'INSUFFICIENT';
+    healthTier = 'insufficient';
+  } else if (healthScore >= 85) {
+    healthLabel = 'Pristine financial health';
     healthGrade = 'PRISTINE';
     healthTier = 'pristine';
-  } else if (totalScore >= 70) {
-    healthLabel = 'Solid Moat & Financials';
+  } else if (healthScore >= 70) {
+    healthLabel = 'Solid moat and financials';
     healthGrade = 'GOOD';
     healthTier = 'good';
-  } else if (totalScore >= 50) {
-    healthLabel = 'Moderate Health / Valuation Watch';
+  } else if (healthScore >= 50) {
+    healthLabel = 'Mixed — watch the flagged items';
     healthGrade = 'MODERATE';
     healthTier = 'moderate';
   } else {
-    healthLabel = 'High Leverage / Distress Risk';
+    healthLabel = 'High leverage or distress risk';
     healthGrade = 'RISK';
     healthTier = 'risk';
   }
 
-  // ----------------- 12-POINT TRAFFIC-LIGHT CHECKLIST -----------------
-  const checklist = [
-    {
-      id: 1,
-      name: 'Altman Z-Score',
-      category: 'Solvency',
-      value: `${altmanZ}`,
-      benchmark: 'Z ≥ 3.0 Safe',
-      status: altmanZ >= 3.0 ? 'pass' : altmanZ >= 1.8 ? 'watch' : 'fail',
-      explanation: 'Evaluates probability of corporate distress within 2 years based on working capital, retained earnings, and asset efficiency.'
-    },
-    {
-      id: 2,
-      name: 'Interest Coverage',
-      category: 'Solvency',
-      value: interestCoverage > 99 ? '> 50x' : `${interestCoverage.toFixed(1)}x`,
-      benchmark: '> 6.0x EBIT / Interest',
-      status: interestCoverage >= 6.0 ? 'pass' : interestCoverage >= 2.5 ? 'watch' : 'fail',
-      explanation: 'Operating profit multiple relative to interest obligations. Fortress companies easily cover > 10x.'
-    },
-    {
-      id: 3,
-      name: 'Current Ratio',
-      category: 'Liquidity',
-      value: `${currentRatio.toFixed(2)}`,
-      benchmark: '≥ 1.50 Current Assets / Liab',
-      status: currentRatio >= 1.5 ? 'pass' : currentRatio >= 1.0 ? 'watch' : 'fail',
-      explanation: 'Measures short-term liquidity cushion to satisfy immediate debt obligations without external financing.'
-    },
-    {
-      id: 4,
-      name: 'Debt to Equity',
-      category: 'Solvency',
-      value: netCash > 0 ? 'Net Cash 💎' : `${debtToEquity.toFixed(2)}x`,
-      benchmark: '< 0.8x or Net Cash',
-      status: (netCash > 0 || debtToEquity < 0.8) ? 'pass' : debtToEquity <= 1.8 ? 'watch' : 'fail',
-      explanation: 'Long-term leverage ratio. Zero net debt companies possess maximum financial agility in recessions.'
-    },
-    {
-      id: 5,
-      name: 'Positive Free Cash Flow',
-      category: 'Cash Flow',
-      value: freeCashFlow > 0 ? `$${(freeCashFlow / 1e9).toFixed(2)}B FCF` : 'Negative FCF',
-      benchmark: 'Positive 5 past yrs',
-      status: freeCashFlow > 0 ? 'pass' : 'fail',
-      explanation: 'True owner earnings after all capital expenditures required to maintain business operations.'
-    },
-    {
-      id: 6,
-      name: 'Piotroski F-Score',
-      category: 'Quality',
-      value: `${piotroski.score}/9 (${piotroski.score >= 8 ? 'Exceptional' : piotroski.score >= 6 ? 'Solid' : 'Average'})`,
-      benchmark: '≥ 7 / 9 Points',
-      status: piotroski.score >= 7 ? 'pass' : piotroski.score >= 5 ? 'watch' : 'fail',
-      explanation: 'Nine-point fundamental health test covering profitability, balance sheet leverage, and operating efficiency.'
-    },
-    {
-      id: 7,
-      name: 'ROIC vs. Cost of Capital (WACC)',
-      category: 'Economic Moat',
-      value: `${roic.toFixed(1)}% ROIC`,
-      benchmark: 'ROIC ≥ 15% (WACC + 5%)',
-      status: roic >= 15 ? 'pass' : roic >= 9 ? 'watch' : 'fail',
-      explanation: 'Return on Invested Capital measures economic moat quality and management efficiency in deploying capital.'
-    },
-    {
-      id: 8,
-      name: 'Gross Margin Consistency',
-      category: 'Pricing Power',
-      value: `${(grossMargin * 100).toFixed(1)}%`,
-      benchmark: 'Expanding / Steady > 40%',
-      status: grossMargin >= 0.40 ? 'pass' : grossMargin >= 0.20 ? 'watch' : 'fail',
-      explanation: 'Gross margins reflect pricing power against inflation, supplier leverage, and customer lock-in.'
-    },
-    {
-      id: 9,
-      name: 'Share Dilution & Buybacks',
-      category: 'Capital Return',
-      value: shareDilutionYoY < 0 ? `${(shareDilutionYoY * 100).toFixed(1)}% (Buybacks)` : `+${(shareDilutionYoY * 100).toFixed(1)}% Dilution`,
-      benchmark: 'Shrinking or < 0.5% YoY',
-      status: shareDilutionYoY <= 0.005 ? 'pass' : shareDilutionYoY <= 0.025 ? 'watch' : 'fail',
-      explanation: 'Verifies whether shareholder equity is protected from stock-based compensation (SBC) dilution.'
-    },
-    {
-      id: 10,
-      name: 'FCF / Net Income Quality',
-      category: 'Earnings Quality',
-      value: `${fcfConversion.toFixed(0)}% Conversion`,
-      benchmark: '> 90% Conversion',
-      status: fcfConversion >= 90 ? 'pass' : fcfConversion >= 60 ? 'watch' : 'fail',
-      explanation: 'Detects aggressive accrual accounting when net income is reported high without real cash inflows.'
-    },
-    {
-      id: 11,
-      name: 'Valuation PEG Ratio',
-      category: 'Valuation',
-      value: pegRatio > 0 ? `${pegRatio.toFixed(2)}x` : 'N/A',
-      benchmark: 'PEG ≤ 1.50',
-      status: (pegRatio > 0 && pegRatio <= 1.5) ? 'pass' : pegRatio <= 2.2 ? 'watch' : 'fail',
-      explanation: 'Price-to-Earnings divided by earnings growth rate. Buffett looks for growth at a reasonable price.'
-    },
-    {
-      id: 12,
-      name: 'Revenue 3Y Growth',
-      category: 'Growth',
-      value: `+${(revenue3yCAGR * 100).toFixed(1)}% CAGR`,
-      benchmark: '> 8% 3Y CAGR',
-      status: revenue3yCAGR >= 0.08 ? 'pass' : revenue3yCAGR >= 0.02 ? 'watch' : 'fail',
-      explanation: 'Compound annual growth rate of top-line revenue across the trailing 3 fiscal years.'
-    }
-  ];
+  // --- Checklist and insights -----------------------------------------
+  const checklist = buildChecklist(metrics, fmt);
+  const { catalysts, risks } = buildInsights(metrics, fmt);
 
-  // ----------------- AUTOMATED CATALYSTS & RED FLAGS -----------------
-  const catalysts = [];
-  const risks = [];
-
-  if (netCash > 0) {
-    catalysts.push({
-      icon: '💎',
-      title: 'Fortress Balance Sheet',
-      text: `Cash & equivalents ($${(cash / 1e9).toFixed(1)}B) exceed total debt ($${(totalDebt / 1e9).toFixed(1)}B) with +$${(netCash / 1e9).toFixed(1)}B Net Cash.`
-    });
-  }
-  if (roic >= 18) {
-    catalysts.push({
-      icon: '🚀',
-      title: 'Elite Capital Efficiency (Moat)',
-      text: `ROIC of ${roic.toFixed(1)}% demonstrates exceptional competitive advantages and reinvestment returns.`
-    });
-  }
-  if (fcfConversion >= 100) {
-    catalysts.push({
-      icon: '💰',
-      title: 'Pure Cash Machine',
-      text: `Free Cash Flow conversion is ${fcfConversion.toFixed(0)}% of reported net income, indicating pristine earnings quality.`
-    });
-  }
-  if (grossMargin >= 0.60) {
-    catalysts.push({
-      icon: '⚡',
-      title: 'Formidable Pricing Power',
-      text: `Gross profit margin is ${(grossMargin * 100).toFixed(1)}%, shielding margins against supply-chain inflation.`
-    });
-  }
-  if (shareDilutionYoY < -0.01) {
-    catalysts.push({
-      icon: '📈',
-      title: 'Accretive Share Buybacks',
-      text: `Management retired ${Math.abs(shareDilutionYoY * 100).toFixed(1)}% of shares outstanding YoY, enhancing per-share value.`
-    });
-  }
-
-  if (totalDebt > cash && ebit > 0 && (totalDebt - cash) / ebit > 2.5) {
-    risks.push({
-      icon: '⚠️',
-      title: 'Elevated Leverage Burden',
-      text: `Net Debt / EBIT is ${((totalDebt - cash) / ebit).toFixed(1)}x, which could compress cash flow in a high-rate environment.`
-    });
-  }
-  if (shareDilutionYoY > 0.02) {
-    risks.push({
-      icon: '⚠️',
-      title: 'Shareholder Dilution',
-      text: `Share count expanded +${(shareDilutionYoY * 100).toFixed(1)}% YoY from stock-based compensation.`
-    });
-  }
-  if (forwardPE > 40) {
-    risks.push({
-      icon: '⚠️',
-      title: 'Extended Valuation Multiples',
-      text: `Forward P/E of ${forwardPE.toFixed(1)}x leaves thin margin for execution errors or macro slowdown.`
-    });
-  }
-  if (altmanZ < 1.8) {
-    risks.push({
-      icon: '🚨',
-      title: 'Altman Z Distress Warning',
-      text: `Altman Z-Score is in the distress zone (${altmanZ}), indicating balance sheet vulnerability.`
-    });
-  }
-
-  // Ensure at least 1 catalyst and 1 risk are present for UX balance
-  if (catalysts.length === 0) {
-    catalysts.push({
-      icon: '⚡',
-      title: 'Established Market Position',
-      text: `Well-established presence in ${stock.sector || 'the industry'} with stable commercial footprint.`
-    });
-  }
-  if (risks.length === 0) {
-    risks.push({
-      icon: 'ℹ️',
-      title: 'Cyclical & Macro Sensitivity',
-      text: 'Subject to broader macro interest rate and consumer expenditure fluctuations.'
-    });
-  }
-
-  const passCount = checklist.filter(c => c.status === 'pass').length;
-  const watchCount = checklist.filter(c => c.status === 'watch').length;
-  const failCount = checklist.filter(c => c.status === 'fail').length;
+  const counts = { pass: 0, watch: 0, fail: 0, na: 0 };
+  for (const c of checklist) counts[c.status]++;
+  const scored = counts.pass + counts.watch + counts.fail;
 
   return {
-    healthScore: totalScore,
+    healthScore,
     healthLabel,
     healthGrade,
     healthTier,
-    altmanZ,
-    piotroskiScore: piotroski.score,
-    piotroskiDetails: piotroski.details,
-    roicPct: roic,
-    fcfConversionPct: Number(fcfConversion.toFixed(0)),
-    netCashB: Number((netCash / 1e9).toFixed(2)),
-    pillars: [
-      { name: 'Financial Health & Solvency', score: Number(p1Score.toFixed(1)), max: 20, pct: Math.round((p1Score / 20) * 100) },
-      { name: 'Profitability & Moat Quality', score: Number(p2Score.toFixed(1)), max: 20, pct: Math.round((p2Score / 20) * 100) },
-      { name: 'Valuation & Margin of Safety', score: Number(p3Score.toFixed(1)), max: 20, pct: Math.round((p3Score / 20) * 100) },
-      { name: 'Growth & Operating Leverage', score: Number(p4Score.toFixed(1)), max: 20, pct: Math.round((p4Score / 20) * 100) },
-      { name: 'Capital Allocation & Returns', score: Number(p5Score.toFixed(1)), max: 20, pct: Math.round((p5Score / 20) * 100) }
-    ],
+
+    altmanZ: metrics.altmanZ,
+    piotroskiScore: metrics.piotroski ? metrics.piotroski.normalised : null,
+    piotroskiDetails: metrics.piotroski ? metrics.piotroski.details : [],
+    roicPct: metrics.roic,
+    fcfConversionPct:
+      metrics.fcfConversion === null ? null : Math.round(metrics.fcfConversion * 100),
+    netCashB: metrics.netCashB,
+
+    metrics,
+    coverage: {
+      measured: availableItems,
+      total: totalItems,
+      pct: Math.round(coveragePct * 100),
+      sufficient
+    },
+
+    pillars,
     checklistSummary: {
-      passCount,
-      watchCount,
-      failCount,
+      passCount: counts.pass,
+      watchCount: counts.watch,
+      failCount: counts.fail,
+      naCount: counts.na,
       total: checklist.length,
-      passPct: Math.round((passCount / checklist.length) * 100)
+      scored,
+      passPct: scored ? Math.round((counts.pass / scored) * 100) : null
     },
     checklist,
     catalysts,
     risks,
+
     dcf: {
-      fairValue: dcfBase.fairValuePerShare,
-      currentPrice: price,
-      marginOfSafetyPct: Number(dcfDiscount.toFixed(1)),
-      cumulativePV: dcfBase.cumulativePV,
-      terminalValue: dcfBase.terminalValue,
-      pvTerminalValue: dcfBase.pvTerminalValue,
-      cashReserves: cash,
-      totalDebt,
-      sharesOutstanding,
-      pvCashFlows: dcfBase.pvCashFlows
+      applicable: dcf.applicable,
+      reason: dcf.reason || null,
+      fairValue: dcf.fairValuePerShare,
+      currentPrice: metrics.price,
+      marginOfSafetyPct: dcfDiscountPct,
+      premiumToFairValuePct,
+      cumulativePV: dcf.cumulativePV ?? null,
+      terminalValue: dcf.terminalValue ?? null,
+      pvTerminalValue: dcf.pvTerminalValue ?? null,
+      equityValue: dcf.equityValue ?? null,
+      cashReserves: metrics.cash,
+      totalDebt: metrics.totalDebt,
+      sharesOutstanding: metrics.sharesOutstanding,
+      assumptions: {
+        growthRate: dcfInput.growthRate,
+        terminalMultiple: dcfInput.terminalMultiple,
+        discountRate: dcfInput.discountRate
+      },
+      pvCashFlows: dcf.pvCashFlows || []
     }
   };
+}
+
+// =====================================================================
+// Formatting helper shared with the API layer
+// =====================================================================
+
+const CURRENCY_SYMBOLS = {
+  USD: '$', EUR: '€', GBP: '£', GBp: 'p', JPY: '¥', CHF: 'CHF ',
+  CAD: 'C$', AUD: 'A$', RON: 'RON ', SEK: 'SEK ', DKK: 'DKK ',
+  NOK: 'NOK ', HKD: 'HK$', CNY: '¥', INR: '₹', BRL: 'R$'
+};
+
+export function currencySymbol(code) {
+  return CURRENCY_SYMBOLS[code] ?? `${code || ''} `;
+}
+
+export function formatMoney(value, currency = 'USD') {
+  if (value === null || value === undefined || !Number.isFinite(value)) return '—';
+  const sym = currencySymbol(currency);
+  const abs = Math.abs(value);
+  const sign = value < 0 ? '-' : '';
+  if (abs >= 1e12) return `${sign}${sym}${(abs / 1e12).toFixed(2)}T`;
+  if (abs >= 1e9) return `${sign}${sym}${(abs / 1e9).toFixed(2)}B`;
+  if (abs >= 1e6) return `${sign}${sym}${(abs / 1e6).toFixed(1)}M`;
+  return `${sign}${sym}${abs.toFixed(2)}`;
 }

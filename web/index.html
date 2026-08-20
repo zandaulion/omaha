@@ -73,10 +73,20 @@
 
     var params = new URLSearchParams(window.location.search);
     var code = (params.get('invite') || params.get('code') || '').trim().toUpperCase();
-    if (code) {
+
+    // This inline runner owns the invite-link path — it fires before the module
+    // finishes loading, which is why it exists. app.js must not also redeem, or
+    // every activation sends two requests and the loser gets a 400 (and now
+    // spends half the rate-limit budget). The flag below is that handshake.
+    window.__omahaInviteHandled = Boolean(code);
+
+    // An already-registered device must not burn a second code on refresh.
+    if (code && !localStorage.getItem('omaha_token')) {
       var inp = document.getElementById('gateCodeInput');
       if (inp) inp.value = code;
       setTimeout(function() { redeem(code); }, 50);
+    } else if (code) {
+      try { window.history.replaceState({}, document.title, window.location.pathname); } catch (e) {}
     }
 
     function redeem(c) {
@@ -153,9 +163,16 @@
       </div>
     </header>
 
-    <!-- Offline Status Banner -->
-    <div id="offlineBanner" class="hidden" style="background: rgba(245, 158, 11, 0.15); border-bottom: 1px solid rgba(245, 158, 11, 0.3); color: #FBBF24; font-size: 12px; font-weight: 600; text-align: center; padding: 6px 12px;">
-      ⚡ Offline Mode · Viewing cached financial statements
+    <!-- Data freshness / offline banner. Text is written by the client so it
+         can say how old the saved data actually is. -->
+    <div id="offlineBanner" class="freshness-banner" role="status" hidden></div>
+
+    <!-- Pull-to-refresh indicator -->
+    <div id="pullIndicator" class="pull-indicator" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2">
+        <path d="M21 12a9 9 0 1 1-3.2-6.9" stroke-linecap="round" />
+        <path d="M21 3v6h-6" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
     </div>
 
     <!-- Main View Router Container -->
@@ -237,8 +254,8 @@
             ← Back
           </button>
           <div style="text-align: center;">
-            <h2 id="deepDiveTicker" class="mono" style="font-size: 20px; font-weight: 800; letter-spacing: -0.01em;">NVDA</h2>
-            <p id="deepDiveName" style="font-size: 12px; color: var(--text-secondary);">NVIDIA Corporation</p>
+            <h2 id="deepDiveTicker" class="mono" style="font-size: 20px; font-weight: 800; letter-spacing: -0.01em;"></h2>
+            <p id="deepDiveName" style="font-size: 12px; color: var(--text-secondary);"></p>
           </div>
           <div style="display: flex; align-items: center; gap: 6px;">
             <button class="btn-ai-sparkle-pill" id="deepDiveGeminiHeaderBtn" title="Analyze with Gemini AI">
@@ -253,12 +270,10 @@
         <!-- Price & Change Row -->
         <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 16px; padding: 0 4px;">
           <div>
-            <span id="deepDivePrice" class="mono" style="font-size: 28px; font-weight: 800;">$128.60</span>
-            <span id="deepDiveCurrency" style="font-size: 12px; color: var(--text-tertiary); margin-left: 4px;">USD</span>
+            <span id="deepDivePrice" class="mono" style="font-size: 28px; font-weight: 800;">—</span>
+            <span id="deepDiveCurrency" style="font-size: 12px; color: var(--text-tertiary); margin-left: 4px;"></span>
           </div>
-          <div id="deepDiveChange" class="mono stock-change positive" style="font-size: 15px; font-weight: 700;">
-            +$3.20 (+2.62%)
-          </div>
+          <div id="deepDiveChange" class="mono stock-change" style="font-size: 15px; font-weight: 700;"></div>
         </div>
 
         <!-- Hero Scorecard Ring Card -->
@@ -268,19 +283,19 @@
               <svg class="score-ring-svg" viewBox="0 0 120 120">
                 <circle class="score-ring-bg" cx="60" cy="60" r="50"/>
                 <circle class="score-ring-progress" id="scoreRingProgress" cx="60" cy="60" r="50"
-                        stroke="#10B981" stroke-dasharray="314.15" stroke-dashoffset="31.4"/>
+                        stroke="var(--border-subtle)" stroke-dasharray="314.15" stroke-dashoffset="314.15"/>
               </svg>
               <div class="score-ring-center">
-                <div class="score-ring-value mono" id="deepDiveScoreVal">94</div>
+                <div class="score-ring-value mono" id="deepDiveScoreVal">—</div>
                 <div class="score-ring-max">/ 100</div>
               </div>
             </div>
-            <div class="score-ring-label" id="deepDiveScoreLabel" style="color: var(--health-pristine);">
-              Pristine Financial Health
+            <div class="score-ring-label" id="deepDiveScoreLabel" style="color: var(--text-tertiary);">
+              Loading…
             </div>
-            <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;" id="deepDiveSectorInfo">
-              Technology · Semiconductors
-            </p>
+            <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;" id="deepDiveSectorInfo"></p>
+            <p class="data-provenance" id="deepDiveFiscalPeriod" hidden></p>
+            <p class="data-coverage" id="deepDiveCoverage" hidden></p>
           </div>
 
           <!-- 5 Pillar Breakdown Horizontal Bars -->
@@ -427,11 +442,11 @@
             <div class="dcf-values-row">
               <div class="dcf-val-item">
                 <span>Estimated Fair Value</span>
-                <h3 class="mono text-cyan" id="dcfFairValueText">$144.50</h3>
+                <h3 class="mono text-cyan" id="dcfFairValueText">—</h3>
               </div>
               <div class="dcf-val-item">
                 <span>Current Price</span>
-                <h3 class="mono" id="dcfCurrentPriceText">$128.60</h3>
+                <h3 class="mono" id="dcfCurrentPriceText">—</h3>
               </div>
             </div>
 
@@ -449,6 +464,7 @@
 
           <!-- Interactive Sliders Card -->
           <div class="card">
+            <div id="dcfControls">
             <div class="section-title" style="margin-bottom: 14px;">🎛️ Interactive Valuation Assumptions</div>
             
             <div class="slider-group">
@@ -475,8 +491,10 @@
               <input type="range" class="range-slider" id="dcfDiscountSlider" min="6" max="16" value="9.5" step="0.5">
             </div>
 
+            </div><!-- /dcfControls -->
+
             <!-- Detailed DCF Breakdown Table -->
-            <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-subtle); font-size: 12px;" id="dcfBreakdownTable">
+            <div class="dcf-breakdown" id="dcfBreakdownTable">
               <!-- Rendered by JS -->
             </div>
           </div>
@@ -580,6 +598,20 @@
             <input type="range" class="range-slider" id="filterRoicSlider" min="0" max="40" value="12" step="2">
           </div>
           <div class="form-group">
+            <label class="form-label">Max debt / equity: <span id="filterDebtEquityVal" class="text-cyan mono">any</span></label>
+            <input type="range" class="range-slider" id="filterDebtEquitySlider" min="0" max="5" value="5" step="0.25">
+          </div>
+          <div class="form-group form-group-checks">
+            <label class="check-row">
+              <input type="checkbox" id="filterNetCash">
+              <span>Net cash only</span>
+            </label>
+            <label class="check-row">
+              <input type="checkbox" id="filterFcfPositive">
+              <span>Positive free cash flow</span>
+            </label>
+          </div>
+          <div class="form-group">
             <label class="form-label">Sector</label>
             <select id="filterSectorSelect" class="form-select" style="padding: 6px 10px;">
               <option value="all">All Sectors</option>
@@ -628,6 +660,7 @@
               <button class="btn-primary" id="compareRunBtn">Compare</button>
             </div>
           </div>
+          <div id="comparePeerChips" class="peer-chips"></div>
         </div>
 
         <!-- Comparison Matrix Container -->
@@ -732,6 +765,42 @@
           </div>
         </div>
 
+        <!-- Which alerts fire -->
+        <div class="card" style="margin-bottom: 14px;">
+          <div class="section-title" style="margin-bottom: 4px;">Which alerts to send</div>
+          <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px;">
+            Watchlist holdings are re-checked four times a day.
+          </p>
+          <label class="check-row">
+            <input type="checkbox" data-notify-pref="notify_earnings_filings" checked>
+            <span>Health score moves 3 points or a check changes state</span>
+          </label>
+          <label class="check-row">
+            <input type="checkbox" data-notify-pref="notify_red_flags" checked>
+            <span>Distress signals: Altman Z, liquidity, margin collapse</span>
+          </label>
+          <label class="check-row">
+            <input type="checkbox" data-notify-pref="notify_margin_of_safety" checked>
+            <span>Strong company reaches an attractive price</span>
+          </label>
+          <label class="check-row">
+            <input type="checkbox" data-notify-pref="notify_capital_returns">
+            <span>Buyback and dividend changes</span>
+          </label>
+          <label class="check-row">
+            <input type="checkbox" data-notify-pref="notify_sunday_digest" checked>
+            <span>Sunday morning portfolio summary</span>
+          </label>
+        </div>
+
+        <!-- Recent alerts -->
+        <div class="card" style="margin-bottom: 14px;">
+          <div class="section-title" style="margin-bottom: 8px;">Recent alerts</div>
+          <div id="notificationHistory" class="notification-list">
+            <div class="chart-empty">No alerts yet.</div>
+          </div>
+        </div>
+
         <!-- Personal Data Backup Export / Import -->
         <div class="card">
           <div class="section-title" style="margin-bottom: 8px;">💾 Backup & Restore</div>
@@ -763,7 +832,7 @@
                 <div style="font-weight: 700;">👑 The Compounders Bundle</div>
                 <div style="font-size: 12px; color: var(--text-secondary);">AAPL · MSFT · GOOGL · BRK-B · NVDA</div>
               </div>
-              <span class="score-badge pristine">88/100</span>
+              <span class="score-badge bundle-size">5 companies</span>
             </div>
           </div>
 
@@ -773,7 +842,7 @@
                 <div style="font-weight: 700;">🚀 AI & Semiconductors Bundle</div>
                 <div style="font-size: 12px; color: var(--text-secondary);">NVDA · MSFT · GOOGL · TSLA · AAPL</div>
               </div>
-              <span class="score-badge pristine">90/100</span>
+              <span class="score-badge bundle-size">5 companies</span>
             </div>
           </div>
 
@@ -783,7 +852,7 @@
                 <div style="font-weight: 700;">🛡️ Defensive Aristocrats Bundle</div>
                 <div style="font-size: 12px; color: var(--text-secondary);">BRK-B · MSFT · AAPL · GOOGL</div>
               </div>
-              <span class="score-badge good">85/100</span>
+              <span class="score-badge bundle-size">4 companies</span>
             </div>
           </div>
         </div>

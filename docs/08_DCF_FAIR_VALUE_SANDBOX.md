@@ -71,10 +71,90 @@ $$\text{Margin of Safety} = \frac{\text{Fair Value} - \text{Current Price}}{\tex
 
 ---
 
+## 3. When the model does not run
+
+A discounted cash flow model requires positive free cash flow and a share
+count. Where either is absent the sandbox says so and offers no fair value:
+
+| Condition | What the app shows |
+|---|---|
+| Trailing FCF $\le 0$ | *Not modelled* — the business is not generating cash to discount; judge it on the balance sheet and the path back to cash generation |
+| No filed diluted share count | *Not modelled* — a per-share value cannot be derived |
+| Banks, insurers, REITs | *Not modelled* — free cash flow is not owner earnings for a lender; book value and return on equity are the measures that apply |
+
+Substituting a nominal positive cash flow to keep the model running produces a
+confident-looking intrinsic value for a company that is burning cash, which is
+worse than showing nothing.
+
+**Negative equity value is a real result, not an error.** Where the discounted
+flows do not cover the debt, the fair value is reported as negative and the
+valuation pillar scores zero for that measure.
+
+---
+
+## 4. Model inputs
+
+### Growth ($g$)
+
+The median of whichever compound rates the filings support — revenue, diluted
+EPS, and free cash flow per share — bounded to $[0\%, 20\%]$. Using a single
+series lets one noisy line drive the whole valuation; extrapolating an extreme
+trailing rate across five years measures the window, not the business.
+
+### Terminal multiple ($M$)
+
+Keyed to business quality, never to the share price:
+
+| Adjustment | Effect |
+|---|---|
+| Base | $15\times$ |
+| ROIC $\ge 25\%$ | $+6$ |
+| ROIC $15$–$25\%$ | $+4$ |
+| ROIC $10$–$15\%$ | $+1$ |
+| ROIC $< 6\%$ | $-3$ |
+| Gross margin $\ge 60\%$ | $+2$ |
+| Net cash position | $+1$ |
+| Net debt $> 3\times$ EBITDA | $-2$ |
+
+Bounded to $[9\times, 26\times]$.
+
+Deriving the multiple from forward P/E — the obvious shortcut — makes fair
+value a function of the market price: an expensive stock earns a higher
+multiple, a higher fair value, and so can never look expensive. It also applies
+an *earnings* multiple to *cash flow*, which are not the same quantity for any
+capital-intensive business.
+
+### Discount rate ($r$)
+
+$9.5\%$ by default, adjustable on the slider. The presets move it to $11\%$
+bear and $9\%$ bull.
+
+---
+
+## 5. Reporting the result
+
+Margin of safety follows the spec formula when the stock trades **below** fair
+value:
+
+$$\text{Margin of Safety} = \frac{\text{Fair Value} - \text{Price}}{\text{Fair Value}} \times 100\%$$
+
+Above fair value that expression runs to $-188\%$ or worse and stops carrying
+meaning, so the interface states the **premium to fair value** instead:
+
+$$\text{Premium} = \frac{\text{Price} - \text{Fair Value}}{\text{Fair Value}} \times 100\%$$
+
+rendered as "42.0% above fair value at these assumptions".
+
+---
+
 ## 3. Preset Scenario Configurations
 
-| Scenario | Growth Rate ($g$) | Terminal Multiple ($M$) | Discount Rate ($r$) | Description |
+| Scenario | Growth ($g$) | Terminal multiple ($M$) | Discount rate ($r$) | Description |
 |---|---|---|---|---|
-| **🐻 Bear Case** | $-35\%$ below Base | $16.0x$ | $11.0\%$ | Macro deceleration / margin compression |
-| **⚖️ Base Case** | Consensus CAGR | Sector Median ($24.0x$) | $9.5\%$ | Wall St. consensus cash flow forecast |
-| **🐂 Bull Case** | $+30\%$ above Base | $32.0x$ | $9.0\%$ | Sustained AI adoption / pricing power |
+| **🐻 Bear** | $-35\%$ below base | $16.0\times$ | $11.0\%$ | Macro deceleration, margin compression |
+| **⚖️ Base** | filed CAGR median | quality-adjusted (see §4) | $9.5\%$ | What the filings imply, unadjusted |
+| **🐂 Bull** | $+30\%$ above base | $32.0\times$ | $9.0\%$ | Sustained demand and pricing power |
+
+The sandbox opens on the base case using exactly the assumptions the server
+scored the company with, so the interactive model and the scorecard never
+disagree at their starting point.

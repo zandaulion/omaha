@@ -2004,3 +2004,457 @@ body {
 }
 
 
+
+/* =====================================================================
+   Rewritten scorecard components
+   ===================================================================== */
+
+/* --- unavailable data ------------------------------------------------ */
+
+.status-dot.na { background: var(--text-tertiary); opacity: .55; }
+
+.status-tag.na {
+  background: color-mix(in srgb, var(--text-tertiary) 18%, transparent);
+  color: var(--text-tertiary);
+}
+
+.checklist-item.is-na { opacity: .72; }
+
+.checklist-na-note {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-subtle);
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+}
+
+.data-provenance,
+.data-coverage {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+}
+
+.data-coverage { font-style: italic; }
+
+.pillar-partial {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+.score-badge.unscored,
+.hero-grade-badge.unscored {
+  background: color-mix(in srgb, var(--text-tertiary) 16%, transparent);
+  color: var(--text-tertiary);
+}
+
+.chart-empty {
+  padding: 18px 14px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  text-align: center;
+  background: var(--bg-surface-subtle);
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.text-muted { color: var(--text-tertiary); }
+
+/* --- ratio cards and the 5-year percentile scrubber ------------------ */
+
+.ratio-card {
+  background: var(--bg-surface-subtle);
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+}
+
+.ratio-card-label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-bottom: 2px;
+}
+
+.ratio-card-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.ratio-card-value.is-good { color: var(--health-pristine); }
+.ratio-card-value.is-unavailable { color: var(--text-tertiary); font-weight: 600; }
+
+.ratio-range-card {
+  grid-column: 1 / -1;
+  background: var(--bg-surface-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px 10px;
+}
+
+.ratio-range-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+.ratio-range-track {
+  position: relative;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--border-subtle);
+}
+
+/* The interquartile band: where this multiple usually sits. */
+.ratio-range-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--brand-cyan) 32%, transparent);
+}
+
+.ratio-range-median {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  background: var(--text-secondary);
+  transform: translateX(-1px);
+}
+
+.ratio-range-pin {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  margin-top: -6px;
+  margin-left: -6px;
+  border-radius: 50%;
+  background: var(--brand-cyan);
+  border: 2px solid var(--bg-surface);
+  box-shadow: 0 0 0 1px var(--brand-cyan);
+}
+
+.ratio-range-scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  color: var(--text-tertiary);
+  margin-top: 7px;
+}
+
+/* --- trend charts ---------------------------------------------------- */
+
+/* A year the filer did not report draws a hatched placeholder rather than
+   a bar, so a gap in the data cannot be mistaken for a value of zero. */
+.bar-column.is-missing {
+  height: 100% !important;
+  background: repeating-linear-gradient(
+    45deg,
+    var(--border-subtle) 0 3px,
+    transparent 3px 6px
+  );
+  opacity: .5;
+}
+
+.bar-column.is-negative { background: var(--health-risk); }
+
+.stack-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) 2fr auto;
+  gap: 10px;
+  align-items: center;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.stack-label { color: var(--text-secondary); }
+
+.stack-track {
+  height: 14px;
+  border-radius: 7px;
+  background: var(--bg-surface-subtle);
+  overflow: hidden;
+}
+
+.stack-fill { height: 100%; border-radius: 7px; }
+.stack-fill.is-cash { background: linear-gradient(90deg, #10B981, #059669); }
+.stack-fill.is-debt { background: linear-gradient(90deg, #FB7185, #E11D48); }
+
+.stack-verdict {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 12.5px;
+}
+
+.margin-chart {
+  width: 100%;
+  height: 120px;
+  display: block;
+}
+
+.margin-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.margin-line.is-gross { stroke: #10B981; }
+.margin-line.is-operating { stroke: #38BDF8; }
+
+.margin-legend { margin-top: 10px; display: grid; gap: 6px; }
+
+.margin-legend-row {
+  display: grid;
+  grid-template-columns: 12px 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.margin-swatch { width: 10px; height: 10px; border-radius: 3px; }
+.margin-swatch.is-gross { background: #10B981; }
+.margin-swatch.is-operating { background: #38BDF8; }
+
+.chart-axis {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  color: var(--text-tertiary);
+  margin-top: 6px;
+}
+
+.shares-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  margin-bottom: 6px;
+}
+
+.shares-note { font-size: 12px; color: var(--text-secondary); }
+
+/* --- DCF ------------------------------------------------------------- */
+
+.dcf-breakdown {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 12px;
+}
+
+.dcf-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+  color: var(--text-secondary);
+}
+
+.dcf-line.is-total {
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+  font-weight: 700;
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.dcf-years {
+  width: 100%;
+  margin-top: 12px;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+
+.dcf-years th,
+.dcf-years td {
+  text-align: right;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.dcf-years th:first-child,
+.dcf-years td:first-child { text-align: left; }
+
+.dcf-years th { color: var(--text-tertiary); font-weight: 600; }
+
+.margin-of-safety-meter.is-unavailable {
+  background: var(--bg-surface-subtle);
+  color: var(--text-tertiary);
+  border: 1px dashed var(--border-subtle);
+}
+
+/* --- compare radar --------------------------------------------------- */
+
+.radar-card { margin-bottom: 16px; text-align: center; }
+
+.radar-chart {
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+  margin: 6px auto 0;
+  display: block;
+  overflow: visible;
+}
+
+.radar-ring { fill: none; stroke: var(--border-subtle); stroke-width: 1; }
+.radar-spoke { stroke: var(--border-subtle); stroke-width: 1; }
+
+.radar-shape {
+  fill-opacity: .14;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.radar-label { font-size: 9px; fill: var(--text-tertiary); font-weight: 600; }
+
+.radar-legend {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.radar-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.radar-swatch { width: 10px; height: 10px; border-radius: 3px; }
+
+.compare-head { font-size: 13px; color: var(--brand-cyan); }
+
+/* --- peer chips ------------------------------------------------------ */
+
+.peer-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.peer-chip-label { font-size: 11.5px; color: var(--text-tertiary); }
+
+.peer-chip {
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface-subtle);
+  color: var(--text-primary);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.peer-chip:hover { border-color: var(--brand-cyan); color: var(--brand-cyan); }
+.peer-chip .mono { color: var(--text-tertiary); font-size: 11px; }
+
+/* --- checkbox rows --------------------------------------------------- */
+
+.form-group-checks { display: grid; gap: 8px; }
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 3px 0;
+}
+
+.check-row input { width: 16px; height: 16px; accent-color: var(--brand-cyan); flex: none; }
+
+/* --- freshness banner and pull to refresh ---------------------------- */
+
+.freshness-banner {
+  background: color-mix(in srgb, #F59E0B 15%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, #F59E0B 30%, transparent);
+  color: #FBBF24;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  padding: 6px 12px;
+}
+
+.freshness-banner[hidden] { display: none; }
+
+.pull-indicator {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  z-index: 60;
+  transform: translate(-50%, -48px);
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-tertiary);
+  opacity: 0;
+  pointer-events: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .18);
+}
+
+.pull-indicator.is-visible { opacity: 1; transition: opacity .12s ease; }
+.pull-indicator.is-armed { color: var(--brand-cyan); border-color: var(--brand-cyan); }
+
+.pull-indicator.is-refreshing {
+  color: var(--brand-cyan);
+  border-color: var(--brand-cyan);
+  transition: transform .2s ease;
+}
+
+.pull-indicator.is-refreshing svg { animation: pullSpin .8s linear infinite; }
+
+@keyframes pullSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* --- notification centre --------------------------------------------- */
+
+.notification-list { display: grid; gap: 8px; max-height: 260px; overflow-y: auto; }
+
+.notification-row {
+  border-left: 3px solid var(--border-subtle);
+  background: var(--bg-surface-subtle);
+  border-radius: var(--radius-sm);
+  padding: 9px 11px;
+}
+
+.notification-row.is-critical { border-left-color: var(--health-risk); }
+.notification-row.is-warning { border-left-color: var(--health-moderate); }
+.notification-row.is-positive { border-left-color: var(--health-pristine); }
+.notification-row.is-info { border-left-color: var(--brand-cyan); }
+
+.notification-title { font-size: 12.5px; font-weight: 700; color: var(--text-primary); }
+.notification-body { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.notification-time { font-size: 10.5px; color: var(--text-tertiary); margin-top: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pull-indicator,
+  .pull-indicator.is-refreshing svg {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+.score-badge.bundle-size {
+  background: var(--bg-surface-subtle);
+  color: var(--text-tertiary);
+  font-weight: 600;
+}

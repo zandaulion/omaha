@@ -3,6 +3,73 @@
  * Mobile-First, Offline-Ready Fundamental Analysis PWA
  */
 
+// ----------------- VALUE FORMATTING -----------------
+//
+// Every metric can legitimately be null: a bank files no gross profit, a
+// company with no filed prior year has no Piotroski score. These helpers
+// render that as an em dash. Nothing here substitutes a default value —
+// the whole point of the rewrite is that a shown number is a real number.
+
+const EM_DASH = '—';
+
+const CURRENCY_SYMBOLS = {
+  USD: '$', EUR: '€', GBP: '£', GBp: 'p', JPY: '¥', CHF: 'CHF ',
+  CAD: 'C$', AUD: 'A$', RON: 'RON ', SEK: 'SEK ', DKK: 'DKK ',
+  NOK: 'NOK ', HKD: 'HK$', CNY: '¥', INR: '₹', BRL: 'R$'
+};
+
+const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
+const curSym = (code) => CURRENCY_SYMBOLS[code] ?? `${code || ''} `;
+
+/** A plain number, or an em dash when there is nothing to show. */
+function fmtNum(v, dp = 2, suffix = '') {
+  return isNum(v) ? `${v.toFixed(dp)}${suffix}` : EM_DASH;
+}
+
+/** A fraction rendered as a percentage. Pass alreadyPercent for 0-100 inputs. */
+function fmtPct(v, dp = 1, { alreadyPercent = false, sign = false } = {}) {
+  if (!isNum(v)) return EM_DASH;
+  const value = alreadyPercent ? v : v * 100;
+  const plus = sign && value > 0 ? '+' : '';
+  return `${plus}${value.toFixed(dp)}%`;
+}
+
+/** A share price in the stock's own reporting currency. */
+function fmtPrice(v, currency = 'USD') {
+  if (!isNum(v)) return EM_DASH;
+  const sym = curSym(currency);
+  return v < 0 ? `-${sym}${Math.abs(v).toFixed(2)}` : `${sym}${v.toFixed(2)}`;
+}
+
+/** A large money figure, abbreviated, in the stock's own currency. */
+function fmtMoney(v, currency = 'USD') {
+  if (!isNum(v)) return EM_DASH;
+  const sym = curSym(currency);
+  const abs = Math.abs(v);
+  const sign = v < 0 ? '-' : '';
+  if (abs >= 1e12) return `${sign}${sym}${(abs / 1e12).toFixed(2)}T`;
+  if (abs >= 1e9) return `${sign}${sym}${(abs / 1e9).toFixed(2)}B`;
+  if (abs >= 1e6) return `${sign}${sym}${(abs / 1e6).toFixed(1)}M`;
+  return `${sign}${sym}${abs.toFixed(2)}`;
+}
+
+/** Billions, for the figures the API already reports pre-divided. */
+function fmtBillions(v, currency = 'USD') {
+  if (!isNum(v)) return EM_DASH;
+  const sym = curSym(currency);
+  return v < 0 ? `-${sym}${Math.abs(v).toFixed(2)}B` : `${sym}${v.toFixed(2)}B`;
+}
+
+/** A composite score, or "N/A" when there was too little filed data. */
+const fmtScore = (v) => (isNum(v) ? String(v) : 'N/A');
+
+/** Short haptic acknowledgement on devices that support it. */
+function haptic(pattern = 8) {
+  if (navigator.vibrate && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    try { navigator.vibrate(pattern); } catch { /* not supported */ }
+  }
+}
+
 // Global Application State
 const state = {
   activeView: localStorage.getItem('omaha_active_view') || 'viewWatchlist',
@@ -13,7 +80,7 @@ const state = {
   watchlists: [],
   currentWatchlistData: null,
   allScreenerStocks: [],
-  theme: localStorage.getItem('omaha_theme') || 'dark',
+  theme: localStorage.getItem('omaha_theme') || 'system',
   dcf: {
     growth: 18,
     multiple: 24,
@@ -27,7 +94,9 @@ const state = {
     sellTriggers: [],
     journalEntries: []
   },
-  aiSummaries: {}
+  aiSummaries: {},
+  offlineDataAt: null,
+  servingFromCache: false
 };
 
 // Application Initialization Entry Point
@@ -39,6 +108,7 @@ async function initApp() {
   try {
     initEventListeners();
     initNetworkListeners();
+    initPullToRefresh();
   } catch (e) {
     console.warn('Non-fatal event listener warning:', e);
   }
@@ -111,8 +181,10 @@ async function checkAuthSession() {
     const params = new URLSearchParams(window.location.search);
     const inviteParam = params.get('invite') || params.get('code');
 
-    // If not yet authenticated and invite code is in URL, auto-activate immediately
-    if (inviteParam) {
+    // The inline runner in index.html already owns the invite-link path; it
+    // sets __omahaInviteHandled and reloads on success. Redeeming again here
+    // would fire a second request for the same code — one wins, the other 400s.
+    if (inviteParam && !window.__omahaInviteHandled) {
       const cleanCode = inviteParam.trim().toUpperCase();
       const input = document.getElementById('gateCodeInput');
       if (input) input.value = cleanCode;
@@ -271,30 +343,169 @@ function getAuthHeaders() {
   return headers;
 }
 
+// ----------------- OFFLINE DATA CACHE -----------------
+//
+// The service worker deliberately never caches /api responses — they are
+// per-device and authenticated. Offline support instead keeps the last good
+// JSON body for each GET in IndexedDB, so opening the app on a train shows
+// the last known scorecard with an honest "as of" stamp rather than a blank
+// panel. Writes are never served from here.
+
+const CACHE_DB = 'omaha-data';
+const CACHE_STORE = 'responses';
+let cacheDbPromise = null;
+
+function openCacheDb() {
+  if (cacheDbPromise) return cacheDbPromise;
+  cacheDbPromise = new Promise((resolve) => {
+    let req;
+    try {
+      req = indexedDB.open(CACHE_DB, 1);
+    } catch {
+      resolve(null);
+      return;
+    }
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(CACHE_STORE)) {
+        db.createObjectStore(CACHE_STORE, { keyPath: 'url' });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => resolve(null);
+  });
+  return cacheDbPromise;
+}
+
+async function cachePut(url, body) {
+  const db = await openCacheDb();
+  if (!db) return;
+  try {
+    const tx = db.transaction(CACHE_STORE, 'readwrite');
+    tx.objectStore(CACHE_STORE).put({ url, body, storedAt: Date.now() });
+  } catch {
+    // A full or blocked store must not break the live request.
+  }
+}
+
+async function cacheGet(url) {
+  const db = await openCacheDb();
+  if (!db) return null;
+  return new Promise((resolve) => {
+    try {
+      const req = db.transaction(CACHE_STORE, 'readonly').objectStore(CACHE_STORE).get(url);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => resolve(null);
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+/** Newest "as of" stamp across everything rendered this session. */
+function noteDataAge(storedAt) {
+  if (!storedAt) return;
+  state.offlineDataAt = Math.max(state.offlineDataAt || 0, storedAt);
+  updateFreshnessBanner();
+}
+
+function updateFreshnessBanner() {
+  const banner = document.getElementById('offlineBanner');
+  if (!banner) return;
+
+  if (navigator.onLine && !state.servingFromCache) {
+    banner.hidden = true;
+    return;
+  }
+
+  const age = state.offlineDataAt ? Date.now() - state.offlineDataAt : null;
+  let when = 'from your last visit';
+  if (age !== null) {
+    const mins = Math.round(age / 60000);
+    if (mins < 2) when = 'from moments ago';
+    else if (mins < 60) when = `from ${mins} minutes ago`;
+    else if (mins < 48 * 60) when = `from ${Math.round(mins / 60)} hours ago`;
+    else when = `from ${Math.round(mins / 1440)} days ago`;
+  }
+
+  banner.textContent = navigator.onLine
+    ? `Showing saved data ${when} — could not reach the server.`
+    : `Offline. Showing saved data ${when}.`;
+  banner.hidden = false;
+}
+
 async function apiFetch(url, options = {}) {
   const headers = {
     ...getAuthHeaders(),
     ...(options.headers || {})
   };
-  const res = await fetch(url, { ...options, headers });
-  if (res.status === 401) {
-    showGateScreen();
-    throw new Error('Dispozitiv neautorizat. Introdu codul de invitație.');
+  const method = (options.method || 'GET').toUpperCase();
+  const cacheable = method === 'GET' && url.startsWith('/api/');
+
+  try {
+    const res = await fetch(url, { ...options, headers });
+
+    if (res.status === 401) {
+      showGateScreen();
+      throw new Error('This device is not registered. Enter an invite code to activate it.');
+    }
+
+    if (cacheable && res.ok) {
+      // Clone before the caller reads it — a Response body is single-use.
+      res.clone().json().then((body) => cachePut(url, body)).catch(() => {});
+      state.servingFromCache = false;
+      state.offlineDataAt = Date.now();
+      updateFreshnessBanner();
+    }
+    return res;
+  } catch (err) {
+    if (!cacheable) throw err;
+
+    const hit = await cacheGet(url);
+    if (!hit) throw err;
+
+    state.servingFromCache = true;
+    noteDataAge(hit.storedAt);
+
+    // Handed back as a real Response so every caller keeps working unchanged.
+    return new Response(JSON.stringify(hit.body), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json', 'X-Omaha-From-Cache': '1' }
+    });
   }
-  return res;
 }
 
 // ----------------- THEME CONTROLLER -----------------
 function initTheme() {
-  document.documentElement.setAttribute('data-theme', state.theme);
-  const toggleBtn = document.getElementById('themeToggleBtn');
-  if (toggleBtn) {
-    toggleBtn.addEventListener('click', () => {
-      state.theme = state.theme === 'dark' ? 'light' : 'dark';
-      document.documentElement.setAttribute('data-theme', state.theme);
-      localStorage.setItem('omaha_theme', state.theme);
-    });
-  }
+  const media = window.matchMedia('(prefers-color-scheme: light)');
+
+  const apply = () => {
+    // 'system' follows the OS; an explicit choice overrides it. The previous
+    // build only ever had two states and always started dark.
+    const resolved = state.theme === 'system' ? (media.matches ? 'light' : 'dark') : state.theme;
+    document.documentElement.setAttribute('data-theme', resolved);
+    const btn = document.getElementById('themeToggleBtn');
+    if (btn) {
+      btn.title =
+        state.theme === 'system' ? 'Following your system theme' :
+        state.theme === 'dark' ? 'Dark theme' : 'Light theme';
+      btn.setAttribute('aria-label', btn.title);
+      btn.dataset.mode = state.theme;
+    }
+  };
+
+  apply();
+  media.addEventListener('change', () => {
+    if (state.theme === 'system') apply();
+  });
+
+  document.getElementById('themeToggleBtn')?.addEventListener('click', () => {
+    haptic();
+    const order = ['system', 'dark', 'light'];
+    state.theme = order[(order.indexOf(state.theme) + 1) % order.length];
+    localStorage.setItem('omaha_theme', state.theme);
+    apply();
+  });
 }
 
 // ----------------- SERVICE WORKER & PUSH -----------------
@@ -309,21 +520,100 @@ function registerServiceWorker() {
 }
 
 function initNetworkListeners() {
-  const banner = document.getElementById('offlineBanner');
-  const updateStatus = () => {
-    if (!navigator.onLine) {
-      banner.classList.remove('hidden');
-    } else {
-      banner.classList.add('hidden');
-    }
+  window.addEventListener('online', () => {
+    state.servingFromCache = false;
+    updateFreshnessBanner();
+    // Coming back online, quietly re-fetch what is on screen.
+    refreshActiveView().catch(() => {});
+  });
+  window.addEventListener('offline', updateFreshnessBanner);
+  updateFreshnessBanner();
+}
+
+// ----------------- PULL TO REFRESH -----------------
+//
+// Only arms at the very top of the page, and only for a downward drag, so it
+// never fights normal scrolling or a horizontal swipe on a wide table.
+function initPullToRefresh() {
+  const indicator = document.getElementById('pullIndicator');
+  if (!indicator) return;
+
+  const TRIGGER_PX = 72;
+  const MAX_PULL = 110;
+  let startY = null;
+  let pull = 0;
+  let refreshing = false;
+
+  const reset = () => {
+    indicator.style.transform = '';
+    indicator.classList.remove('is-armed', 'is-visible');
+    pull = 0;
+    startY = null;
   };
-  window.addEventListener('online', updateStatus);
-  window.addEventListener('offline', updateStatus);
-  updateStatus();
+
+  document.addEventListener('touchstart', (e) => {
+    if (refreshing || window.scrollY > 0 || e.touches.length !== 1) return;
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+
+  document.addEventListener('touchmove', (e) => {
+    if (startY === null || refreshing) return;
+    const delta = e.touches[0].clientY - startY;
+    if (delta <= 0 || window.scrollY > 0) {
+      reset();
+      return;
+    }
+    // Resistance, so the indicator eases rather than tracking the finger 1:1.
+    pull = Math.min(MAX_PULL, delta * 0.5);
+    indicator.classList.add('is-visible');
+    indicator.style.transform = `translate(-50%, ${pull}px)`;
+    indicator.classList.toggle('is-armed', pull >= TRIGGER_PX);
+  }, { passive: true });
+
+  document.addEventListener('touchend', async () => {
+    if (startY === null || refreshing) return;
+    const armed = pull >= TRIGGER_PX;
+    if (!armed) {
+      reset();
+      return;
+    }
+
+    refreshing = true;
+    haptic([12, 40, 12]);
+    indicator.classList.add('is-refreshing');
+    indicator.style.transform = 'translate(-50%, 56px)';
+
+    try {
+      await refreshActiveView();
+    } finally {
+      refreshing = false;
+      indicator.classList.remove('is-refreshing');
+      reset();
+    }
+  }, { passive: true });
+}
+
+/** Re-fetches whatever is on screen, bypassing the server-side quote cache. */
+async function refreshActiveView() {
+  try {
+    if (state.activeView === 'viewDeepDive' && state.currentTicker) {
+      await openStockDeepDive(state.currentTicker, null, { forceRefresh: true });
+    } else if (state.activeView === 'viewScreener') {
+      await loadScreenerData();
+    } else if (state.activeView === 'viewCompare') {
+      await runComparison();
+    } else {
+      await loadWatchlistData(state.activeWatchlistId);
+    }
+    showToast('Updated', '✓');
+  } catch (err) {
+    showToast('Could not refresh — check your connection', '⚠️');
+  }
 }
 
 // ----------------- NAVIGATION & ROUTING -----------------
 function switchView(viewId) {
+  if (viewId !== state.activeView) haptic();
   state.activeView = viewId;
   localStorage.setItem('omaha_active_view', viewId);
 
@@ -336,6 +626,10 @@ function switchView(viewId) {
   if (targetPanel) {
     targetPanel.classList.remove('hidden');
     targetPanel.classList.add('fade-in');
+  }
+
+  if (viewId === 'viewCompare' && state.currentTicker) {
+    loadPeerSuggestions(state.currentTicker);
   }
 
   document.querySelectorAll('.nav-tab').forEach((tab) => {
@@ -529,6 +823,8 @@ function initEventListeners() {
 
   // Settings Modal triggers
   document.getElementById('settingsTriggerBtn')?.addEventListener('click', () => {
+    haptic();
+    loadNotificationCentre();
     openModal('settingsModal');
     checkPushStatus();
   });
@@ -537,7 +833,6 @@ function initEventListeners() {
   });
 
   // Redeem Invite Button
-  document.getElementById('redeemInviteBtn')?.addEventListener('click', handleRedeemInvite);
 
   // Push Notifications Button
   document.getElementById('enablePushBtn')?.addEventListener('click', handleEnablePush);
@@ -612,18 +907,34 @@ function initEventListeners() {
     document.getElementById('filterRoicVal').textContent = `${e.target.value}%`;
     filterScreenerStocks();
   });
-  document.getElementById('filterSectorSelect')?.addEventListener('change', () => {
+  document.getElementById('filterSectorSelect')?.addEventListener('change', filterScreenerStocks);
+  document.getElementById('filterDebtEquitySlider')?.addEventListener('input', (e) => {
+    const v = parseFloat(e.target.value);
+    document.getElementById('filterDebtEquityVal').textContent = v >= 5 ? 'any' : `${v.toFixed(2)}x`;
     filterScreenerStocks();
   });
+  document.getElementById('filterNetCash')?.addEventListener('change', () => { haptic(); filterScreenerStocks(); });
+  document.getElementById('filterFcfPositive')?.addEventListener('change', () => { haptic(); filterScreenerStocks(); });
 
   // Screener Presets
-  document.getElementById('presetAllBtn')?.addEventListener('click', () => setScreenerPreset(0, 0, 0));
-  document.getElementById('presetFortressBtn')?.addEventListener('click', () => setScreenerPreset(85, 7, 15));
-  document.getElementById('presetRoicBtn')?.addEventListener('click', () => setScreenerPreset(70, 6, 20));
-  document.getElementById('presetCashBtn')?.addEventListener('click', () => setScreenerPreset(75, 6, 12));
+  document.getElementById('presetAllBtn')?.addEventListener('click', () => setScreenerPreset({}));
+  document.getElementById('presetFortressBtn')?.addEventListener('click', () =>
+    setScreenerPreset({ health: 85, piotroski: 7, roic: 15, fcfPositive: true }));
+  document.getElementById('presetRoicBtn')?.addEventListener('click', () =>
+    setScreenerPreset({ health: 70, piotroski: 6, roic: 20 }));
+  document.getElementById('presetCashBtn')?.addEventListener('click', () =>
+    setScreenerPreset({ health: 0, netCash: true }));
 
   // Compare Runner
-  document.getElementById('compareRunBtn')?.addEventListener('click', runComparison);
+  document.getElementById('compareRunBtn')?.addEventListener('click', () => { haptic(); runComparison(); });
+
+  // Notification preferences
+  document.querySelectorAll('[data-notify-pref]').forEach((box) => {
+    box.addEventListener('change', () => {
+      haptic();
+      saveNotificationPrefs();
+    });
+  });
 }
 
 // ----------------- WATCHLIST LOGIC & RENDERING -----------------
@@ -678,14 +989,21 @@ function renderWatchlistHero(data) {
   if (!data) return;
 
   document.getElementById('heroWatchlistName').textContent = data.name || 'My Watchlist';
-  document.getElementById('heroStockCount').textContent = `${data.stockCount || 0} companies in portfolio`;
+  document.getElementById('heroStockCount').textContent =
+    `${data.stockCount || 0} companies` +
+    (data.unscoredCount ? ` · ${data.unscoredCount} without enough filed data to score` : '');
 
   const gradeBadge = document.getElementById('heroGradeBadge');
-  const score = data.compositeScore || 0;
-  gradeBadge.textContent = `${data.grade || 'N/A'} (${score}/100)`;
-  
+  const score = isNum(data.compositeScore) ? data.compositeScore : null;
+  gradeBadge.textContent = score === null ? 'Not scored' : `${data.grade} (${score}/100)`;
+  gradeBadge.title =
+    data.weighting === 'market-cap'
+      ? 'Weighted by market capitalisation'
+      : 'Equally weighted — market caps unavailable';
+
   gradeBadge.className = 'hero-grade-badge';
-  if (score >= 85) gradeBadge.classList.add('pristine');
+  if (score === null) gradeBadge.classList.add('unscored');
+  else if (score >= 85) gradeBadge.classList.add('pristine');
   else if (score >= 70) gradeBadge.classList.add('good');
   else if (score >= 50) gradeBadge.classList.add('moderate');
   else gradeBadge.classList.add('risk');
@@ -696,11 +1014,11 @@ function renderWatchlistHero(data) {
     pillarsContainer.innerHTML = data.pillars.map(p => `
       <div class="pillar-meter-item">
         <div class="pillar-meter-label">
-          <span>${p.name}</span>
-          <span class="mono">${p.score}/20</span>
+          <span>${p.name}${p.measured < p.of ? ` <span class="pillar-partial">${p.measured}/${p.of}</span>` : ''}</span>
+          <span class="mono">${p.score === null ? EM_DASH : `${p.score}/20`}</span>
         </div>
         <div class="pillar-meter-bar-bg">
-          <div class="pillar-meter-bar-fill" style="width: ${p.pct}%; background: ${getPillarColor(p.pct)};"></div>
+          <div class="pillar-meter-bar-fill" style="width: ${p.pct ?? 0}%; background: ${getPillarColor(p.pct)};"></div>
         </div>
       </div>
     `).join('');
@@ -709,15 +1027,18 @@ function renderWatchlistHero(data) {
   // Checklist Aggregates
   const checkText = document.getElementById('heroChecklistText');
   if (checkText && data.checklistAggregates) {
-    const { totalPass = 0, totalWatch = 0, totalFail = 0 } = data.checklistAggregates;
-    checkText.innerHTML = `🟢 ${totalPass} Pass · 🟡 ${totalWatch} Watch · 🔴 ${totalFail} Risk Flags`;
+    const { totalPass = 0, totalWatch = 0, totalFail = 0, totalNa = 0 } = data.checklistAggregates;
+    checkText.innerHTML =
+      `🟢 ${totalPass} pass · 🟡 ${totalWatch} watch · 🔴 ${totalFail} fail` +
+      (totalNa ? ` · ${totalNa} not reported` : '');
   }
 
   // Composite Moat Dynamic Update
   const moatEl = document.getElementById('heroMoatText');
   if (moatEl) {
-    let moatLabel = 'Moderate';
-    if (score >= 85) moatLabel = 'Wide / Fortress';
+    let moatLabel = 'Not assessed';
+    if (score === null) moatLabel = 'Not assessed';
+    else if (score >= 85) moatLabel = 'Wide / Fortress';
     else if (score >= 70) moatLabel = 'Strong';
     else if (score >= 50) moatLabel = 'Moderate';
     else moatLabel = 'Narrow / Speculative';
@@ -762,26 +1083,32 @@ function renderWatchlistCards() {
             <span class="company-name">${stock.name}</span>
           </div>
           <div class="stock-metrics-row mono">
-            <span>P/E: ${(stock.summary?.ratios?.pe || 25).toFixed(1)}x</span>
+            <span>P/E: ${fmtNum(stock.summary?.ratios?.pe, 1, 'x')}</span>
             <span>•</span>
-            <span>ROIC: ${stock.roic_pct.toFixed(1)}%</span>
+            <span>ROIC: ${fmtPct(stock.roic_pct, 1, { alreadyPercent: true })}</span>
             <span>•</span>
-            <span>Altman Z: ${stock.altman_z}</span>
+            <span>${stock.summary?.metrics?.isFinancial ? 'ROE' : 'Altman Z'}: ${
+              stock.summary?.metrics?.isFinancial
+                ? fmtPct(stock.summary?.metrics?.roe)
+                : fmtNum(stock.altman_z, 2)}</span>
           </div>
         </div>
 
         <div class="stock-right">
           <div style="display: flex; align-items: flex-start; gap: 8px;">
             <div class="stock-price-col">
-              <div class="stock-price mono">$${stock.price.toFixed(2)}</div>
+              <div class="stock-price mono">${fmtPrice(stock.price, stock.currency)}</div>
               <div class="stock-change mono ${isPos ? 'positive' : 'negative'}">
-                ${isPos ? '+' : ''}${stock.change_pct.toFixed(2)}%
+                ${fmtPct(stock.change_pct, 2, { alreadyPercent: true, sign: true })}
               </div>
             </div>
             <button class="stock-remove-btn" data-remove-ticker="${stock.ticker}" title="Remove ${stock.ticker} from watchlist">✕</button>
           </div>
-          <div class="score-badge ${tier}" style="margin-top: 6px;">
-            ${stock.health_score}/100 🟢
+          <div class="score-badge ${tier}" style="margin-top: 6px;" ${
+            stock.health_score === null
+              ? 'title="Too few line items were filed to score this company."'
+              : ''}>
+            ${stock.health_score === null ? 'Not scored' : `${stock.health_score}/100`}
           </div>
         </div>
 
@@ -813,7 +1140,7 @@ function renderWatchlistCards() {
 }
 
 // ----------------- STOCK DEEP DIVE SCORECARD -----------------
-async function openStockDeepDive(tickerSymbol, initialSubtab = null) {
+async function openStockDeepDive(tickerSymbol, initialSubtab = null, opts = {}) {
   const ticker = tickerSymbol.toUpperCase();
   state.currentTicker = ticker;
   localStorage.setItem('omaha_current_ticker', ticker);
@@ -825,8 +1152,11 @@ async function openStockDeepDive(tickerSymbol, initialSubtab = null) {
   switchSubtab(subtabToOpen);
 
   try {
-    const res = await apiFetch(`/api/stock/${ticker}`);
-    if (!res.ok) throw new Error('Stock not found');
+    const res = await apiFetch(`/api/stock/${ticker}${opts.forceRefresh ? '?refresh=1' : ''}`);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || `Could not load ${ticker}`);
+    }
     const data = await res.json();
     state.currentStock = data;
 
@@ -840,34 +1170,56 @@ async function openStockDeepDive(tickerSymbol, initialSubtab = null) {
     fetchCachedAISummary(ticker);
   } catch (err) {
     console.error('Deep dive error:', err);
+    showToast(err.message || `Could not load ${ticker}`, '⚠️');
   }
 }
 
 function renderDeepDiveHero(stock) {
   document.getElementById('deepDiveTicker').textContent = stock.ticker;
   document.getElementById('deepDiveName').textContent = stock.name;
-  document.getElementById('deepDivePrice').textContent = `$${stock.price.toFixed(2)}`;
+  document.getElementById('deepDivePrice').textContent = fmtPrice(stock.price, stock.currency);
   document.getElementById('deepDiveCurrency').textContent = stock.currency || 'USD';
 
   const isPos = stock.change_pct >= 0;
   const changeEl = document.getElementById('deepDiveChange');
-  changeEl.textContent = `${isPos ? '+' : ''}${stock.change_pct.toFixed(2)}%`;
+  changeEl.textContent = fmtPct(stock.change_pct, 2, { alreadyPercent: true, sign: true });
   changeEl.className = `mono stock-change ${isPos ? 'positive' : 'negative'}`;
 
-  document.getElementById('deepDiveScoreVal').textContent = stock.health_score;
-  document.getElementById('deepDiveScoreLabel').textContent = stock.summary?.healthLabel || 'Strong Financials';
+  document.getElementById('deepDiveScoreVal').textContent = fmtScore(stock.health_score);
+  document.getElementById('deepDiveScoreLabel').textContent =
+    stock.summary?.healthLabel || 'Not enough filed data to score';
   document.getElementById('deepDiveSectorInfo').textContent = `${stock.sector || 'Equities'} · ${stock.industry || 'Core Business'}`;
 
   // SVG Radial Circle Progress Animation
   const ring = document.getElementById('scoreRingProgress');
   const circumference = 2 * Math.PI * 50; // r=50 -> 314.15
-  const offset = circumference - (stock.health_score / 100) * circumference;
-  ring.style.strokeDashoffset = offset;
+  const scorePct = isNum(stock.health_score) ? stock.health_score : 0;
+  ring.style.strokeDashoffset = circumference - (scorePct / 100) * circumference;
 
-  // Set ring color
   const color = getScoreColor(stock.health_score);
   ring.style.stroke = color;
   document.getElementById('deepDiveScoreLabel').style.color = color;
+
+  // Say plainly how much of the scorecard could actually be measured.
+  const coverage = stock.summary?.coverage;
+  const coverageEl = document.getElementById('deepDiveCoverage');
+  if (coverageEl) {
+    if (coverage && coverage.pct < 100) {
+      coverageEl.textContent =
+        `${coverage.measured} of ${coverage.total} measures available in the filings` +
+        (coverage.sufficient ? '' : ' — too few to produce a score');
+      coverageEl.hidden = false;
+    } else {
+      coverageEl.hidden = true;
+    }
+  }
+
+  const asOfEl = document.getElementById('deepDiveFiscalPeriod');
+  if (asOfEl) {
+    const fy = stock.summary?.metrics?.fiscalPeriodEnd;
+    asOfEl.textContent = fy ? `Fundamentals as filed to ${fy}` : '';
+    asOfEl.hidden = !fy;
+  }
 
   // Render 5-Pillars Breakdown
   const pillarsContainer = document.getElementById('deepDivePillars');
@@ -925,25 +1277,74 @@ function renderOverviewSubtab(stock) {
   // Key Ratios Grid
   const grid = document.getElementById('multiplesGrid');
   if (grid) {
-    const f = stock.financials || {};
+    const m = stock.summary?.metrics || {};
     const r = stock.summary?.ratios || {};
-    const items = [
-      { label: 'ROIC (Capital Moat)', val: `${stock.roic_pct.toFixed(1)}%`, good: stock.roic_pct >= 15 },
-      { label: 'Altman Z-Score', val: `${stock.altman_z}`, good: stock.altman_z >= 3.0 },
-      { label: 'Piotroski F-Score', val: `${stock.piotroski_score}/9`, good: stock.piotroski_score >= 7 },
-      { label: 'FCF Conversion', val: `${stock.fcf_conversion_pct}%`, good: stock.fcf_conversion_pct >= 90 },
-      { label: 'Gross Margin', val: `${((f.grossMargin || 0.45) * 100).toFixed(1)}%`, good: true },
-      { label: 'Trailing P/E', val: `${(r.pe || 25).toFixed(1)}x`, good: (r.pe || 25) < 30 },
-      { label: 'PEG Ratio', val: `${(r.peg || 1.5).toFixed(2)}x`, good: (r.peg || 1.5) <= 1.5 },
-      { label: 'Net Cash Cushion', val: `$${stock.net_cash_b}B`, good: stock.net_cash_b > 0 }
-    ];
+    const pe = stock.summary?.peHistory;
+    const cur = stock.currency;
+
+    // `good` is null where the metric itself is unavailable, so an em dash is
+    // never painted in the "healthy" colour.
+    const ok = (value, test) => (isNum(value) ? test(value) : null);
+
+    const items = m.isFinancial
+      ? [
+          { label: 'Return on equity', val: fmtPct(m.roe), good: ok(m.roe, (v) => v >= 0.12) },
+          { label: 'Equity / assets', val: fmtPct(m.equityToAssets), good: ok(m.equityToAssets, (v) => v >= 0.08) },
+          { label: 'Piotroski F-Score', val: isNum(stock.piotroski_score) ? `${stock.piotroski_score}/9` : EM_DASH, good: ok(stock.piotroski_score, (v) => v >= 7) },
+          { label: 'Revenue CAGR', val: fmtPct(m.revenueCAGR, 1, { sign: true }), good: ok(m.revenueCAGR, (v) => v >= 0.08) },
+          { label: 'Trailing P/E', val: fmtNum(r.pe, 1, 'x'), good: ok(r.pe, (v) => v < 15) },
+          { label: 'Price / book', val: fmtNum(r.priceToBook, 2, 'x'), good: ok(r.priceToBook, (v) => v < 1.5) },
+          { label: 'Share count YoY', val: fmtPct(m.shareChangeYoY, 1, { sign: true }), good: ok(m.shareChangeYoY, (v) => v <= 0.005) },
+          { label: 'Dividend yield', val: fmtPct(m.dividendYield), good: ok(m.dividendYield, (v) => v > 0) }
+        ]
+      : [
+          { label: 'ROIC', val: fmtPct(stock.roic_pct, 1, { alreadyPercent: true }), good: ok(stock.roic_pct, (v) => v >= 15) },
+          { label: 'ROIC − WACC', val: isNum(m.roicSpread) ? fmtPct(m.roicSpread, 1, { alreadyPercent: true, sign: true }) : EM_DASH, good: ok(m.roicSpread, (v) => v >= 5) },
+          { label: 'Altman Z-Score', val: fmtNum(stock.altman_z, 2), good: ok(stock.altman_z, (v) => v >= 3) },
+          { label: 'Piotroski F-Score', val: isNum(stock.piotroski_score) ? `${stock.piotroski_score}/9` : EM_DASH, good: ok(stock.piotroski_score, (v) => v >= 7) },
+          { label: 'FCF conversion', val: fmtPct(stock.fcf_conversion_pct, 0, { alreadyPercent: true }), good: ok(stock.fcf_conversion_pct, (v) => v >= 90) },
+          { label: 'Gross margin', val: fmtPct(m.grossMargin), good: ok(m.grossMargin, (v) => v >= 0.4) },
+          { label: 'Trailing P/E', val: fmtNum(r.pe, 1, 'x'), good: ok(r.pe, (v) => v < 30) },
+          { label: 'Net cash', val: fmtBillions(stock.net_cash_b, cur), good: ok(stock.net_cash_b, (v) => v > 0) }
+        ];
+
+    // 5-year percentile scrubber for the multiples that have a history.
+    const scrubber = pe?.available
+      ? `
+      <div class="ratio-range-card">
+        <div class="ratio-range-head">
+          <span>P/E vs. its own 5-year range</span>
+          <span class="mono">${fmtNum(pe.current, 1, 'x')} · ${pe.percentile}th pct</span>
+        </div>
+        <div class="ratio-range-track">
+          <div class="ratio-range-band" style="left: ${
+            Math.max(0, Math.min(100, ((pe.p20 - pe.min) / Math.max(pe.max - pe.min, 0.01)) * 100))
+          }%; width: ${
+            Math.max(2, Math.min(100, ((pe.p80 - pe.p20) / Math.max(pe.max - pe.min, 0.01)) * 100))
+          }%;"></div>
+          <div class="ratio-range-median" style="left: ${
+            Math.max(0, Math.min(100, ((pe.median - pe.min) / Math.max(pe.max - pe.min, 0.01)) * 100))
+          }%;" title="5-year median ${pe.median}x"></div>
+          <div class="ratio-range-pin" style="left: ${
+            Math.max(0, Math.min(100, ((pe.current - pe.min) / Math.max(pe.max - pe.min, 0.01)) * 100))
+          }%;" title="Now ${pe.current}x"></div>
+        </div>
+        <div class="ratio-range-scale mono">
+          <span>${fmtNum(pe.min, 1, 'x')}</span>
+          <span>median ${fmtNum(pe.median, 1, 'x')}</span>
+          <span>${fmtNum(pe.max, 1, 'x')}</span>
+        </div>
+      </div>`
+      : '';
 
     grid.innerHTML = items.map(it => `
-      <div style="background: var(--bg-surface-subtle); padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
-        <div style="font-size: 11px; color: var(--text-tertiary); margin-bottom: 2px;">${it.label}</div>
-        <div class="mono" style="font-size: 15px; font-weight: 700; color: ${it.good ? 'var(--health-pristine)' : 'var(--text-primary)'};">${it.val}</div>
+      <div class="ratio-card">
+        <div class="ratio-card-label">${it.label}</div>
+        <div class="mono ratio-card-value ${
+          it.good === null ? 'is-unavailable' : it.good ? 'is-good' : ''
+        }">${it.val}</div>
       </div>
-    `).join('');
+    `).join('') + scrubber;
   }
 }
 
@@ -1290,145 +1691,230 @@ function renderChecklistSubtab(stock) {
   const container = document.getElementById('checklistFullList');
   const badge = document.getElementById('checklistScoreBadge');
   const items = stock.checklist || [];
-
   const summary = stock.summary?.checklistSummary || {};
-  badge.textContent = `${summary.passCount || 0} Pass · ${summary.watchCount || 0} Watch · ${summary.failCount || 0} Fail`;
+
+  const LABEL = { pass: 'Pass', watch: 'Watch', fail: 'Fail', na: 'Not reported' };
+
+  badge.textContent =
+    `${summary.passCount || 0} pass · ${summary.watchCount || 0} watch · ${summary.failCount || 0} fail` +
+    (summary.naCount ? ` · ${summary.naCount} not reported` : '');
 
   container.innerHTML = items.map(item => `
-    <div class="checklist-item" data-check-id="${item.id}">
+    <div class="checklist-item${item.status === 'na' ? ' is-na' : ''}" data-check-id="${item.id}">
       <div class="checklist-item-header">
         <div class="checklist-left">
           <div class="status-dot ${item.status}"></div>
           <div>
             <span class="checklist-name">${item.name}</span>
-            <span class="checklist-category">(${item.category})</span>
+            <span class="checklist-category">${item.category}</span>
           </div>
         </div>
         <div class="checklist-right">
-          <span class="checklist-value mono">${item.value}</span>
-          <span class="status-tag ${item.status}">${item.status}</span>
+          <span class="checklist-value mono">${item.value ?? EM_DASH}</span>
+          <span class="status-tag ${item.status}">${LABEL[item.status] || item.status}</span>
         </div>
       </div>
       <div class="checklist-drawer" id="drawer-${item.id}">
-        <div class="checklist-benchmark mono">🎯 Benchmark Target: ${item.benchmark}</div>
+        ${item.benchmark ? `<div class="checklist-benchmark mono">Target: ${item.benchmark}</div>` : ''}
         <div>${item.explanation}</div>
+        ${item.status === 'na'
+          ? '<div class="checklist-na-note">Not scored — this measure is absent from the filings for this company, so it neither helps nor hurts the composite.</div>'
+          : ''}
       </div>
     </div>
   `).join('');
 
-  // Accordion drawer toggle
   container.querySelectorAll('.checklist-item').forEach((row) => {
     row.addEventListener('click', () => {
-      const id = row.getAttribute('data-check-id');
-      const drawer = document.getElementById(`drawer-${id}`);
-      drawer.classList.toggle('open');
+      haptic();
+      document.getElementById(`drawer-${row.getAttribute('data-check-id')}`).classList.toggle('open');
     });
   });
 }
 
 function renderTrendsSubtab(stock) {
   const hist = stock.financials?.historical || {};
-  const years = hist.years || [2020, 2021, 2022, 2023, 2024];
-  const rev = hist.revenue || [100, 120, 140, 160, 180];
-  const fcf = hist.freeCashFlow || [20, 30, 40, 45, 55];
-  const gm = hist.grossMarginPct || [40, 42, 44, 45, 46];
-  const om = hist.operatingMarginPct || [20, 22, 24, 25, 26];
-  const shares = hist.sharesOutstanding || [10, 9.8, 9.6, 9.4, 9.2];
+  const cur = stock.currency;
+  const m = stock.summary?.metrics || {};
 
-  // Chart 1: Revenue vs FCF Dual Bars
-  const maxRev = Math.max(...rev, 1);
+  const years = hist.years || [];
+  const rev = hist.revenue || [];
+  const fcf = hist.freeCashFlow || [];
+  const gm = hist.grossMarginPct || [];
+  const om = hist.operatingMarginPct || [];
+  const shares = hist.sharesOutstanding || [];
+
+  const empty = (message) =>
+    `<div class="chart-empty">${message}</div>`;
+
+  // --- Chart 1: revenue against free cash flow ------------------------------
   const chartContainer = document.getElementById('revFcfChart');
-  chartContainer.innerHTML = years.map((yr, idx) => {
-    const rVal = rev[idx] || 0;
-    const fVal = fcf[idx] || 0;
-    const rHeight = Math.max(10, Math.round((rVal / maxRev) * 100));
-    const fHeight = Math.max(8, Math.round((fVal / maxRev) * 100));
+  const plottable = years.length && rev.some(isNum);
 
-    return `
-      <div class="bar-group">
-        <div class="bars-pair">
-          <div class="bar-column rev" style="height: ${rHeight}%;" title="Revenue: $${rVal}B"></div>
-          <div class="bar-column fcf" style="height: ${fHeight}%;" title="Free Cash Flow: $${fVal}B"></div>
+  if (!plottable) {
+    chartContainer.innerHTML = empty('No revenue history filed for this company.');
+  } else {
+    const maxVal = Math.max(...[...rev, ...fcf].filter(isNum).map(Math.abs), 1);
+    chartContainer.innerHTML = years.map((yr, idx) => {
+      const rVal = rev[idx];
+      const fVal = fcf[idx];
+      // A year the filer did not report draws no bar at all — the previous
+      // build padded missing years with a scaled-down copy of the next one.
+      const bar = (value, cls) =>
+        isNum(value)
+          ? `<div class="bar-column ${cls}${value < 0 ? ' is-negative' : ''}"
+                  style="height: ${Math.max(3, Math.round((Math.abs(value) / maxVal) * 100))}%;"
+                  title="${cls === 'rev' ? 'Revenue' : 'Free cash flow'} ${yr}: ${fmtBillions(value, cur)}"></div>`
+          : `<div class="bar-column is-missing" title="${yr}: not reported"></div>`;
+
+      return `
+        <div class="bar-group">
+          <div class="bars-pair">
+            ${bar(rVal, 'rev')}
+            ${bar(fVal, 'fcf')}
+          </div>
+          <div class="bar-year-label mono">${Number.isFinite(yr) ? yr : EM_DASH}</div>
+        </div>`;
+    }).join('');
+  }
+
+  const firstRev = rev.find(isNum);
+  const lastRev = [...rev].reverse().find(isNum);
+  const cagrLabel = m.cagrYears ? `${m.cagrYears}Y CAGR` : 'CAGR';
+  document.getElementById('revFcfSummaryText').textContent = plottable
+    ? `Revenue ${fmtBillions(firstRev, cur)} → ${fmtBillions(lastRev, cur)} ` +
+      `(${fmtPct(m.revenueCAGR, 1, { sign: true })} ${cagrLabel}) · ` +
+      `Cash conversion ${fmtPct(stock.fcf_conversion_pct, 0, { alreadyPercent: true })}`
+    : 'Revenue history is not available for this listing.';
+
+  // --- Chart 2: liquidity against debt --------------------------------------
+  const cash = m.cash;
+  const debt = m.totalDebt;
+  const stackEl = document.getElementById('balanceSheetStack');
+
+  if (!isNum(cash) && !isNum(debt)) {
+    stackEl.innerHTML = empty('Balance sheet detail is not filed for this listing.');
+  } else {
+    const scale = Math.max(Math.abs(cash || 0), Math.abs(debt || 0), 1);
+    stackEl.innerHTML = `
+      <div class="stack-row">
+        <span class="stack-label">Cash & short-term investments</span>
+        <div class="stack-track">
+          <div class="stack-fill is-cash" style="width: ${((cash || 0) / scale) * 100}%;"></div>
         </div>
-        <div class="bar-year-label mono">${yr}</div>
+        <span class="mono text-emerald">${fmtMoney(cash, cur)}</span>
       </div>
-    `;
-  }).join('');
+      <div class="stack-row">
+        <span class="stack-label">Total debt</span>
+        <div class="stack-track">
+          <div class="stack-fill is-debt" style="width: ${((debt || 0) / scale) * 100}%;"></div>
+        </div>
+        <span class="mono text-coral">${fmtMoney(debt, cur)}</span>
+      </div>
+      <div class="stack-verdict">
+        ${
+          !isNum(m.netCash)
+            ? '<span class="text-muted">Net position not computable from the filed data.</span>'
+            : m.netCash > 0
+              ? `💎 <span class="text-emerald">Net cash of ${fmtMoney(m.netCash, cur)}</span>`
+              : `<span class="text-coral">Net debt of ${fmtMoney(Math.abs(m.netCash), cur)}</span>`
+        }
+      </div>`;
+  }
 
-  document.getElementById('revFcfSummaryText').textContent =
-    `5Y Revenue: $${rev[0]}B ➔ $${rev[rev.length - 1]}B (${((hist.revenue3yCAGR || 0.12) * 100).toFixed(1)}% 3Y CAGR) · FCF Conversion: ${stock.fcf_conversion_pct}%`;
-
-  // Chart 2: Balance Sheet Stack
-  const cashB = Math.max(1, (stock.financials?.cashAndEquivalents || 1e9) / 1e9);
-  const debtB = Math.max(0.1, (stock.financials?.totalDebt || 0) / 1e9);
-  const maxBS = Math.max(cashB, debtB) * 1.15;
-
-  const stackContainer = document.getElementById('balanceSheetStack');
-  stackContainer.innerHTML = `
-    <div class="cushion-row">
-      <div class="cushion-label">
-        <span>Liquid Cash & Equivalents</span>
-        <span class="mono text-emerald">$${cashB.toFixed(1)} Billion</span>
-      </div>
-      <div class="cushion-track">
-        <div class="cushion-bar cash" style="width: ${(cashB / maxBS) * 100}%;"></div>
-      </div>
-    </div>
-    <div class="cushion-row">
-      <div class="cushion-label">
-        <span>Total Debt Obligations</span>
-        <span class="mono text-coral">$${debtB.toFixed(1)} Billion</span>
-      </div>
-      <div class="cushion-track">
-        <div class="cushion-bar debt" style="width: ${(debtB / maxBS) * 100}%;"></div>
-      </div>
-    </div>
-    <div class="net-cash-callout">
-      ${stock.net_cash_b >= 0
-        ? `💎 <span class="text-emerald">Net Cash Fortress: +$${stock.net_cash_b}B (Zero Solvency Risk)</span>`
-        : `⚠️ <span class="text-coral">Net Debt: -$${Math.abs(stock.net_cash_b)}B</span>`}
-    </div>
-  `;
-
-  // Chart 3: Margin Expansion
+  // --- Chart 3: margin trajectory -------------------------------------------
   const marginContainer = document.getElementById('marginTrendContainer');
-  marginContainer.innerHTML = `
-    <div style="font-size: 13px; display: flex; justify-content: space-between;">
-      <span>Gross Margin:</span>
-      <span class="mono text-emerald">${gm.map(v => `${v}%`).join(' ➔ ')}</span>
-    </div>
-    <div style="font-size: 13px; display: flex; justify-content: space-between;">
-      <span>Operating Margin:</span>
-      <span class="mono text-cyan">${om.map(v => `${v}%`).join(' ➔ ')}</span>
-    </div>
-  `;
+  const marginSeries = [
+    { label: 'Gross margin', values: gm, cls: 'is-gross', change: m.grossMarginChangeBps },
+    { label: 'Operating margin', values: om, cls: 'is-operating', change: m.operatingMarginChangeBps }
+  ].filter((serie) => serie.values.some(isNum));
 
-  // Chart 4: Shares Dilution
+  if (!marginSeries.length) {
+    marginContainer.innerHTML = empty(
+      m.isFinancial
+        ? 'Lenders do not report a gross margin — return on equity is the comparable measure.'
+        : 'No margin history filed for this company.'
+    );
+  } else {
+    const all = marginSeries.flatMap((serie) => serie.values.filter(isNum));
+    const lo = Math.min(...all);
+    const hi = Math.max(...all);
+    const span = Math.max(hi - lo, 1);
+    const y = (v) => 100 - ((v - lo) / span) * 84 - 8;
+    const x = (i, n) => (n <= 1 ? 50 : (i / (n - 1)) * 100);
+
+    marginContainer.innerHTML = `
+      <svg class="margin-chart" viewBox="0 0 100 100" preserveAspectRatio="none" role="img"
+           aria-label="Margin trajectory across the filed fiscal years">
+        ${marginSeries.map((serie) => {
+          const pts = serie.values
+            .map((v, i) => (isNum(v) ? `${x(i, serie.values.length).toFixed(2)},${y(v).toFixed(2)}` : null))
+            .filter(Boolean);
+          return pts.length > 1
+            ? `<polyline class="margin-line ${serie.cls}" points="${pts.join(' ')}"
+                         vector-effect="non-scaling-stroke" />`
+            : '';
+        }).join('')}
+      </svg>
+      <div class="margin-legend">
+        ${marginSeries.map((serie) => {
+          const last = [...serie.values].reverse().find(isNum);
+          return `
+            <div class="margin-legend-row">
+              <span class="margin-swatch ${serie.cls}"></span>
+              <span>${serie.label}</span>
+              <span class="mono">${fmtPct(last, 1, { alreadyPercent: true })}</span>
+              <span class="mono ${isNum(serie.change) && serie.change < 0 ? 'text-coral' : 'text-emerald'}">
+                ${isNum(serie.change) ? `${serie.change >= 0 ? '+' : ''}${serie.change} bps` : EM_DASH}
+              </span>
+            </div>`;
+        }).join('')}
+      </div>
+      <div class="chart-axis mono">${years.map((yr) => `<span>${Number.isFinite(yr) ? yr : EM_DASH}</span>`).join('')}</div>`;
+  }
+
+  // --- Chart 4: share count --------------------------------------------------
   const sharesContainer = document.getElementById('sharesTrendContainer');
-  const isRetiring = shares[shares.length - 1] <= shares[0];
-  sharesContainer.innerHTML = `
-    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-      <span>Share Count:</span>
-      <span class="mono ${isRetiring ? 'text-emerald' : 'text-amber'}">${shares.map(s => `${s}B`).join(' ➔ ')}</span>
-    </div>
-    <div style="font-size: 12px; color: var(--text-secondary);">
-      ${isRetiring
-        ? `🟢 Management retired shares (${((hist.shareDilutionYoY || -0.01) * 100).toFixed(1)}% YoY), boosting per-share intrinsic value.`
-        : `⚠️ Share dilution from SBC (+${((hist.shareDilutionYoY || 0.01) * 100).toFixed(1)}% YoY).`}
-    </div>
-  `;
+  const sharePoints = shares.filter(isNum);
+
+  if (sharePoints.length < 2) {
+    sharesContainer.innerHTML = empty('Share count history is not filed for this listing.');
+  } else {
+    const first = sharePoints[0];
+    const last = sharePoints[sharePoints.length - 1];
+    const totalChange = (last - first) / first;
+    const retiring = last < first;
+
+    sharesContainer.innerHTML = `
+      <div class="shares-row">
+        <span>Diluted shares</span>
+        <span class="mono ${retiring ? 'text-emerald' : 'text-amber'}">
+          ${shares.map((v) => (isNum(v) ? `${v}B` : EM_DASH)).join(' → ')}
+        </span>
+      </div>
+      <div class="shares-note">
+        ${
+          retiring
+            ? `🟢 Share count down ${fmtPct(Math.abs(totalChange))} in total ` +
+              `(${fmtPct(m.shareChangeYoY, 1, { sign: true })} in the latest year), lifting per-share value.`
+            : `⚠️ Share count up ${fmtPct(Math.abs(totalChange))} in total ` +
+              `(${fmtPct(m.shareChangeYoY, 1, { sign: true })} in the latest year) — dilution from stock compensation.`
+        }
+      </div>`;
+  }
 }
 
 // ----------------- DCF INTRINSIC VALUE SANDBOX -----------------
 function getStockDCFBaselines(stock) {
-  const targetStock = stock || state.currentStock;
-  const revGrowth = Math.round((targetStock?.financials?.historical?.revenue3yCAGR || 0.14) * 100);
-  const pe = targetStock?.summary?.ratios?.pe || 24;
+  const target = stock || state.currentStock;
+  const assumptions = target?.summary?.dcf?.assumptions;
 
+  // Start from exactly what the server modelled, so the sandbox opens on the
+  // same numbers the scorecard was built from.
   return {
-    baseGrowth: Math.min(35, Math.max(5, revGrowth)),
-    baseMultiple: Math.min(35, Math.max(12, Math.round(pe * 0.85))),
-    baseDiscount: 9.5
+    baseGrowth: Math.round((assumptions?.growthRate ?? 0.06) * 100),
+    baseMultiple: Math.round(assumptions?.terminalMultiple ?? 15),
+    baseDiscount: Number(((assumptions?.discountRate ?? 0.095) * 100).toFixed(1))
   };
 }
 
@@ -1442,19 +1928,19 @@ function setDCFPreset(preset, stockOverride) {
 
   if (preset === 'bear') {
     document.getElementById('dcfBearPreset')?.classList.add('active');
-    state.dcf.growth = Math.max(4, Math.round(baseGrowth * 0.65));
-    state.dcf.multiple = Math.max(10, Math.round(baseMultiple * 0.70));
+    state.dcf.growth = Math.max(0, Math.round(baseGrowth * 0.65));
+    state.dcf.multiple = 16;
     state.dcf.discount = 11.0;
-  } else if (preset === 'base') {
+  } else if (preset === 'bull') {
+    document.getElementById('dcfBullPreset')?.classList.add('active');
+    state.dcf.growth = Math.min(45, Math.round(baseGrowth * 1.30));
+    state.dcf.multiple = 32;
+    state.dcf.discount = 9.0;
+  } else {
     document.getElementById('dcfBasePreset')?.classList.add('active');
     state.dcf.growth = baseGrowth;
     state.dcf.multiple = baseMultiple;
     state.dcf.discount = baseDiscount;
-  } else if (preset === 'bull') {
-    document.getElementById('dcfBullPreset')?.classList.add('active');
-    state.dcf.growth = Math.min(45, Math.round(baseGrowth * 1.30));
-    state.dcf.multiple = Math.min(45, Math.round(baseMultiple * 1.25));
-    state.dcf.discount = 9.0;
   }
 
   const growthSlider = document.getElementById('dcfGrowthSlider');
@@ -1465,91 +1951,125 @@ function setDCFPreset(preset, stockOverride) {
   const multipleSlider = document.getElementById('dcfMultipleSlider');
   if (multipleSlider) multipleSlider.value = state.dcf.multiple;
   const multipleVal = document.getElementById('dcfMultipleVal');
-  if (multipleVal) multipleVal.textContent = `${state.dcf.multiple}x`;
+  if (multipleVal) multipleVal.textContent = `${state.dcf.multiple.toFixed(1)}x`;
 
   const discountSlider = document.getElementById('dcfDiscountSlider');
   if (discountSlider) discountSlider.value = state.dcf.discount;
   const discountVal = document.getElementById('dcfDiscountVal');
-  if (discountVal) discountVal.textContent = `${state.dcf.discount}%`;
+  if (discountVal) discountVal.textContent = `${state.dcf.discount.toFixed(1)}%`;
 
   calculateClientDCF();
 }
 
 function calculateClientDCF() {
-  if (!state.currentStock) return;
   const stock = state.currentStock;
-  const price = stock.price;
-  const fcf0 = Math.max(1, (stock.financials?.freeCashFlow || 1e9) / 1e9); // In Billions
-  const cashB = (stock.financials?.cashAndEquivalents || 0) / 1e9;
-  const debtB = (stock.financials?.totalDebt || 0) / 1e9;
-  const sharesB = Math.max(0.1, (stock.market_cap / price) / 1e9);
+  if (!stock) return;
+
+  const cur = stock.currency;
+  const m = stock.summary?.metrics || {};
+  const serverDcf = stock.summary?.dcf || {};
+
+  const fairValueEl = document.getElementById('dcfFairValueText');
+  const priceEl = document.getElementById('dcfCurrentPriceText');
+  const badge = document.getElementById('dcfMarginBadge');
+  const table = document.getElementById('dcfBreakdownTable');
+  const controls = document.getElementById('dcfControls');
+
+  priceEl.textContent = fmtPrice(stock.price, cur);
+
+  // A discounted-cash-flow model needs positive free cash flow and a share
+  // count. Where either is missing the model is not run at all — the previous
+  // build substituted $1bn of free cash flow and produced a fair value for
+  // companies that were burning cash.
+  const fcf0 = m.freeCashFlow;
+  const shares = m.sharesOutstanding;
+  const blocked =
+    serverDcf.applicable === false
+      ? serverDcf.reason
+      : !isNum(fcf0) || fcf0 <= 0
+        ? 'negative-fcf'
+        : !isNum(shares) || shares <= 0
+          ? 'no-share-count'
+          : null;
+
+  if (blocked) {
+    const explain = {
+      'negative-fcf':
+        'This company is not generating positive free cash flow, so a discounted cash flow model has nothing to discount. Judge it on the balance sheet and the path back to cash generation instead.',
+      'no-share-count':
+        'The diluted share count is not in the filings for this listing, so a per-share value cannot be derived.',
+      'not-meaningful-for-financials':
+        'Free cash flow is not owner earnings for a bank or insurer — deposit and loan flows dominate it. Book value and return on equity are the measures that apply here.'
+    }[blocked] || 'This model cannot be run on the available filings.';
+
+    fairValueEl.textContent = EM_DASH;
+    badge.className = 'margin-of-safety-meter is-unavailable';
+    badge.textContent = 'Fair value not modelled';
+    table.innerHTML = `<div class="chart-empty">${explain}</div>`;
+    if (controls) controls.hidden = true;
+    return;
+  }
+
+  if (controls) controls.hidden = false;
 
   const g = state.dcf.growth / 100;
-  const m = state.dcf.multiple;
+  const mult = state.dcf.multiple;
   const r = state.dcf.discount / 100;
 
   let fcf = fcf0;
   let cumulativePV = 0;
-  const tableRows = [];
-
+  const rows = [];
   for (let t = 1; t <= 5; t++) {
     fcf = fcf * (1 + g);
     const pv = fcf / Math.pow(1 + r, t);
     cumulativePV += pv;
-    tableRows.push({ year: t, fcf: fcf.toFixed(2), pv: pv.toFixed(2) });
+    rows.push({ year: t, fcf, pv });
   }
 
-  const terminalVal = fcf * m;
-  const pvTerminalVal = terminalVal / Math.pow(1 + r, 5);
-  const enterpriseVal = cumulativePV + pvTerminalVal;
-  const equityVal = enterpriseVal + cashB - debtB;
-  const fairValue = equityVal / sharesB;
+  const terminalValue = fcf * mult;
+  const pvTerminal = terminalValue / Math.pow(1 + r, 5);
+  const enterpriseValue = cumulativePV + pvTerminal;
+  const netCash = (m.cash ?? 0) - (m.totalDebt ?? 0);
+  const equityValue = enterpriseValue + netCash;
+  const fairValue = equityValue / shares;
+  const price = stock.price;
 
-  const isUndervalued = fairValue > price;
-  const isNegative = fairValue <= 0;
+  fairValueEl.textContent = fmtPrice(fairValue, cur);
 
-  const fairValueFormatted = fairValue < 0 ? `-$${Math.abs(fairValue).toFixed(2)}` : `$${fairValue.toFixed(2)}`;
-  document.getElementById('dcfFairValueText').textContent = fairValueFormatted;
-  document.getElementById('dcfCurrentPriceText').textContent = `$${price.toFixed(2)}`;
-
-  const badge = document.getElementById('dcfMarginBadge');
-  if (isNegative) {
+  if (fairValue <= 0) {
     badge.className = 'margin-of-safety-meter overvalued';
-    badge.textContent = '🔴 SEVERELY OVERVALUED: Negative Intrinsic Value (0% Margin of Safety)';
-  } else if (isUndervalued) {
+    badge.textContent =
+      'No equity value at these assumptions — the discounted cash flows do not cover the debt.';
+  } else if (fairValue > price) {
     const marginPct = ((fairValue - price) / fairValue) * 100;
     badge.className = 'margin-of-safety-meter undervalued';
-    badge.textContent = `🟢 MARGIN OF SAFETY: +${marginPct.toFixed(1)}% Undervalued`;
+    badge.textContent = `Margin of safety ${fmtPct(marginPct, 1, { alreadyPercent: true, sign: true })} — trading below fair value`;
   } else {
-    const overvaluedPct = ((price - fairValue) / fairValue) * 100;
+    // Stated as a premium rather than a negative margin of safety: the
+    // margin-of-safety form reaches −188% on an expensive stock and stops
+    // carrying any meaning.
+    const premiumPct = ((price - fairValue) / fairValue) * 100;
     badge.className = 'margin-of-safety-meter overvalued';
-    badge.textContent = `🔴 OVERVALUED: ${overvaluedPct.toFixed(1)}% Premium to Fair Value`;
+    badge.textContent = `${fmtPct(premiumPct, 1, { alreadyPercent: true })} above fair value at these assumptions`;
   }
 
-  // Render Table Breakdown
-  const tableContainer = document.getElementById('dcfBreakdownTable');
-  tableContainer.innerHTML = `
-    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-      <span>Trailing FCF Base (Year 0):</span>
-      <span class="mono">$${fcf0.toFixed(2)} Billion</span>
-    </div>
-    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-      <span>5-Year Cumulative PV:</span>
-      <span class="mono">$${cumulativePV.toFixed(2)} Billion</span>
-    </div>
-    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-      <span>Discounted Terminal Value:</span>
-      <span class="mono">$${pvTerminalVal.toFixed(2)} Billion</span>
-    </div>
-    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-      <span>Net Cash Adjustment:</span>
-      <span class="mono">${(cashB - debtB) >= 0 ? '+' : ''}${(cashB - debtB).toFixed(2)} Billion</span>
-    </div>
-    <div style="display: flex; justify-content: space-between; font-weight: 700; margin-top: 6px; border-top: 1px solid var(--border-subtle); padding-top: 6px;">
-      <span>Total Intrinsic Equity Value:</span>
-      <span class="mono ${equityVal >= 0 ? 'text-cyan' : 'text-rose'}">${equityVal < 0 ? '-$' + Math.abs(equityVal).toFixed(2) : '$' + equityVal.toFixed(2)} Billion</span>
-    </div>
-  `;
+  const line = (label, value, cls = '') =>
+    `<div class="dcf-line"><span>${label}</span><span class="mono ${cls}">${value}</span></div>`;
+
+  table.innerHTML =
+    line('Trailing free cash flow', fmtMoney(fcf0, cur)) +
+    line('Present value, years 1–5', fmtMoney(cumulativePV, cur)) +
+    line(`Terminal value at ${mult.toFixed(1)}x, discounted`, fmtMoney(pvTerminal, cur)) +
+    line('Net cash / (debt)', fmtMoney(netCash, cur), netCash >= 0 ? 'text-emerald' : 'text-coral') +
+    line('Intrinsic equity value', fmtMoney(equityValue, cur), equityValue >= 0 ? 'text-cyan' : 'text-coral') +
+    line('Diluted shares', `${(shares / 1e9).toFixed(2)}B`) +
+    `<div class="dcf-line is-total"><span>Fair value per share</span>
+       <span class="mono">${fmtPrice(fairValue, cur)}</span></div>` +
+    `<table class="dcf-years"><thead><tr><th>Year</th><th>Projected FCF</th><th>Present value</th></tr></thead><tbody>` +
+    rows.map((row) =>
+      `<tr><td class="mono">${row.year}</td><td class="mono">${fmtMoney(row.fcf, cur)}</td><td class="mono">${fmtMoney(row.pv, cur)}</td></tr>`
+    ).join('') +
+    '</tbody></table>';
 }
 
 // ----------------- INVESTMENT THESIS & JOURNAL -----------------
@@ -1698,15 +2218,28 @@ function filterScreenerStocks() {
   const minRoic = parseFloat(document.getElementById('filterRoicSlider')?.value || '0');
   const sector = document.getElementById('filterSectorSelect')?.value || 'all';
 
+  const netCashOnly = document.getElementById('filterNetCash')?.checked;
+  const fcfPositive = document.getElementById('filterFcfPositive')?.checked;
+  const maxDe = parseFloat(document.getElementById('filterDebtEquitySlider')?.value || '5');
+
   const filtered = state.allScreenerStocks.filter(s => {
-    if (s.health_score < minHealth) return false;
-    if (s.piotroski_score < minPiotroski) return false;
-    if (s.roic_pct < minRoic) return false;
+    // A null metric cannot satisfy a minimum. Treating it as passing would
+    // surface exactly the companies we know least about.
+    if (!isNum(s.health_score) || s.health_score < minHealth) return false;
+    if (minPiotroski > 0 && (!isNum(s.piotroski_score) || s.piotroski_score < minPiotroski)) return false;
+    if (minRoic > 0 && (!isNum(s.roic_pct) || s.roic_pct < minRoic)) return false;
     if (sector !== 'all' && s.sector !== sector) return false;
+    if (netCashOnly && !(isNum(s.net_cash_b) && s.net_cash_b > 0)) return false;
+    if (fcfPositive && !(isNum(s.free_cash_flow) && s.free_cash_flow > 0)) return false;
+    if (maxDe < 5) {
+      const hasNetCash = isNum(s.net_cash_b) && s.net_cash_b > 0;
+      if (!hasNetCash && !(isNum(s.debt_to_equity) && s.debt_to_equity <= maxDe)) return false;
+    }
     return true;
   });
 
-  document.getElementById('screenerCountBadge').textContent = `${filtered.length} Matches`;
+  document.getElementById('screenerCountBadge').textContent =
+    `${filtered.length} of ${state.allScreenerStocks.length}`;
 
   const tbody = document.getElementById('screenerTableBody');
   if (tbody) {
@@ -1716,13 +2249,13 @@ function filterScreenerStocks() {
           <span class="mono" style="font-weight: 700;">${s.ticker}</span>
           <div style="font-size: 11px; color: var(--text-secondary);">${s.name}</div>
         </td>
-        <td class="mono">$${s.price.toFixed(2)}</td>
+        <td class="mono">${fmtPrice(s.price, s.currency)}</td>
         <td>
-          <span class="score-badge ${s.summary?.healthTier || 'good'}">${s.health_score}/100</span>
+          <span class="score-badge ${s.summary?.healthTier || 'good'}">${fmtScore(s.health_score)}${isNum(s.health_score) ? '/100' : ''}</span>
         </td>
-        <td class="mono">${s.piotroski_score}/9</td>
-        <td class="mono text-emerald">${s.roic_pct.toFixed(1)}%</td>
-        <td class="mono">${s.net_cash_b > 0 ? `+$${s.net_cash_b}B 💎` : `-$${Math.abs(s.net_cash_b)}B`}</td>
+        <td class="mono">${isNum(s.piotroski_score) ? `${s.piotroski_score}/9` : EM_DASH}</td>
+        <td class="mono text-emerald">${fmtPct(s.roic_pct, 1, { alreadyPercent: true })}</td>
+        <td class="mono">${isNum(s.net_cash_b) ? (s.net_cash_b > 0 ? `${fmtBillions(s.net_cash_b, s.currency)} 💎` : fmtBillions(s.net_cash_b, s.currency)) : EM_DASH}</td>
       </tr>
     `).join('');
 
@@ -1735,14 +2268,25 @@ function filterScreenerStocks() {
   }
 }
 
-function setScreenerPreset(minH, minP, minR) {
-  document.getElementById('filterHealthSlider').value = minH;
-  document.getElementById('filterHealthVal').textContent = minH;
-  document.getElementById('filterPiotroskiSlider').value = minP;
-  document.getElementById('filterPiotroskiVal').textContent = minP;
-  document.getElementById('filterRoicSlider').value = minR;
-  document.getElementById('filterRoicVal').textContent = `${minR}%`;
-  document.getElementById('filterSectorSelect').value = 'all';
+function setScreenerPreset({
+  health = 0, piotroski = 0, roic = 0, debtToEquity = 5,
+  netCash = false, fcfPositive = false, sector = 'all'
+} = {}) {
+  haptic();
+  const set = (id, value) => { const el = document.getElementById(id); if (el) el.value = value; };
+  const text = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
+
+  set('filterHealthSlider', health);   text('filterHealthVal', health);
+  set('filterPiotroskiSlider', piotroski); text('filterPiotroskiVal', piotroski);
+  set('filterRoicSlider', roic);       text('filterRoicVal', `${roic}%`);
+  set('filterDebtEquitySlider', debtToEquity);
+  text('filterDebtEquityVal', debtToEquity >= 5 ? 'any' : `${debtToEquity.toFixed(2)}x`);
+  set('filterSectorSelect', sector);
+
+  const netCashBox = document.getElementById('filterNetCash');
+  if (netCashBox) netCashBox.checked = netCash;
+  const fcfBox = document.getElementById('filterFcfPositive');
+  if (fcfBox) fcfBox.checked = fcfPositive;
 
   filterScreenerStocks();
 }
@@ -1758,62 +2302,162 @@ async function runComparison() {
     const stocks = data.stocks || [];
 
     if (stocks.length === 0) {
-      container.innerHTML = `<div class="card" style="text-align: center;">No valid tickers found to compare.</div>`;
+      container.innerHTML = '<div class="card chart-empty">None of those symbols resolved to a listing.</div>';
       return;
     }
 
+    const row = (label, render) => `
+      <tr>
+        <td><strong>${label}</strong></td>
+        ${stocks.map((s) => `<td class="mono">${render(s)}</td>`).join('')}
+      </tr>`;
+
     container.innerHTML = `
+      ${renderCompareRadar(stocks)}
       <div class="stock-table-container">
         <table class="stock-table">
           <thead>
             <tr>
               <th>Metric</th>
-              ${stocks.map(s => `<th class="mono" style="font-size: 13px; color: var(--brand-cyan);">${s.ticker}</th>`).join('')}
+              ${stocks.map((s) => `<th class="mono compare-head">${s.ticker}</th>`).join('')}
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td><strong>Health Score (0-100)</strong></td>
-              ${stocks.map(s => `<td><span class="score-badge ${s.summary?.healthTier || 'good'}">${s.health_score}/100</span></td>`).join('')}
+              <td><strong>Health score</strong></td>
+              ${stocks.map((s) => `<td><span class="score-badge ${s.summary?.healthTier || 'good'}">${
+                isNum(s.health_score) ? `${s.health_score}/100` : 'N/A'
+              }</span></td>`).join('')}
             </tr>
-            <tr>
-              <td><strong>Altman Z-Score</strong></td>
-              ${stocks.map(s => `<td class="mono">${s.altman_z}</td>`).join('')}
-            </tr>
-            <tr>
-              <td><strong>Piotroski F-Score</strong></td>
-              ${stocks.map(s => `<td class="mono">${s.piotroski_score}/9</td>`).join('')}
-            </tr>
-            <tr>
-              <td><strong>ROIC (Capital Moat)</strong></td>
-              ${stocks.map(s => `<td class="mono text-emerald">${s.roic_pct.toFixed(1)}%</td>`).join('')}
-            </tr>
-            <tr>
-              <td><strong>FCF Conversion</strong></td>
-              ${stocks.map(s => `<td class="mono">${s.fcf_conversion_pct}%</td>`).join('')}
-            </tr>
-            <tr>
-              <td><strong>Gross Margin</strong></td>
-              ${stocks.map(s => `<td class="mono">${((s.financials?.grossMargin || 0.45) * 100).toFixed(1)}%</td>`).join('')}
-            </tr>
-            <tr>
-              <td><strong>Net Cash Stack</strong></td>
-              ${stocks.map(s => `<td class="mono">${s.net_cash_b >= 0 ? `+$${s.net_cash_b}B 💎` : `-$${Math.abs(s.net_cash_b)}B`}</td>`).join('')}
-            </tr>
-            <tr>
-              <td><strong>Trailing P/E</strong></td>
-              ${stocks.map(s => `<td class="mono">${(s.summary?.ratios?.pe || 25).toFixed(1)}x</td>`).join('')}
-            </tr>
-            <tr>
-              <td><strong>Checklist Pass Rate</strong></td>
-              ${stocks.map(s => `<td class="mono text-cyan">${s.summary?.checklistSummary?.passPct || 80}%</td>`).join('')}
-            </tr>
+            ${row('Altman Z-Score', (s) => fmtNum(s.altman_z, 2))}
+            ${row('Piotroski F-Score', (s) => (isNum(s.piotroski_score) ? `${s.piotroski_score}/9` : EM_DASH))}
+            ${row('ROIC', (s) => fmtPct(s.roic_pct, 1, { alreadyPercent: true }))}
+            ${row('ROIC − WACC', (s) => (isNum(s.summary?.metrics?.roicSpread)
+              ? fmtPct(s.summary.metrics.roicSpread, 1, { alreadyPercent: true, sign: true })
+              : EM_DASH))}
+            ${row('Cash conversion', (s) => fmtPct(s.fcf_conversion_pct, 0, { alreadyPercent: true }))}
+            ${row('Gross margin', (s) => fmtPct(s.summary?.metrics?.grossMargin))}
+            ${row('Operating margin', (s) => fmtPct(s.summary?.metrics?.operatingMargin))}
+            ${row('Net cash / (debt)', (s) => fmtBillions(s.net_cash_b, s.currency))}
+            ${row('Current ratio', (s) => fmtNum(s.summary?.metrics?.currentRatio, 2))}
+            ${row('Trailing P/E', (s) => fmtNum(s.summary?.ratios?.pe, 1, 'x'))}
+            ${row('P/E vs 5y median', (s) => (isNum(s.summary?.peHistory?.vsMedianPct)
+              ? fmtPct(s.summary.peHistory.vsMedianPct, 0, { alreadyPercent: true, sign: true })
+              : EM_DASH))}
+            ${row('Revenue CAGR', (s) => fmtPct(s.summary?.metrics?.revenueCAGR, 1, { sign: true }))}
+            ${row('Checklist passed', (s) => {
+              const c = s.summary?.checklistSummary;
+              return c && c.scored ? `${c.passCount}/${c.scored}` : EM_DASH;
+            })}
           </tbody>
         </table>
-      </div>
-    `;
+      </div>`;
   } catch (err) {
     console.error('Comparison error:', err);
+    container.innerHTML = '<div class="card chart-empty">Could not load the comparison. Check the connection and try again.</div>';
+  }
+}
+
+/**
+ * Pillar radar. Each spoke is one of the five pillars, so the shape shows at a
+ * glance where a company is strong and where its peers beat it — which a
+ * column of numbers does not.
+ */
+function renderCompareRadar(stocks) {
+  const AXES = ['Solvency', 'Profitability', 'Valuation', 'Growth', 'Capital'];
+  const plotted = stocks.filter((s) => Array.isArray(s.pillars) && s.pillars.some((p) => isNum(p.score)));
+  if (!plotted.length) return '';
+
+  const COLORS = ['#38BDF8', '#10B981', '#F59E0B', '#A78BFA'];
+  const size = 260;
+  const c = size / 2;
+  const rMax = c - 34;
+
+  const point = (axisIndex, fraction) => {
+    const angle = (Math.PI * 2 * axisIndex) / AXES.length - Math.PI / 2;
+    const r = rMax * Math.max(0, Math.min(1, fraction));
+    return [c + r * Math.cos(angle), c + r * Math.sin(angle)];
+  };
+
+  const rings = [0.25, 0.5, 0.75, 1]
+    .map((f) => {
+      const pts = AXES.map((_, i) => point(i, f).map((v) => v.toFixed(1)).join(',')).join(' ');
+      return `<polygon class="radar-ring" points="${pts}" />`;
+    })
+    .join('');
+
+  const spokes = AXES.map((_, i) => {
+    const [x, y] = point(i, 1);
+    return `<line class="radar-spoke" x1="${c}" y1="${c}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" />`;
+  }).join('');
+
+  const labels = AXES.map((name, i) => {
+    const [x, y] = point(i, 1.2);
+    return `<text class="radar-label" x="${x.toFixed(1)}" y="${y.toFixed(1)}"
+                  text-anchor="middle" dominant-baseline="middle">${name}</text>`;
+  }).join('');
+
+  const shapes = plotted.map((s, idx) => {
+    const pts = AXES.map((_, i) => {
+      const pillar = s.pillars[i];
+      // An unmeasured pillar collapses to the centre rather than inventing a
+      // midpoint, so a sparse company reads as sparse.
+      const fraction = isNum(pillar?.score) ? pillar.score / 20 : 0;
+      return point(i, fraction).map((v) => v.toFixed(1)).join(',');
+    }).join(' ');
+    const color = COLORS[idx % COLORS.length];
+    return `<polygon class="radar-shape" points="${pts}" style="stroke: ${color}; fill: ${color};" />`;
+  }).join('');
+
+  const legend = plotted.map((s, idx) => `
+    <span class="radar-legend-item">
+      <span class="radar-swatch" style="background: ${COLORS[idx % COLORS.length]};"></span>
+      ${s.ticker}
+    </span>`).join('');
+
+  return `
+    <div class="card radar-card">
+      <div class="section-title">Pillar comparison</div>
+      <svg class="radar-chart" viewBox="0 0 ${size} ${size}" role="img"
+           aria-label="Radar chart comparing the five pillar scores across the selected companies">
+        ${rings}${spokes}${shapes}${labels}
+      </svg>
+      <div class="radar-legend">${legend}</div>
+    </div>`;
+}
+
+/** Peers Yahoo associates with the open ticker, offered as one-tap compares. */
+async function loadPeerSuggestions(ticker) {
+  const host = document.getElementById('comparePeerChips');
+  if (!host) return;
+  host.innerHTML = '';
+
+  try {
+    const res = await apiFetch(`/api/stock/${encodeURIComponent(ticker)}/peers`);
+    if (!res.ok) return;
+    const { peers = [] } = await res.json();
+    if (!peers.length) return;
+
+    host.innerHTML =
+      `<span class="peer-chip-label">Peers of ${ticker}:</span>` +
+      peers.map((p) => `
+        <button type="button" class="peer-chip" data-peer="${p.ticker}">
+          ${p.ticker}${isNum(p.health_score) ? ` <span class="mono">${p.health_score}</span>` : ''}
+        </button>`).join('');
+
+    host.querySelectorAll('.peer-chip').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        haptic();
+        const field = document.getElementById('compareInput');
+        const current = field.value.split(',').map((t) => t.trim().toUpperCase()).filter(Boolean);
+        const peer = chip.dataset.peer;
+        if (!current.includes(peer)) current.push(peer);
+        field.value = current.slice(0, 4).join(', ');
+        runComparison();
+      });
+    });
+  } catch {
+    // Suggestions are a convenience; their absence is not worth an error.
   }
 }
 
@@ -2104,47 +2748,7 @@ async function handleToggleBookmark() {
   updateBookmarkButtonState();
 }
 
-// ----------------- INVITE REDEMPTION & PUSH -----------------
-function checkInviteParam() {
-  const params = new URLSearchParams(window.location.search);
-  const invite = params.get('invite');
-  if (invite) {
-    document.getElementById('inviteCodeInput').value = invite;
-    openModal('settingsModal');
-  }
-}
-
-async function handleRedeemInvite() {
-  const code = document.getElementById('inviteCodeInput').value.trim().toUpperCase();
-  const statusEl = document.getElementById('activationStatusText');
-
-  if (!code) {
-    statusEl.innerHTML = `<span style="color: var(--health-risk);">Please enter a valid invite code.</span>`;
-    return;
-  }
-
-  try {
-    const res = await fetch('/api/auth/redeem', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        code,
-        device_label: navigator.userAgent.includes('iPhone') ? 'iPhone PWA' : 'Mobile PWA'
-      })
-    });
-
-    const data = await res.json();
-    if (data.success) {
-      statusEl.innerHTML = `<span style="color: var(--health-pristine);">🎉 Device successfully activated! Access granted.</span>`;
-      localStorage.setItem('omaha_token', data.token);
-    } else {
-      statusEl.innerHTML = `<span style="color: var(--health-risk);">${data.error || 'Failed to activate code.'}</span>`;
-    }
-  } catch (err) {
-    statusEl.innerHTML = `<span style="color: var(--health-risk);">Network error during activation.</span>`;
-  }
-}
-
+// ----------------- PUSH SUBSCRIPTION -----------------
 async function checkPushStatus() {
   const btn = document.getElementById('enablePushBtn');
   if (!btn) return;
@@ -2308,6 +2912,9 @@ function closeModal(id) {
 }
 
 function getScoreColor(score) {
+  // An unscored company is neutral, not red: "not enough filed data" is a
+  // different statement from "this company is in trouble".
+  if (!isNum(score)) return 'var(--text-tertiary)';
   if (score >= 85) return 'var(--health-pristine)';
   if (score >= 70) return 'var(--health-good)';
   if (score >= 50) return 'var(--health-moderate)';
@@ -2315,6 +2922,7 @@ function getScoreColor(score) {
 }
 
 function getPillarColor(pct) {
+  if (!isNum(pct)) return 'var(--border-subtle)';
   if (pct >= 85) return '#10B981';
   if (pct >= 70) return '#34D399';
   if (pct >= 50) return '#FBBF24';
@@ -2338,4 +2946,71 @@ function urlBase64ToUint8Array(base64String) {
     outputArray[i] = rawData.charCodeAt(i);
   }
   return outputArray;
+}
+
+// ----------------- NOTIFICATION PREFERENCES & HISTORY -----------------
+
+async function loadNotificationCentre() {
+  try {
+    const res = await apiFetch('/api/notifications?limit=30');
+    if (!res.ok) return;
+    const { settings = {}, history = [] } = await res.json();
+
+    document.querySelectorAll('[data-notify-pref]').forEach((box) => {
+      const key = box.dataset.notifyPref;
+      if (key in settings) box.checked = Boolean(settings[key]);
+    });
+
+    const list = document.getElementById('notificationHistory');
+    if (!list) return;
+
+    if (!history.length) {
+      list.innerHTML =
+        '<div class="chart-empty">No alerts yet. Holdings are checked four times a day.</div>';
+      return;
+    }
+
+    list.innerHTML = history.map((n) => `
+      <div class="notification-row is-${n.severity || 'info'}">
+        <div class="notification-title">${n.title}</div>
+        <div class="notification-body">${n.body}</div>
+        <div class="notification-time mono">${formatRelativeTime(n.delivered_at)}</div>
+      </div>`).join('');
+
+    apiFetch('/api/notifications/read', { method: 'POST' }).catch(() => {});
+  } catch {
+    // The alert centre is secondary; failing to load it must not break settings.
+  }
+}
+
+async function saveNotificationPrefs() {
+  const patch = {};
+  document.querySelectorAll('[data-notify-pref]').forEach((box) => {
+    patch[box.dataset.notifyPref] = box.checked;
+  });
+
+  try {
+    await apiFetch('/api/notifications/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch)
+    });
+    showToast('Alert preferences saved', '✓');
+  } catch {
+    showToast('Could not save preferences', '⚠️');
+  }
+}
+
+/** "4 hours ago" from a SQLite UTC timestamp. */
+function formatRelativeTime(stamp) {
+  if (!stamp) return '';
+  const then = new Date(stamp.includes('T') ? stamp : `${stamp.replace(' ', 'T')}Z`).getTime();
+  if (!Number.isFinite(then)) return '';
+  const mins = Math.round((Date.now() - then) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours} h ago`;
+  const days = Math.round(hours / 24);
+  return days === 1 ? 'yesterday' : `${days} days ago`;
 }

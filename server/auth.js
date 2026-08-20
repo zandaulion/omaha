@@ -3,11 +3,16 @@ import { db } from './db.js';
 
 export const COOKIE_NAME = 'pocket_omaha_token';
 
-// Middleware to guard admin endpoints with X-Admin: 1
+/**
+ * Admin routes are gated on X-Admin: 1, which only the tailnet-only Caddy
+ * listener injects — the public listener 404s /api/admin/* and strips the
+ * header. There is deliberately no environment-variable escape hatch: the
+ * previous `NODE_ENV === 'development-bypass'` check was one stray env var
+ * away from an open admin API.
+ */
 export function requireAdmin(req, res, next) {
-  const xAdmin = req.headers['x-admin'];
-  if (xAdmin !== '1' && process.env.NODE_ENV !== 'development-bypass') {
-    return res.status(403).json({ error: 'Admin access forbidden. Missing X-Admin header.' });
+  if (req.headers['x-admin'] !== '1') {
+    return res.status(403).json({ error: 'Admin access is available on the private listener only.' });
   }
   next();
 }
@@ -33,14 +38,79 @@ export function requireDeviceAuth(req, res, next) {
   next();
 }
 
-// Generate random invite code
+/**
+ * Invite codes: 12 characters from a 32-symbol alphabet with the ambiguous
+ * glyphs (I, O, 0, 1) removed, drawn from the CSPRNG.
+ *
+ * The previous scheme was `OMAHA-` plus four Math.random() characters — a
+ * 1,048,576-code space behind a fixed prefix, with no throttle on the redeem
+ * endpoint. That is enumerable in well under an hour.
+ */
+const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const CODE_GROUPS = 3;
+const CODE_GROUP_LEN = 4;
+
 function generateInviteCode() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = 'OMAHA-';
-  for (let i = 0; i < 4; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  const length = CODE_GROUPS * CODE_GROUP_LEN;
+  const bytes = crypto.randomBytes(length * 2);
+  let out = '';
+  let i = 0;
+  while (out.length < length) {
+    // Rejection sampling keeps the distribution uniform across the alphabet.
+    const b = bytes[i++ % bytes.length];
+    if (b >= 256 - (256 % CODE_ALPHABET.length)) continue;
+    out += CODE_ALPHABET[b % CODE_ALPHABET.length];
   }
-  return code;
+  return out.match(new RegExp(`.{1,${CODE_GROUP_LEN}}`, 'g')).join('-');
+}
+
+/** Accepts the code with or without its separators, in any case. */
+export function normaliseCode(raw) {
+  return String(raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+// ----------------- REDEEM THROTTLE -----------------
+// Sliding one-minute windows, per source address and globally. Without this a
+// wide code space still falls to a patient scanner.
+const REDEEM_MAX_PER_IP = Number(process.env.REDEEM_MAX_PER_MIN_IP || 5);
+const REDEEM_MAX_GLOBAL = Number(process.env.REDEEM_MAX_PER_MIN || 60);
+const WINDOW_MS = 60_000;
+
+const attemptsByIp = new Map();
+let globalAttempts = [];
+
+function clientIp(req) {
+  return (
+    req.headers['cf-connecting-ip'] ||
+    (req.headers['x-forwarded-for'] || '').split(',')[0].trim() ||
+    req.socket?.remoteAddress ||
+    'unknown'
+  );
+}
+
+function throttled(req) {
+  const now = Date.now();
+  const ip = clientIp(req);
+
+  globalAttempts = globalAttempts.filter((t) => now - t < WINDOW_MS);
+  const recent = (attemptsByIp.get(ip) || []).filter((t) => now - t < WINDOW_MS);
+
+  if (recent.length >= REDEEM_MAX_PER_IP || globalAttempts.length >= REDEEM_MAX_GLOBAL) {
+    attemptsByIp.set(ip, recent);
+    return true;
+  }
+
+  recent.push(now);
+  globalAttempts.push(now);
+  attemptsByIp.set(ip, recent);
+
+  // Keep the map from growing without bound on a long-running process.
+  if (attemptsByIp.size > 5000) {
+    for (const [key, times] of attemptsByIp) {
+      if (!times.some((t) => now - t < WINDOW_MS)) attemptsByIp.delete(key);
+    }
+  }
+  return false;
 }
 
 // ----------------- ADMIN ENDPOINTS -----------------
@@ -103,7 +173,8 @@ export function deleteDevice(req, res) {
 
 export function getAdminInvites(req, res) {
   const invites = db.prepare(`
-    SELECT id, label, code, url, created_at, expires_at, used_at, device_id
+    SELECT id, label, code, url, created_at, expires_at, used_at,
+           COALESCE(revoked, 0) AS revoked, device_id
     FROM invites
     ORDER BY created_at DESC
   `).all();
@@ -119,6 +190,7 @@ export function getAdminInvites(req, res) {
     created_at: inv.created_at,
     expires_at: inv.expires_at,
     used_at: inv.used_at,
+    revoked: Boolean(inv.revoked),
     device_id: inv.device_id
   }));
 
@@ -143,21 +215,38 @@ export function createAdminInvite(req, res) {
     VALUES (?, ?, ?, datetime('now'), ?)
   `);
 
-  const result = stmt.run(label.trim(), code, url, expiresAt);
+  // invites.code carries a UNIQUE index, so a collision surfaces here rather
+  // than silently stranding one of the two invites.
+  let result;
+  let attempt = 0;
+  let finalCode = code;
+  let finalUrl = url;
+  for (;;) {
+    try {
+      result = stmt.run(label.trim(), finalCode, finalUrl, expiresAt);
+      break;
+    } catch (err) {
+      if (++attempt >= 5 || !/UNIQUE/i.test(err.message)) throw err;
+      finalCode = generateInviteCode();
+      finalUrl = `${base}/?invite=${finalCode}`;
+    }
+  }
 
   return res.json({
     id: result.lastInsertRowid,
-    code,
-    url,
+    code: finalCode,
+    url: finalUrl,
     expires_in_days: ttlDays
   });
 }
 
 export function revokeAdminInvite(req, res) {
   const { id } = req.params;
+  // Marked revoked rather than used, so the console can tell an invite that
+  // was cancelled apart from one a device actually redeemed.
   const result = db.prepare(`
     UPDATE invites
-    SET code = NULL, url = NULL, used_at = datetime('now')
+    SET code = NULL, url = NULL, used_at = datetime('now'), revoked = 1
     WHERE id = ? AND used_at IS NULL
   `).run(id);
 
@@ -172,19 +261,29 @@ export function revokeAdminInvite(req, res) {
 export function redeemInvite(req, res) {
   const { code, device_label = 'PWA Client', push_subscription = null } = req.body || {};
 
+  if (throttled(req)) {
+    return res
+      .status(429)
+      .json({ error: 'Too many activation attempts. Wait a minute and try again.' });
+  }
+
   if (!code || typeof code !== 'string') {
     return res.status(400).json({ error: 'Invite code is required' });
   }
 
-  const cleanCode = code.trim().toUpperCase();
+  const cleanCode = normaliseCode(code);
 
+  // Compared with separators stripped on both sides, so a code typed as
+  // ABCD-EFGH-JKLM or abcdefghjklm both resolve.
   const invite = db.prepare(`
     SELECT * FROM invites
-    WHERE UPPER(code) = ? AND used_at IS NULL AND datetime(expires_at) > datetime('now')
+    WHERE REPLACE(UPPER(code), '-', '') = ?
+      AND used_at IS NULL
+      AND datetime(expires_at) > datetime('now')
   `).get(cleanCode);
 
   if (!invite) {
-    return res.status(400).json({ error: 'Invalid or expired invite code' });
+    return res.status(400).json({ error: 'That invite code is not valid, or it has already been used.' });
   }
 
   // Create new registered device
@@ -227,8 +326,14 @@ export function redeemInvite(req, res) {
     }
   }
 
-  // Set long-lived cookie
-  res.setHeader('Set-Cookie', `${COOKIE_NAME}=${token}; Path=/; Max-Age=31536000; SameSite=Lax; HttpOnly`);
+  // Secure is set unless the request arrived over plain HTTP on the tailnet
+  // listener, where the flag would stop the cookie being stored at all.
+  const secure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+  res.setHeader(
+    'Set-Cookie',
+    `${COOKIE_NAME}=${token}; Path=/; Max-Age=31536000; SameSite=Lax; HttpOnly` +
+      (secure ? '; Secure' : '')
+  );
 
   return res.json({
     success: true,
