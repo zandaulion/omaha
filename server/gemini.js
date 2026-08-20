@@ -65,6 +65,7 @@ export function buildComprehensivePayload(stock, thesis = null) {
   const m = sum.metrics || {};
   const r = sum.ratios || {};
   const dcf = sum.dcf || {};
+  const pe = sum.peHistory || {};
   const hist = stock.financials?.historical || {};
   const currency = stock.currency || 'USD';
 
@@ -78,6 +79,8 @@ export function buildComprehensivePayload(stock, thesis = null) {
   const pctRaw = (v, dp = 1) => (n(v) === null ? NR : `${v.toFixed(dp)}%`);
   const mult = (v, dp = 2) => (n(v) === null ? NR : `${v.toFixed(dp)}x`);
   const money = (v) => (n(v) === null ? NR : formatMoney(v, currency));
+  const signed = (v, dp = 1) =>
+    n(v) === null ? NR : `${v >= 0 ? '+' : ''}${v.toFixed(dp)}%`;
 
   const checklistFormatted = (stock.checklist || []).map((c) => ({
     id: c.id,
@@ -86,22 +89,89 @@ export function buildComprehensivePayload(stock, thesis = null) {
     value: c.value,
     benchmark: c.benchmark,
     // 'na' means the measure is absent from the filings, not that it failed.
-    status: c.status === 'na' ? 'not measurable from the filings' : c.status,
-    explanation: c.explanation
+    status: c.status === 'na' ? 'not measurable from the filings' : c.status
   }));
 
   const pillarsFormatted = (stock.pillars || []).map((p) => ({
     name: p.name,
     score: p.score === null ? NR : `${p.score}/${p.max}`,
-    percentage: p.pct === null ? NR : `${p.pct}%`,
-    measuresAvailable: `${p.measured} of ${p.of}`
+    measuresAvailable: `${p.measured} of ${p.of}`,
+    // Flagged explicitly: a pillar scored on half its measures is a weaker
+    // claim than the same number scored on all of them.
+    partiallyMeasured: p.measured < p.of
   }));
 
+  // Everything the engine had to infer, estimate or carry forward. Without
+  // this the model presents a derived figure with the same confidence as a
+  // filed one, which is the failure this whole app is built to avoid.
+  const provenance = [];
+  if (m.marketCapDerived) {
+    provenance.push('Market capitalisation is price x filed share count — Yahoo did not report it.');
+  }
+  if (m.totalLiabilitiesDerived) {
+    provenance.push('Total liabilities derived from assets minus equity — not separately filed.');
+  }
+  if (m.interestExpenseCarried && m.interestExpenseAsOf) {
+    provenance.push(
+      `Interest expense is the last figure the company filed, for ${m.interestExpenseAsOf}, ` +
+      'carried forward because more recent years do not report it.'
+    );
+  }
+  if (m.taxRateEstimated) {
+    provenance.push(
+      'Effective tax rate was not meaningful this year (loss-making or anomalous), ' +
+      'so the 21% statutory rate was used for NOPAT.'
+    );
+  }
+  if (m.betaClamped) {
+    provenance.push(
+      `Reported beta of ${m.beta} was clamped to the [0.6, 2.5] range before the WACC estimate. ` +
+      'A trailing beta this far outside the range usually reflects a structural break in the ' +
+      'regression window rather than genuine risk, and the unclamped figure would imply a cost ' +
+      'of equity below government bonds. Treat the WACC as an estimate with wide error bars.'
+    );
+  }
+  if (m.shareChangeIsAnnual === false && m.shareChangeYears) {
+    provenance.push(
+      `The share-count change spans ${m.shareChangeYears} fiscal years, not one — the ` +
+      'intervening year is not filed. The annualised rate is the comparable figure.'
+    );
+  }
+  if (pe.available && pe.scoreable === false) {
+    provenance.push(
+      `The P/E history covers only ${pe.months} months across ${pe.epsPeriods} profitable ` +
+      'filed years, so it is too short to read as a valuation range and was excluded from ' +
+      'scoring. Do not describe it as a five-year range or draw a percentile conclusion from it.'
+    );
+  }
+  if (sum.coverage && sum.coverage.pct < 100) {
+    provenance.push(
+      `${sum.coverage.total - sum.coverage.measured} of ${sum.coverage.total} sub-scores ` +
+      'could not be measured from the filings.'
+    );
+  }
+
   return {
-    dataIntegrityNotice:
-      'Every field below comes from filed statements. A value of "not reported" ' +
-      'means the company does not disclose that line item — do not estimate it, ' +
-      'do not infer it, and do not describe it as strong or weak. Say it is not disclosed.',
+    readMeFirst: {
+      dataIntegrity:
+        'Every figure below comes from filed statements or is derived from them. ' +
+        '"not reported" means the company does not disclose that line item — do not ' +
+        'estimate it, do not infer it from a peer, and do not describe it as strong or weak. ' +
+        'Saying "the company does not disclose X" is a useful finding; inventing a figure is ' +
+        'the one failure that makes this analysis worthless.',
+      units:
+        `All money figures are in ${currency}, the company's reporting currency, and are ` +
+        'pre-formatted — quote them exactly as written and never convert them. Arrays under ' +
+        'growthAndHistory are in BILLIONS of ' + currency + ' except the margin arrays, ' +
+        'which are percentages, and dilutedSharesByYear, which is billions of shares.',
+      asOf:
+        `Today is ${new Date().toISOString().slice(0, 10)}. Market figures are live; ` +
+        `fundamentals are as filed to ${m.fiscalPeriodEnd || 'an unstated period'}. ` +
+        'Anything you say about the "current" position refers to those dates.',
+      provenance: provenance.length
+        ? provenance
+        : ['Every figure below is filed data with no estimation or carry-forward.']
+    },
 
     company: {
       ticker: stock.ticker,
@@ -113,9 +183,13 @@ export function buildComprehensivePayload(stock, thesis = null) {
         : 'Operating company',
       reportingCurrency: currency,
       fiscalPeriodEnd: m.fiscalPeriodEnd || NR,
-      price: `${formatMoney(stock.price, currency)}`,
-      changePercent: n(stock.change_pct) === null ? NR : `${stock.change_pct >= 0 ? '+' : ''}${stock.change_pct.toFixed(2)}%`,
-      marketCap: money(m.marketCap)
+      price: formatMoney(stock.price, currency),
+      changePercent: n(stock.change_pct) === null ? NR : signed(stock.change_pct, 2),
+      marketCap: money(m.marketCap),
+      sharesOutstanding: n(m.sharesOutstanding) === null
+        ? NR
+        : `${(m.sharesOutstanding / 1e6).toFixed(1)}M shares`,
+      enterpriseValue: money(m.enterpriseValue)
     },
 
     healthScoring: {
@@ -131,9 +205,27 @@ export function buildComprehensivePayload(stock, thesis = null) {
       pillars: pillarsFormatted
     },
 
+    incomeAndCashFlow: {
+      revenue: money(m.revenue),
+      grossProfit: money(stock.financials?.grossProfit),
+      operatingIncome: money(stock.financials?.operatingIncome),
+      ebit: money(m.ebit),
+      ebitda: money(m.ebitda),
+      netIncome: money(m.netIncome),
+      // A material operating cost for a lender, even though the coverage
+      // ratio built from it is not meaningful for one.
+      interestExpense: money(m.interestExpense),
+      operatingCashFlow: money(m.operatingCashFlow),
+      capitalExpenditure: money(stock.financials?.capitalExpenditures),
+      freeCashFlow: money(m.freeCashFlow),
+      dilutedEPS: n(stock.financials?.dilutedEPS) === null
+        ? NR
+        : formatMoney(stock.financials.dilutedEPS, currency)
+    },
+
     quantitativeKPIs: {
       altmanZScore: {
-        score: n(stock.altman_z) === null ? NR : stock.altman_z,
+        score: n(stock.altman_z) === null ? NR : stock.altman_z.toFixed(2),
         zone:
           n(stock.altman_z) === null
             ? (m.isFinancial ? 'not defined for financial institutions' : NR)
@@ -141,17 +233,29 @@ export function buildComprehensivePayload(stock, thesis = null) {
             : stock.altman_z >= 1.8 ? 'grey zone'
             : 'distress zone'
       },
-      piotroskiFScore:
-        n(stock.piotroski_score) === null
-          ? NR
-          : `${stock.piotroski_score}/9`,
+      piotroskiFScore: m.piotroski
+        ? {
+            raw: `${m.piotroski.score} of ${m.piotroski.testable} testable signals`,
+            scaled: `${m.piotroski.normalised}/9`,
+            note: m.piotroski.testable < 9
+              ? `${9 - m.piotroski.testable} signal(s) could not be tested from the filings; ` +
+                'the scaled figure is comparable with a full 9-signal score but rests on less evidence.'
+              : 'all nine signals testable'
+          }
+        : NR,
       returnOnInvestedCapital: pctRaw(m.roic),
       estimatedWACC: pctRaw(m.wacc),
       roicSpreadOverWACC: n(m.roicSpread) === null ? NR : `${m.roicSpread >= 0 ? '+' : ''}${m.roicSpread.toFixed(1)} points`,
       returnOnEquity: pct(m.roe),
+      returnOnAssets: pct(m.roa),
+      assetTurnover: n(m.assetTurnover) === null ? NR : `${m.assetTurnover.toFixed(2)}x`,
+      sectorMedianAssetTurnover: n(m.sectorMedianAssetTurnover) === null
+        ? 'no sector peers cached for comparison'
+        : `${m.sectorMedianAssetTurnover.toFixed(2)}x`,
       freeCashFlowConversion: n(stock.fcf_conversion_pct) === null ? NR : `${stock.fcf_conversion_pct}% of net income`,
       grossMargin: pct(m.grossMargin),
       operatingMargin: pct(m.operatingMargin),
+      freeCashFlowMargin: pct(m.fcfMargin),
       effectiveTaxRate: m.taxRateEstimated ? `${NR} (statutory 21% assumed)` : pct(m.effectiveTaxRate)
     },
 
@@ -163,14 +267,16 @@ export function buildComprehensivePayload(stock, thesis = null) {
           : m.netCash >= 0 ? `${money(m.netCash)} net cash`
           : `${money(Math.abs(m.netCash))} net debt`,
       shareholderEquity: m.negativeEquity ? 'negative book equity' : money(m.equity),
+      totalLiabilities: money(m.totalLiabilities),
+      workingCapital: money(m.workingCapital),
       currentRatio: n(m.currentRatio) === null ? NR : m.currentRatio.toFixed(2),
       quickRatio: n(m.quickRatio) === null ? NR : m.quickRatio.toFixed(2),
       debtToEquity: m.negativeEquity ? 'undefined — book equity is negative' : mult(m.debtToEquity),
       netDebtToEbitda: mult(m.netDebtToEbitda),
+      equityToAssets: pct(m.equityToAssets),
       interestCoverage: m.interestCoverageUnburdened
         ? 'no debt burden to cover'
-        : n(m.interestCoverage) === null ? NR : `${m.interestCoverage.toFixed(1)}x` +
-            (m.interestExpenseCarried ? ` (interest expense last filed ${m.interestExpenseAsOf})` : '')
+        : n(m.interestCoverage) === null ? NR : `${m.interestCoverage.toFixed(1)}x`
     },
 
     valuation: {
@@ -179,43 +285,82 @@ export function buildComprehensivePayload(stock, thesis = null) {
       pegRatio: n(r.peg) === null ? NR : r.peg <= 0 ? 'undefined — expected growth is negative' : mult(r.peg),
       priceToBook: mult(r.priceToBook),
       dividendYield: pct(r.dividendYield, 2),
-      peVersusOwnHistory: sum.peHistory?.available
-        ? `${sum.peHistory.current}x now, five-year range ${sum.peHistory.min}x to ${sum.peHistory.max}x, ` +
-          `median ${sum.peHistory.median}x — currently at the ${sum.peHistory.percentile}th percentile`
-        : NR,
+      dividendPayoutOfFreeCashFlow: pct(m.dividendPayoutOnFcf),
+      consecutiveDividendYears: n(m.dividendStreakYears) === null || m.dividendStreakYears === 0
+        ? 'no dividend paid in the filed years'
+        : `${m.dividendStreakYears}`,
+      freeCashFlowYield: pct(m.fcfYield, 2),
+      evToFreeCashFlowYield: pct(m.evToFcfYield, 2),
+      // Reported with its true span. Saying "five-year range" for eighteen
+      // months of trough-earnings multiples is exactly the kind of confident
+      // wrong statement the integrity rule above exists to prevent.
+      priceEarningsVersusOwnHistory: pe.available
+        ? {
+            currentMultiple: `${pe.current}x`,
+            historyCovers: `${pe.months} months across ${pe.epsPeriods} profitable filed years`,
+            range: `${pe.min}x to ${pe.max}x, median ${pe.median}x`,
+            percentileOfOwnHistory: `${pe.percentile}th`,
+            usableAsAValuationRange: pe.scoreable === true,
+            caution: pe.scoreable === true
+              ? null
+              : 'Too short to be a valuation range. A low percentile here reflects earnings ' +
+                'recovering off a trough, not a multiple compressing. Do not present it as a ' +
+                'five-year range or draw a cheapness conclusion from it.'
+          }
+        : `not available — ${pe.reason || 'insufficient history'}`,
       dcfFairValue: dcf.applicable
         ? `${formatMoney(dcf.fairValue, currency)} per share`
         : `not modelled (${dcf.reason || 'inputs unavailable'})`,
       dcfAssumptions: dcf.applicable
-        ? `${(dcf.assumptions.growthRate * 100).toFixed(1)}% growth, ` +
-          `${dcf.assumptions.terminalMultiple}x terminal multiple, ` +
+        ? `${(dcf.assumptions.growthRate * 100).toFixed(1)}% annual free cash flow growth for 5 years, ` +
+          `${dcf.assumptions.terminalMultiple}x terminal multiple on year-5 free cash flow, ` +
           `${(dcf.assumptions.discountRate * 100).toFixed(1)}% discount rate`
         : NR,
       marginOfSafety:
         !dcf.applicable ? NR
           : n(dcf.marginOfSafetyPct) === null ? NR
           : dcf.marginOfSafetyPct >= 0
-            ? `+${dcf.marginOfSafetyPct}% below fair value`
-            : `${dcf.premiumToFairValuePct}% above fair value`
+            ? `trading ${dcf.marginOfSafetyPct}% below the modelled fair value`
+            : `trading ${dcf.premiumToFairValuePct}% above the modelled fair value`
     },
 
     growthAndHistory: {
+      unitsNote:
+        'Units are in each key name. A null means the company did not report that line that ' +
+        'year — there is no padding or extrapolation anywhere in these arrays.',
       fiscalYears: hist.periods || [],
-      revenueByYear: hist.revenue || [],
-      freeCashFlowByYear: hist.freeCashFlow || [],
-      grossMarginByYear: hist.grossMarginPct || [],
-      operatingMarginByYear: hist.operatingMarginPct || [],
-      dilutedSharesByYear: hist.sharesOutstanding || [],
-      note: 'Arrays carry null for a year the company did not report that line. Only the years listed are filed data — there is no padding or extrapolation.',
+      // The unit is carried in the key rather than in a note: a model reading
+      // an array of -8.9 alongside dollar figures elsewhere will otherwise
+      // describe a -8.9% operating margin as "negative $8.9M".
+      [`revenueByYear_billions${currency}`]: hist.revenue || [],
+      [`freeCashFlowByYear_billions${currency}`]: hist.freeCashFlow || [],
+      [`netIncomeByYear_billions${currency}`]: hist.netIncome || [],
+      grossMarginByYear_percent: hist.grossMarginPct || [],
+      operatingMarginByYear_percent: hist.operatingMarginPct || [],
+      dilutedSharesByYear_billionsOfShares: hist.sharesOutstanding || [],
+      [`dilutedEPSByYear_${currency}perShare`]: hist.dilutedEPS || [],
       revenueCAGR: n(m.revenueCAGR) === null ? NR : `${(m.revenueCAGR * 100).toFixed(1)}% over ${m.cagrYears} years`,
-      epsCAGR: n(m.epsCAGR) === null ? NR : `${(m.epsCAGR * 100).toFixed(1)}%`,
-      fcfPerShareCAGR: n(m.fcfPerShareCAGR) === null ? NR : `${(m.fcfPerShareCAGR * 100).toFixed(1)}%`,
-      shareCountChangeYoY:
-        n(m.shareChangeYoY) === null ? NR
-          : `${(m.shareChangeYoY * 100).toFixed(1)}% (${m.shareChangeYoY < 0 ? 'buybacks' : 'dilution'})`,
+      epsCAGR: n(m.epsCAGR) === null
+        ? `${NR} (undefined when the series crosses zero)`
+        : `${(m.epsCAGR * 100).toFixed(1)}%`,
+      fcfPerShareCAGR: n(m.fcfPerShareCAGR) === null
+        ? `${NR} (undefined when the series crosses zero)`
+        : `${(m.fcfPerShareCAGR * 100).toFixed(1)}%`,
+      shareCountChange: n(m.shareChangeYoY) === null
+        ? NR
+        : `${(m.shareChangeYoY * 100).toFixed(1)}% over ${m.shareChangeYears || 1} fiscal ` +
+          `year${(m.shareChangeYears || 1) === 1 ? '' : 's'} ` +
+          `(${m.shareChangeAnnualisedPct >= 0 ? '+' : ''}${m.shareChangeAnnualisedPct}% a year), ` +
+          `${m.shareChangeYoY < 0 ? 'buybacks' : 'dilution'}`,
+      freeCashFlowPositiveYears: `${m.fcfPositiveYears} of ${m.fcfReportedYears} filed years`,
       grossMarginTrend: m.quarterlyGrossMarginTrend
-        ? `${m.quarterlyGrossMarginTrend.changeBps >= 0 ? '+' : ''}${m.quarterlyGrossMarginTrend.changeBps} bps across ${m.quarterlyGrossMarginTrend.quarters} filed quarters`
-        : n(m.grossMarginChangeBps) === null ? NR : `${m.grossMarginChangeBps >= 0 ? '+' : ''}${m.grossMarginChangeBps} bps year on year`
+        ? `${m.quarterlyGrossMarginTrend.changeBps >= 0 ? '+' : ''}${m.quarterlyGrossMarginTrend.changeBps} bps across ` +
+          `${m.quarterlyGrossMarginTrend.quarters} filed quarters ` +
+          `(${m.quarterlyGrossMarginTrend.margins.join('% -> ')}%)`
+        : n(m.grossMarginChangeBps) === null ? NR : `${m.grossMarginChangeBps >= 0 ? '+' : ''}${m.grossMarginChangeBps} bps year on year`,
+      operatingMarginTrend: n(m.operatingMarginChangeBps) === null
+        ? NR
+        : `${m.operatingMarginChangeBps >= 0 ? '+' : ''}${m.operatingMarginChangeBps} bps year on year`
     },
 
     twelvePointChecklist: {
@@ -223,9 +368,13 @@ export function buildComprehensivePayload(stock, thesis = null) {
       items: checklistFormatted
     },
 
-    systemGeneratedMoatsAndRisks: {
-      catalysts: stock.catalysts || [],
-      risks: stock.risks || []
+    systemGeneratedFlags: {
+      note:
+        'These fire on fixed thresholds and are not an exhaustive assessment. An empty risk ' +
+        'list means no threshold tripped, NOT that the company carries no risks — derive ' +
+        'those yourself from the data above.',
+      catalysts: (stock.catalysts || []).map((c) => c.title + ': ' + c.text),
+      risks: (stock.risks || []).map((c) => c.title + ': ' + c.text)
     },
 
     userInvestmentThesis: thesis
@@ -237,9 +386,136 @@ export function buildComprehensivePayload(stock, thesis = null) {
           coreRationale: thesis.core_rationale,
           sellGuardrails: thesis.sell_triggers_json ? JSON.parse(thesis.sell_triggers_json) : []
         }
-      : null
+      : 'The user has not written a thesis for this company yet.'
   };
 }
+
+/**
+ * Structured-output schema.
+ *
+ * Gemini enforces this server-side, so the shape, the enums and the array
+ * bounds are guaranteed rather than requested. It also removes ~800 tokens of
+ * inline JSON-shape prose from every call, and it is the reason the prompt
+ * below can talk about analysis instead of formatting.
+ */
+const RESPONSE_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    verdict: { type: 'STRING' },
+    verdictGrade: {
+      type: 'STRING',
+      enum: [
+        'PRISTINE_MOAT', 'SOLID_COMPOUNDER', 'VALUATION_WATCH',
+        'CYCLICAL_LEVERAGE', 'DISTRESS_RISK', 'INSUFFICIENT_DATA'
+      ]
+    },
+    verdictBadge: { type: 'STRING' },
+    buffettPrinciple: { type: 'STRING' },
+    executiveSummary: { type: 'STRING' },
+    moatAndProfitability: {
+      type: 'OBJECT',
+      properties: {
+        rating: { type: 'STRING', enum: ['WIDE_MOAT', 'NARROW_MOAT', 'NO_MOAT', 'NOT_ASSESSABLE'] },
+        ratingLabel: { type: 'STRING' },
+        explanation: { type: 'STRING' }
+      },
+      required: ['rating', 'ratingLabel', 'explanation']
+    },
+    solvencyAndSafety: {
+      type: 'OBJECT',
+      properties: {
+        rating: { type: 'STRING', enum: ['FORTRESS', 'SOLID', 'MODERATE', 'DISTRESSED', 'NOT_ASSESSABLE'] },
+        ratingLabel: { type: 'STRING' },
+        explanation: { type: 'STRING' }
+      },
+      required: ['rating', 'ratingLabel', 'explanation']
+    },
+    valuationAndDCF: {
+      type: 'OBJECT',
+      properties: {
+        rating: {
+          type: 'STRING',
+          enum: ['ATTRACTIVE_DISCOUNT', 'FAIRLY_VALUED', 'RICH_PREMIUM', 'HIGH_RISK_BUBBLE', 'NOT_ASSESSABLE']
+        },
+        ratingLabel: { type: 'STRING' },
+        explanation: { type: 'STRING' }
+      },
+      required: ['rating', 'ratingLabel', 'explanation']
+    },
+    keyStrengths: {
+      type: 'ARRAY',
+      minItems: 2,
+      maxItems: 3,
+      items: {
+        type: 'OBJECT',
+        properties: { title: { type: 'STRING' }, detail: { type: 'STRING' } },
+        required: ['title', 'detail']
+      }
+    },
+    keyRisks: {
+      type: 'ARRAY',
+      minItems: 2,
+      maxItems: 3,
+      items: {
+        type: 'OBJECT',
+        properties: { title: { type: 'STRING' }, detail: { type: 'STRING' } },
+        required: ['title', 'detail']
+      }
+    },
+    // Kept apart from everything else so the interface can label it. The model
+    // knows things the filings do not contain — why margins collapsed, who the
+    // competitors are — and that context is the most valuable thing it adds.
+    // But it is recall, not measurement, and the reader must be able to tell.
+    contextFromModelKnowledge: {
+      type: 'OBJECT',
+      properties: {
+        hasContext: { type: 'BOOLEAN' },
+        asOfCaveat: { type: 'STRING' },
+        points: {
+          type: 'ARRAY',
+          maxItems: 4,
+          items: {
+            type: 'OBJECT',
+            properties: {
+              claim: { type: 'STRING' },
+              confidence: { type: 'STRING', enum: ['HIGH', 'MEDIUM', 'LOW'] }
+            },
+            required: ['claim', 'confidence']
+          }
+        }
+      },
+      required: ['hasContext', 'points']
+    },
+    dataLimitations: { type: 'ARRAY', maxItems: 4, items: { type: 'STRING' } },
+    conclusion: { type: 'STRING' },
+    buyZone: {
+      type: 'OBJECT',
+      properties: {
+        // Numeric so the interface can compare it with the live price rather
+        // than parsing prose like "Under $125.00 for 15%+ Margin of Safety".
+        maxPrice: { type: 'NUMBER' },
+        currency: { type: 'STRING' },
+        impliedDiscountToFairValuePct: { type: 'NUMBER' },
+        alreadyInZone: { type: 'BOOLEAN' },
+        perspective: { type: 'STRING' }
+      },
+      required: ['maxPrice', 'currency', 'alreadyInZone', 'perspective']
+    },
+    whatToWatch: { type: 'ARRAY', minItems: 2, maxItems: 4, items: { type: 'STRING' } }
+  },
+  required: [
+    'verdict', 'verdictGrade', 'verdictBadge', 'buffettPrinciple', 'executiveSummary',
+    'moatAndProfitability', 'solvencyAndSafety', 'valuationAndDCF',
+    'keyStrengths', 'keyRisks', 'contextFromModelKnowledge', 'dataLimitations',
+    'conclusion', 'buyZone', 'whatToWatch'
+  ],
+  propertyOrdering: [
+    'verdict', 'verdictGrade', 'verdictBadge', 'buffettPrinciple', 'executiveSummary',
+    'moatAndProfitability', 'solvencyAndSafety', 'valuationAndDCF',
+    'keyStrengths', 'keyRisks', 'contextFromModelKnowledge', 'dataLimitations',
+    'conclusion', 'buyZone', 'whatToWatch'
+  ]
+};
 
 /**
  * Generate in-depth Gemini analysis
@@ -254,82 +530,86 @@ export async function generateStockAISummary(stock, thesis = null) {
   const payloadData = buildComprehensivePayload(stock, thesis);
 
   const promptText = `
-You are the world's foremost fundamental equity analyst and value investing partner embodying the rigorous intellectual frameworks of Warren Buffett, Charlie Munger, and Benjamin Graham.
+You are a fundamental equity analyst working in the tradition of Buffett, Munger
+and Graham: business quality first, price second, and an unflinching account of
+what you do not know.
 
-Analyse the filed fundamentals, computed KPIs, 12-point checklist and multi-year trends for:
 Company: ${stock.name} (${stock.ticker})
-Sector / Industry: ${stock.sector || 'not reported'} · ${stock.industry || 'not reported'}
+Sector / industry: ${stock.sector || 'not reported'} - ${stock.industry || 'not reported'}
 
-ABSOLUTE RULE ON DATA INTEGRITY
-Any field reading "not reported" is absent from this company's filings. You must
-not estimate it, infer it from a peer, or characterise it as strong or weak. Where
-a measure matters and is missing, say so plainly — "the company does not disclose
-X" is a useful finding, and inventing a figure is the one failure mode that makes
-this analysis worthless. The same applies to nulls inside the year-by-year arrays.
-Where the composite health score reads "not scored", do not substitute a grade of
-your own; explain which measures were unavailable and what that limits.
+## How to use the data package
 
-Here is the complete quantitative data package:
+Read readMeFirst before anything else. It states the reporting currency, the
+units of every array, the dates the figures refer to, and — most importantly —
+a provenance list of everything that was derived, estimated, carried forward or
+clamped rather than filed.
+
+Three rules follow from it, in order of importance:
+
+1. NEVER INVENT A NUMBER. A field reading "not reported" is absent from this
+   company's filings. Do not estimate it, do not borrow a peer's, do not call it
+   strong or weak. "The company does not disclose X" is a finding worth stating.
+
+2. HONOUR THE PROVENANCE NOTES. Where readMeFirst.provenance says a figure was
+   derived, carried forward, clamped or excluded, treat it with that caveat and
+   say so where it matters to the conclusion. If a note tells you not to draw a
+   particular inference, do not draw it, even if the underlying number is right
+   there. Notably: where the P/E history is marked unusable, a low percentile
+   reflects earnings recovering off a trough, not a multiple compressing.
+
+3. SEPARATE MEASUREMENT FROM RECALL. Everything in the package is measured. You
+   also know things about this company that are not in it — why margins moved,
+   who it competes with, what its regulatory or end-market situation is — and
+   that context is genuinely valuable, often the most valuable thing you add.
+   But it is recall, with a training cutoff, and the reader must be able to tell
+   it apart. So: put every claim that is not derivable from the package into
+   contextFromModelKnowledge, each with an honest confidence rating, and keep it
+   out of the other fields. Do not smuggle unsourced narrative into the
+   executive summary or the ratings.
+
+## What makes this analysis good
+
+- Interpret; do not narrate. The reader is looking at these numbers on the
+  screen already. Tell them what the numbers mean together, which ones are load
+  bearing, and which ones would change your mind. A paragraph that restates
+  revenue, margin and cash in sequence has added nothing.
+- Weigh the evidence honestly. A pillar marked partiallyMeasured is a weaker
+  claim than a fully measured one. Say so. Where the composite score is "not
+  scored", do not substitute a grade of your own — set verdictGrade to
+  INSUFFICIENT_DATA, explain which measures were missing, and analyse what can
+  be analysed.
+- systemGeneratedFlags fire on fixed thresholds and are not exhaustive. An empty
+  risk list means nothing tripped, not that the company is safe. Derive the real
+  risks yourself.
+- Quote money figures exactly as formatted in the package, in the company's own
+  reporting currency. Never convert, never re-denominate in dollars.
+- Fill dataLimitations with the specific things that constrain your confidence
+  here — drawn from the provenance list and the unmeasured items — not with
+  generic disclaimers.
+- buyZone.maxPrice is a number in the reporting currency: the highest price at
+  which you would commit capital. Set alreadyInZone by comparing it with the
+  current price in the package, and make sure your perspective text is coherent
+  with that comparison.
+- Write plainly. No filler, no hedging for its own sake, no restating the
+  question. Assume a reader who understands accounting and wants judgement.
+
+## Data package
+
 ${JSON.stringify(payloadData, null, 2)}
-
-Provide a deeply insightful, rigorous, plain-English analysis for a disciplined long-term investor.
-Return a valid JSON object matching EXACTLY this structure:
-
-{
-  "verdict": "string: A sharp, punchy 1-sentence bottom-line verdict synthesizing business quality and current valuation.",
-  "verdictGrade": "string: One of 'PRISTINE_MOAT' | 'SOLID_COMPOUNDER' | 'VALUATION_WATCH' | 'CYCLICAL_LEVERAGE' | 'DISTRESS_RISK'",
-  "verdictBadge": "string: Short badge with emoji (e.g. '👑 Wide Moat Compounder', '⚖️ Solid Moat at Fair Value', '⚠️ Stretched Valuation', '🚨 High Debt Risk')",
-  "buffettPrinciple": "string: A relevant, memorable Buffett, Munger, or Graham rule or quote that directly applies to this company's profile and current situation.",
-  "executiveSummary": "string: A clear, engaging 2-3 paragraph executive summary explaining what the business does, the durability of its economic engine, its balance sheet strength, and where it stands right now.",
-  "moatAndProfitability": {
-    "rating": "string: 'WIDE_MOAT' | 'NARROW_MOAT' | 'NO_MOAT'",
-    "ratingLabel": "string: e.g. 'Wide Moat (High Pricing Power & ROIC)'",
-    "explanation": "string: Detailed explanation evaluating return on invested capital, gross and operating margin stability, pricing power against inflation, customer lock-in, and competitive durability."
-  },
-  "solvencyAndSafety": {
-    "rating": "string: 'FORTRESS' | 'SOLID' | 'MODERATE' | 'DISTRESSED'",
-    "ratingLabel": "string: e.g. 'Fortress Balance Sheet (Zero Solvency Risk)'",
-    "explanation": "string: Plain-English explanation evaluating the Altman Z-score, the Piotroski F-score, cash against total debt, the current ratio, and recession resilience."
-  },
-  "valuationAndDCF": {
-    "rating": "string: 'ATTRACTIVE_DISCOUNT' | 'FAIRLY_VALUED' | 'RICH_PREMIUM' | 'HIGH_RISK_BUBBLE'",
-    "ratingLabel": "string: e.g. 'Fairly Valued with Modest Margin of Safety'",
-    "explanation": "string: Critical evaluation of current P/E, PEG ratio, free cash flow yield, and DCF intrinsic fair value vs market price. Explain whether the current price offers an adequate margin of safety."
-  },
-  "keyStrengths": [
-    {
-      "title": "string: Short concise title (e.g. 'Exceptional Reinvestment Runway (68% ROIC)')",
-      "detail": "string: Clear explanation of how this strength drives shareholder value."
-    }
-  ],
-  "keyRisks": [
-    {
-      "title": "string: Short concise title (e.g. 'Valuation Vulnerability to Growth Deceleration')",
-      "detail": "string: Clear explanation of what could go wrong and what risks to monitor."
-    }
-  ],
-  "conclusion": "string: Plain-English, actionable investment conclusion for a long-term compounder investor.",
-  "buyZone": {
-    "targetRange": "string: e.g. 'Under $125.00 for 15%+ Margin of Safety'",
-    "perspective": "string: Concise rationale for the target entry zone based on DCF and normalized earnings."
-  },
-  "whatToWatch": [
-    "string: Concrete metric or catalyst to monitor in upcoming 10-Q/10-K filings (e.g. 'Sustained Gross Margins > 72%')"
-  ]
-}
 `.trim();
 
   const requestBody = {
-    contents: [
-      {
-        parts: [{ text: promptText }]
-      }
-    ],
+    contents: [{ parts: [{ text: promptText }] }],
     generationConfig: {
       responseMimeType: 'application/json',
+      // Enforced server-side, so the shape cannot come back malformed.
+      responseSchema: RESPONSE_SCHEMA,
       temperature: 0.2,
-      thinkingConfig: { thinkingBudget: 0 },
-      maxOutputTokens: 8192
+      // Thinking was previously disabled outright. This is a reasoning task
+      // over ~2,500 tokens of financial data — weighing partial measurements
+      // against each other is exactly what the budget buys.
+      thinkingConfig: { thinkingBudget: 4096 },
+      maxOutputTokens: 16384
     }
   };
 
@@ -366,9 +646,16 @@ Return a valid JSON object matching EXACTLY this structure:
   try {
     parsed = JSON.parse(rawText);
   } catch (err) {
-    // If wrapped in markdown code fence
-    const cleanJson = rawText.replace(/```json\s*|\s*```/g, '').trim();
-    parsed = JSON.parse(cleanJson);
+    try {
+      // Belt and braces: the schema should prevent a code fence, but a
+      // truncated or wrapped body should still fail with a usable message
+      // rather than a bare SyntaxError.
+      parsed = JSON.parse(rawText.replace(/```json\s*|\s*```/g, '').trim());
+    } catch {
+      throw new Error(
+        'Gemini returned a response that could not be parsed as JSON. Try again.'
+      );
+    }
   }
 
   const result = {
@@ -376,6 +663,11 @@ Return a valid JSON object matching EXACTLY this structure:
     name: stock.name,
     model,
     generatedAt: new Date().toISOString(),
+    // Ties the analysis to the filing period it was written against, so a
+    // cached summary can be spotted as stale once new fundamentals land.
+    fiscalPeriodEnd: stock.summary?.metrics?.fiscalPeriodEnd || null,
+    priceAtGeneration: stock.price ?? null,
+    currency: stock.currency || 'USD',
     ...parsed
   };
 
