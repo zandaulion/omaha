@@ -31,11 +31,14 @@ const OUT_DIR = path.join(ROOT, 'core', 'dist');
  *
  * `scoring.js` is what the parity gate exercises. `backup.js` carries the merge
  * rules, which have to be the same on both clients or a restore loses notes on
- * one of them. `stock.js` follows once the fetch bridge exists.
+ * one of them. `host/ingest.js` adds the fetch shim and the Yahoo parser, so an
+ * embedded host can read filings rather than only score them. `stock.js`
+ * follows once storage is bridged too.
  */
 export const ENTRIES = [
   { entry: 'core/scoring.js', out: 'scoring.bundle.js' },
-  { entry: 'core/backup.js', out: 'backup.bundle.js' }
+  { entry: 'core/backup.js', out: 'backup.bundle.js' },
+  { entry: 'core/host/ingest.js', out: 'ingest.bundle.js' }
 ];
 
 /** Build one entry and return its contents, without writing. */

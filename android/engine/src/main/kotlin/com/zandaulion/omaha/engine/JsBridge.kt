@@ -1,6 +1,7 @@
 package com.zandaulion.omaha.engine
 
 import com.dokar.quickjs.QuickJs
+import com.dokar.quickjs.binding.AsyncFunctionBinding
 import com.dokar.quickjs.binding.FunctionBinding
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -41,7 +42,26 @@ import kotlinx.coroutines.Dispatchers
  */
 class JsBridge(
     private val moduleSource: String,
-    private val dispatcher: CoroutineDispatcher = Dispatchers.Default
+    private val dispatcher: CoroutineDispatcher = Dispatchers.Default,
+    /**
+     * Suspending functions the module may call back into.
+     *
+     * This is how `core/` reaches anything the host owns — a socket, a
+     * database — without knowing what the host is. `core/host/fetch-shim.js`
+     * rebuilds `fetch` on top of one such function, so the network arrives as
+     * a web API rather than as a Kotlin abstraction leaking into the engine.
+     */
+    private val hostFunctions: Map<String, suspend (Array<Any?>) -> String> = emptyMap(),
+    /**
+     * Where `console` output goes.
+     *
+     * QuickJS has no `console`, and `core/` uses it — `yahoo.js` warns when a
+     * quarterly series is missing or a session cannot be established. Without
+     * a shim those paths throw `'console' is not defined`, turning a handled
+     * degradation into a hard failure. Scoring never logs, which is why this
+     * only appeared once ingestion ran.
+     */
+    private val logger: (String, String) -> Unit = { _, _ -> }
 ) {
 
     /**
@@ -72,6 +92,24 @@ class JsBridge(
                 FunctionBinding { args -> failure = args.firstOrNull() as? String; null }
             )
 
+            quickJs.defineBinding(
+                "__omahaLog",
+                FunctionBinding { args ->
+                    logger(
+                        args.getOrNull(0) as? String ?: "log",
+                        args.getOrNull(1) as? String ?: ""
+                    )
+                    null
+                }
+            )
+
+            for ((name, implementation) in hostFunctions) {
+                quickJs.defineBinding(name, object : AsyncFunctionBinding<String> {
+                    override suspend fun invoke(args: Array<Any?>): String =
+                        implementation(args)
+                })
+            }
+
             quickJs.addModule(MODULE_NAME, moduleSource)
             quickJs.evaluate<Any?>(DRIVER, "omaha-call.js", true)
         } finally {
@@ -99,13 +137,27 @@ class JsBridge(
                 s.replace(/[\u0080-\uffff]/g, (c) =>
                     '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
 
+            if (typeof globalThis.console === 'undefined') {
+                const emit = (level) => (...args) => __omahaLog(
+                    level,
+                    args.map((a) => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ')
+                );
+                globalThis.console = {
+                    log: emit('log'), info: emit('info'), warn: emit('warn'),
+                    error: emit('error'), debug: emit('debug')
+                };
+            }
+
             try {
                 const fn = __omahaFn();
                 const target = omahaModule[fn];
                 if (typeof target !== 'function') {
                     throw new Error('no exported function named ' + fn);
                 }
-                const out = target(...JSON.parse(__omahaArgs()));
+                // Awaited because an entry point may be async — ingestion is.
+                // Without this a Promise would serialise as {} and the caller
+                // would receive an empty object reported as success.
+                const out = await target(...JSON.parse(__omahaArgs()));
                 __omahaResult(out === undefined ? '' : asciiSafe(JSON.stringify(out)));
             } catch (err) {
                 __omahaError(asciiSafe(String((err && err.message) || err)));
@@ -116,3 +168,18 @@ class JsBridge(
 
 /** A failure reported from inside the module, carrying its original message. */
 class JsBridgeException(message: String) : RuntimeException(message)
+
+/**
+ * A bare string, as a JSON value the bridge can splice into its argument list.
+ *
+ * The strings crossing this boundary are tickers and ISO timestamps, which by
+ * construction hold nothing JSON needs escaped. Checked rather than assumed,
+ * and checked rather than escaped: a hand-rolled escaper would be a liability
+ * out of all proportion to the values it handles.
+ */
+internal fun jsonString(value: String): String {
+    require(value.none { it == '"' || it == '\\' || it < ' ' }) {
+        "Expected a plain value with no JSON metacharacters, got: $value"
+    }
+    return "\"" + value + "\""
+}
