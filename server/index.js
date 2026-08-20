@@ -328,6 +328,8 @@ app.get('/api/screener', requireDeviceAuth, async (req, res) => {
         name: r.name,
         sector: r.sector,
         currency: r.currency || 'USD',
+        // Statement figures below are in this, which is not always the same.
+        reporting_currency: financials.reportingCurrency || r.currency || 'USD',
         price: r.price,
         change_pct: r.change_pct,
         health_score: r.health_score,

@@ -63,6 +63,18 @@ function fmtBillions(v, currency = 'USD') {
 /** A composite score, or "N/A" when there was too little filed data. */
 const fmtScore = (v) => (isNum(v) ? String(v) : 'N/A');
 
+/**
+ * The currency the company's statements are in, which is not always the one
+ * its shares trade in: NOK trades in USD and reports in EUR. Every figure
+ * drawn from the filings must be labelled with this, not with the ticker's
+ * trading currency, or a EUR balance sheet gets rendered with dollar signs.
+ */
+const reportingCcy = (stock) =>
+  stock?.financials?.reportingCurrency || stock?.currency || 'USD';
+
+/** The currency the shares trade in — what a broker screen shows. */
+const tradedCcy = (stock) => stock?.currency || 'USD';
+
 /** Short haptic acknowledgement on devices that support it. */
 function haptic(pattern = 8) {
   if (navigator.vibrate && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -1217,7 +1229,16 @@ function renderDeepDiveHero(stock) {
   const asOfEl = document.getElementById('deepDiveFiscalPeriod');
   if (asOfEl) {
     const fy = stock.summary?.metrics?.fiscalPeriodEnd;
-    asOfEl.textContent = fy ? `Fundamentals as filed to ${fy}` : '';
+    const fx = stock.financials?.fx;
+    // Depositary receipts trade in one currency and file in another. Say so,
+    // rather than letting a EUR balance sheet sit under a dollar price.
+    const fxNote = fx?.needed
+      ? fx.available
+        ? ` · trades in ${tradedCcy(stock)}, reports in ${reportingCcy(stock)} ` +
+          `(1 ${tradedCcy(stock)} = ${fx.rate.toFixed(4)} ${reportingCcy(stock)})`
+        : ` · trades in ${tradedCcy(stock)}, reports in ${reportingCcy(stock)} — no exchange rate available`
+      : '';
+    asOfEl.textContent = fy ? `Fundamentals as filed to ${fy}${fxNote}` : '';
     asOfEl.hidden = !fy;
   }
 
@@ -1280,7 +1301,7 @@ function renderOverviewSubtab(stock) {
     const m = stock.summary?.metrics || {};
     const r = stock.summary?.ratios || {};
     const pe = stock.summary?.peHistory;
-    const cur = stock.currency;
+    const cur = reportingCcy(stock);
 
     // `good` is null where the metric itself is unavailable, so an em dash is
     // never painted in the "healthy" colour.
@@ -1771,7 +1792,7 @@ function renderChecklistSubtab(stock) {
 
 function renderTrendsSubtab(stock) {
   const hist = stock.financials?.historical || {};
-  const cur = stock.currency;
+  const cur = reportingCcy(stock);
   const m = stock.summary?.metrics || {};
 
   const years = hist.years || [];
@@ -2008,7 +2029,7 @@ function calculateClientDCF() {
   const stock = state.currentStock;
   if (!stock) return;
 
-  const cur = stock.currency;
+  const cur = reportingCcy(stock);
   const m = stock.summary?.metrics || {};
   const serverDcf = stock.summary?.dcf || {};
 
@@ -2018,7 +2039,10 @@ function calculateClientDCF() {
   const table = document.getElementById('dcfBreakdownTable');
   const controls = document.getElementById('dcfControls');
 
-  priceEl.textContent = fmtPrice(stock.price, cur);
+  // The price the model works against, converted where the shares trade in a
+  // different currency from the one the company reports in.
+  const modelPrice = isNum(m.price) ? m.price : stock.price;
+  priceEl.textContent = fmtPrice(modelPrice, cur);
 
   // A discounted-cash-flow model needs positive free cash flow and a share
   // count. Where either is missing the model is not run at all — the previous
@@ -2026,6 +2050,7 @@ function calculateClientDCF() {
   // companies that were burning cash.
   const fcf0 = serverDcf.assumptions?.cashFlowBase ?? m.freeCashFlow;
   const shares = m.sharesOutstanding;
+  const price = modelPrice;
   const blocked =
     serverDcf.applicable === false
       ? serverDcf.reason
@@ -2075,7 +2100,6 @@ function calculateClientDCF() {
   const netCash = (m.cash ?? 0) - (m.totalDebt ?? 0);
   const equityValue = enterpriseValue + netCash;
   const fairValue = equityValue / shares;
-  const price = stock.price;
 
   fairValueEl.textContent = fmtPrice(fairValue, cur);
 
@@ -2332,7 +2356,7 @@ function filterScreenerStocks() {
         </td>
         <td class="mono">${isNum(s.piotroski_score) ? `${s.piotroski_score}/9` : EM_DASH}</td>
         <td class="mono text-emerald">${fmtPct(s.roic_pct, 1, { alreadyPercent: true })}</td>
-        <td class="mono">${isNum(s.net_cash_b) ? (s.net_cash_b > 0 ? `${fmtBillions(s.net_cash_b, s.currency)} 💎` : fmtBillions(s.net_cash_b, s.currency)) : EM_DASH}</td>
+        <td class="mono">${isNum(s.net_cash_b) ? `${fmtBillions(s.net_cash_b, s.reporting_currency || s.currency)}${s.net_cash_b > 0 ? ' 💎' : ''}` : EM_DASH}</td>
       </tr>
     `).join('');
 
@@ -2415,7 +2439,7 @@ async function runComparison() {
             ${row('Cash conversion', (s) => fmtPct(s.fcf_conversion_pct, 0, { alreadyPercent: true }))}
             ${row('Gross margin', (s) => fmtPct(s.summary?.metrics?.grossMargin))}
             ${row('Operating margin', (s) => fmtPct(s.summary?.metrics?.operatingMargin))}
-            ${row('Net cash / (debt)', (s) => fmtBillions(s.net_cash_b, s.currency))}
+            ${row('Net cash / (debt)', (s) => fmtBillions(s.net_cash_b, reportingCcy(s)))}
             ${row('Current ratio', (s) => fmtNum(s.summary?.metrics?.currentRatio, 2))}
             ${row('Trailing P/E', (s) => fmtNum(s.summary?.ratios?.pe, 1, 'x'))}
             ${row('P/E vs 5y median', (s) => (isNum(s.summary?.peHistory?.vsMedianPct)

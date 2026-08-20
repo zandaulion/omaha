@@ -67,7 +67,11 @@ export function buildComprehensivePayload(stock, thesis = null) {
   const dcf = sum.dcf || {};
   const pe = sum.peHistory || {};
   const hist = stock.financials?.historical || {};
-  const currency = stock.currency || 'USD';
+  // The currency the statements are in, which is not always the one the
+  // shares trade in. `stock.currency` is the traded one, so using it here
+  // labelled Nokia's entire EUR balance sheet with dollar signs.
+  const currency =
+    m.reportingCurrency || stock.financials?.reportingCurrency || stock.currency || 'USD';
 
   // Anything the filings do not contain is sent as the string "not reported",
   // never as a plausible-looking number. The previous payload asserted
@@ -159,6 +163,15 @@ export function buildComprehensivePayload(stock, thesis = null) {
         'estimate it, do not infer it from a peer, and do not describe it as strong or weak. ' +
         'Saying "the company does not disclose X" is a useful finding; inventing a figure is ' +
         'the one failure that makes this analysis worthless.',
+      currencies: m.fx?.needed
+        ? `The shares trade in ${m.tradedCurrency} at ${formatMoney(m.tradedPrice, m.tradedCurrency)}, ` +
+          `but the company reports in ${currency}. Every figure below is in ${currency}, ` +
+          `including the share price used for every ratio and the discounted-cash-flow ` +
+          `comparison (${formatMoney(m.price, currency)}), converted at ` +
+          `1 ${m.tradedCurrency} = ${m.fx.rate} ${currency}. When you quote a price to the ` +
+          `reader, give the traded figure in ${m.tradedCurrency} and say the fundamentals are ` +
+          `in ${currency}. Never mix the two in one comparison.`
+        : `The shares trade and the company reports in the same currency, ${currency}.`,
       units:
         `All money figures are in ${currency}, the company's reporting currency, and are ` +
         'pre-formatted — quote them exactly as written and never convert them. Arrays under ' +
@@ -183,7 +196,8 @@ export function buildComprehensivePayload(stock, thesis = null) {
         : 'Operating company',
       reportingCurrency: currency,
       fiscalPeriodEnd: m.fiscalPeriodEnd || NR,
-      price: formatMoney(stock.price, currency),
+      tradedPrice: `${formatMoney(m.tradedPrice ?? stock.price, m.tradedCurrency || currency)} (as quoted)`,
+      priceUsedForRatios: `${formatMoney(m.price, currency)} (reporting currency)`,
       changePercent: n(stock.change_pct) === null ? NR : signed(stock.change_pct, 2),
       marketCap: money(m.marketCap),
       sharesOutstanding: n(m.sharesOutstanding) === null
@@ -509,6 +523,9 @@ const RESPONSE_SCHEMA = {
         // Numeric so the interface can compare it with the live price rather
         // than parsing prose like "Under $125.00 for 15%+ Margin of Safety".
         maxPrice: { type: 'NUMBER' },
+        // Named explicitly because the two can differ: a buy zone quoted in
+        // the trading currency against a fair value computed in the reporting
+        // one is not a comparison, it is a category error.
         currency: { type: 'STRING' },
         impliedDiscountToFairValuePct: { type: 'NUMBER' },
         alreadyInZone: { type: 'BOOLEAN' },
@@ -601,10 +618,11 @@ Three rules follow from it, in order of importance:
 - Fill dataLimitations with the specific things that constrain your confidence
   here — drawn from the provenance list and the unmeasured items — not with
   generic disclaimers.
-- buyZone.maxPrice is a number in the reporting currency: the highest price at
-  which you would commit capital. Set alreadyInZone by comparing it with the
-  current price in the package, and make sure your perspective text is coherent
-  with that comparison.
+- buyZone.maxPrice is a number in the REPORTING currency, and buyZone.currency
+  must name that currency. Compare it against priceUsedForRatios, not against
+  the traded price, and make the perspective text state both figures where the
+  two currencies differ. A buy zone in one currency compared against a price in
+  another is a category error, not a conclusion.
 - Write plainly. No filler, no hedging for its own sake, no restating the
   question. Assume a reader who understands accounting and wants judgement.
 

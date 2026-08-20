@@ -34,7 +34,7 @@ records how each row was verified.
 | Statement ingestion | ● | `fundamentals-timeseries`; `quoteSummary` statement modules are empty (doc 10 §2) |
 | Split cache TTLs | ● | 15 minutes for quotes, 24 hours for statements, stored separately |
 | Multi-exchange tickers | ● | Verified against `ASML.AS`; suffixed symbols resolve |
-| Currency handling | ● | Reporting currency carried per stock and used in every rendered figure |
+| Currency handling | ● | Traded and reporting currency tracked separately, with an FX conversion between them — see §3 |
 | Unknown ticker | ● | Returns 404. Synthetic company generation removed |
 | Offline behaviour | ● | Last good API response per URL in IndexedDB, with an age-stamped banner |
 
@@ -126,12 +126,28 @@ Alphabet. Derived from `assets − equity`, which is an identity.
 **Non-USD reporting.** Verified against `ASML.AS`: figures render in EUR
 throughout, including the comparison table alongside USD peers.
 
+**Depositary receipts that trade in one currency and report in another.** NOK
+trades in USD and files in EUR; SBSW trades in USD and files in ZAR. Seven of
+the twenty tickers on the seeded "Promising Under $20" watchlist are affected.
+Every market-derived input — share price, market capitalisation — is converted
+into the reporting currency before any ratio touches it, because Altman's X4,
+enterprise value, both cash-flow yields and the entire discounted-cash-flow
+comparison otherwise combine two currencies in one expression. Nokia's Altman Z
+was 2.90 unconverted against 2.61 converted, and its margin of safety compared
+a EUR fair value with a USD share price.
+
+The traded price stays in its own currency in the header, since that is what a
+broker screen shows, and the deep dive states the split and the rate it used.
+Where no rate can be fetched the dependent metrics report as unavailable rather
+than mixing currencies.
+
 ---
 
 ## 4. Test coverage
 
-`npm test` — 32 assertions in `server/scoring.test.js`, each corresponding to a
-defect found in the audit. The load-bearing ones:
+`npm test` — 54 assertions across `server/scoring.test.js` and
+`server/gemini.test.js`, each corresponding to a defect found in an audit. The
+load-bearing ones:
 
 * An empty input produces no score.
 * Piotroski's year-on-year tests can actually fail.
@@ -143,3 +159,10 @@ defect found in the audit. The load-bearing ones:
 * The terminal multiple does not move with the share price.
 * Altman Z matches a hand-computed value for a real company.
 * The composite reaches the bottom of its range.
+* An outlier cash-flow year is not used as a projection base.
+* A shrinking business has its decline projected rather than growth.
+* The reverse DCF reproduces the traded price when fed back through the model.
+* Market figures enter the model in the reporting currency, and an unavailable
+  exchange rate withholds the dependent metrics rather than mixing currencies.
+* Statement figures are labelled with the reporting currency in the AI payload,
+  not the trading currency.

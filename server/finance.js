@@ -4,6 +4,7 @@ import {
   fetchQuote,
   fetchFundamentals,
   fetchPriceHistory,
+  fetchFxRate,
   search as yahooSearch
 } from './yahoo.js';
 
@@ -150,6 +151,7 @@ export async function getStockData(tickerSymbol, forceRefresh = false) {
   }
 
   const model = buildModel(quote, fundamentals);
+  await applyFxNormalisation(model);
   model.sectorMedianAssetTurnover = sectorMedianAssetTurnover(quote.sector, ticker);
   const peHistory = buildPeHistory(fundamentals, quote);
   // Only a long enough history is allowed to move the valuation score.
@@ -321,6 +323,58 @@ function yoyChange(series) {
   };
 }
 
+/**
+ * Put the market-derived figures into the currency the company reports in.
+ *
+ * A depositary receipt trades in one currency and files in another — NOK
+ * quotes in USD and reports in EUR, SBSW quotes in USD and reports in ZAR.
+ * Left unconverted, Altman's X4 divides a USD market capitalisation by EUR
+ * liabilities, enterprise value adds USD to EUR, and the discounted-cash-flow
+ * fair value comes out in EUR to be compared against a USD share price. Seven
+ * of the twenty tickers on one of the seeded watchlists are affected, and for
+ * a rand reporter the distortion is roughly eighteenfold.
+ *
+ * The traded price stays untouched — that is what the user sees on a broker
+ * screen. A second, converted figure is added for the model to work in.
+ */
+async function applyFxNormalisation(model) {
+  const quote = model.quote;
+  const reporting = model.reportingCurrency;
+  const traded = quote.currency;
+
+  model.tradedCurrency = traded;
+  model.fx = { needed: false, rate: 1, from: traded, to: reporting, available: true };
+
+  if (!reporting || !traded || reporting === traded) {
+    quote.priceReporting = quote.price;
+    quote.marketCapReporting = quote.marketCap;
+    return;
+  }
+
+  const rate = await fetchFxRate(traded, reporting);
+  model.fx = {
+    needed: true,
+    rate,
+    from: traded,
+    to: reporting,
+    available: rate !== null
+  };
+
+  if (rate === null) {
+    // Without a rate the two currencies must not be mixed, so the figures
+    // that would combine them are withheld rather than silently wrong.
+    quote.priceReporting = null;
+    quote.marketCapReporting = null;
+    return;
+  }
+
+  quote.priceReporting = quote.price * rate;
+  quote.marketCapReporting =
+    quote.marketCap !== null && quote.marketCap !== undefined
+      ? quote.marketCap * rate
+      : null;
+}
+
 // ------------------------------------------------- contextual comparisons
 
 /**
@@ -461,6 +515,7 @@ function toRecord(ticker, quote, fundamentals, model, score) {
     industry: quote.industry,
     price: quote.price,
     change_pct: quote.changePct,
+    // The currency the shares trade in, which is what a broker screen shows.
     currency: quote.currency || model.reportingCurrency,
     market_cap: quote.marketCap,
     health_score: score.healthScore,
@@ -471,6 +526,8 @@ function toRecord(ticker, quote, fundamentals, model, score) {
     net_cash_b: score.netCashB,
     financials_json: JSON.stringify({
       reportingCurrency: model.reportingCurrency,
+      tradedCurrency: model.tradedCurrency,
+      fx: model.fx,
       fiscalPeriodEnd: latest.asOfDate || null,
       isFinancial: model.isFinancial,
       revenue: latest.revenue ?? null,
