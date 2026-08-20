@@ -875,9 +875,28 @@ served over a network.
 ## 23. The fetch bridge
 
 `core/providers/yahoo.js` runs under QuickJS and parses byte-identically to
-Node, replaying the same recorded fixtures. On a device it then does it for
-real: the self-test app fetches a live ticker, completes Yahoo's cookie-and-
-crumb session dance, and parses four annual filing periods in about 2.4 seconds.
+Node, replaying the same recorded fixtures. On a real handset it then does it
+for real — measured on the Galaxy Z Fold 4:
+
+```
+Live ingestion  (core/providers/yahoo.js over OkHttp)
+  fetched    Nokia Corporation Sponsored
+  price      9.945 USD
+  filings    4 annual periods
+  round trip 1805 ms
+```
+
+Cookie fetch, crumb extraction, quote, statements, alias resolution — the whole
+path, on a phone, with no server involved. **That closes the last question
+under D1: the Android client can be genuinely serverless.**
+
+The proportions are worth stating, because they settle where effort belongs.
+Ingestion costs about 1,800 ms; scoring costs about 5.5 ms. **The network is
+roughly three hundred times the cost of running the engine in JavaScript.**
+Whatever the case against interpreting the engine on-device was, it was never
+about speed — and it means the caching tiers in `core/stock.js`, particularly
+the fifteen-minute quote tier that had never worked, matter far more to how the
+app feels than the engine ever will.
 
 This is the half of the engine the scoring gate could never reach. Scoring is
 arithmetic on a prepared model; ingestion is string handling, alias resolution
