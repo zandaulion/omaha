@@ -23,4 +23,5 @@ rootProject.name = "omaha-android"
 include(":engine")
 include(":engine-android")
 include(":data")
+include(":selftest")
 include(":probe")
