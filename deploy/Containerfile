@@ -6,6 +6,10 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
+# core/ holds the shared engine that server/ imports from. Without it the
+# image builds cleanly and then dies at startup on ERR_MODULE_NOT_FOUND, so
+# this line has to move whenever the import graph does.
+COPY core ./core
 COPY server ./server
 COPY web ./web
 
