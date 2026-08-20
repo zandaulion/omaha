@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "exportedAt": "2026-08-20T12:00:00.000Z",
+  "theses": [
+    {
+      "ticker": "AAPL",
+      "conviction": "high",
+      "targetBuyPrice": 180,
+      "coreRationale": "Ecosystem lock-in.",
+      "moatTags": [],
+      "sellTriggers": [],
+      "journalEntries": [],
+      "updatedAt": "2026-06-01 09:00:00"
+    },
+    {
+      "ticker": "NOK",
+      "conviction": "high",
+      "targetBuyPrice": 4.5,
+      "coreRationale": "Licensing revenue is underappreciated.",
+      "moatTags": [
+        "patents",
+        "switching costs"
+      ],
+      "sellTriggers": [
+        {
+          "id": "s1",
+          "text": "Licensing renewals stall",
+          "checked": false
+        }
+      ],
+      "journalEntries": [
+        {
+          "id": "1717000000001",
+          "date": "2026-05-01T09:00:00.000Z",
+          "note": "Margin pressure in MN. ⚠️"
+        },
+        {
+          "id": "1717000000000",
+          "date": "2026-02-01T09:00:00.000Z",
+          "note": "Q4 came in ahead 🚀"
+        }
+      ],
+      "updatedAt": "2026-05-01 09:00:00"
+    }
+  ],
+  "watchlists": [
+    {
+      "id": "core",
+      "name": "Core",
+      "tickers": [
+        "NOK",
+        "AAPL"
+      ],
+      "is_default": true,
+      "updatedAt": "2026-05-01 09:00:00"
+    }
+  ]
+}
