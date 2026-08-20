@@ -12,6 +12,8 @@
  * fundamental one, and waking someone for it would train them to ignore alerts.
  */
 
+import { fixed as fixedDecimal } from '../format.js';
+
 /** A health-score move smaller than this is noise, not news. */
 export const SCORE_SHIFT_THRESHOLD = 3;
 
@@ -83,15 +85,15 @@ export function evaluateTriggers(stock, prev, settings) {
     const breaches = [];
 
     if (both(stock.altman_z, prev.altman_z) && stock.altman_z < 1.8 && prev.altman_z >= 1.8) {
-      breaches.push(`Altman Z fell to ${stock.altman_z.toFixed(2)}, into the distress zone.`);
+      breaches.push(`Altman Z fell to ${fixedDecimal(stock.altman_z, 2)}, into the distress zone.`);
     }
     if (both(m.currentRatio, prev.current_ratio) && m.currentRatio < 1.0 && prev.current_ratio >= 1.0) {
-      breaches.push(`Current ratio dropped below 1.0 to ${m.currentRatio.toFixed(2)}.`);
+      breaches.push(`Current ratio dropped below 1.0 to ${fixedDecimal(m.currentRatio, 2)}.`);
     }
     if (both(m.grossMargin, prev.gross_margin)) {
       const dropBps = Math.round((prev.gross_margin - m.grossMargin) * 10000);
       if (dropBps > GROSS_MARGIN_DROP_BPS) {
-        breaches.push(`Gross margin compressed ${dropBps} bps to ${(m.grossMargin * 100).toFixed(1)}%.`);
+        breaches.push(`Gross margin compressed ${dropBps} bps to ${fixedDecimal((m.grossMargin * 100), 1)}%.`);
       }
     }
     if (both(stock.piotroski_score, prev.piotroski_score) &&
@@ -136,7 +138,7 @@ export function evaluateTriggers(stock, prev, settings) {
     if (crossedIntoCheapPe || crossedIntoCheapPeg) {
       const reason = crossedIntoCheapPe
         ? `Its P/E has fallen into the cheapest ${pePercentile}% of its own history.`
-        : `Its PEG has fallen to ${peg.toFixed(2)}, from ${prev.peg_ratio.toFixed(2)}.`;
+        : `Its PEG has fallen to ${fixedDecimal(peg, 2)}, from ${fixedDecimal(prev.peg_ratio, 2)}.`;
       alerts.push({
         type: 'MARGIN_OF_SAFETY',
         ticker: t,
@@ -155,7 +157,7 @@ export function evaluateTriggers(stock, prev, settings) {
         type: 'CAPITAL_RETURN',
         ticker: t,
         title: `📈 ${t} stepped up buybacks`,
-        body: `Diluted share count is down ${Math.abs(m.shareChangeYoY * 100).toFixed(1)}% year on year.`,
+        body: `Diluted share count is down ${fixedDecimal(Math.abs(m.shareChangeYoY * 100), 1)}% year on year.`,
         severity: 'positive',
         url: `/?tab=deepdive&ticker=${t}`
       });

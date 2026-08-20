@@ -34,6 +34,13 @@ import java.io.File
  * cross the bridge: the JavaScript side escapes every non-ASCII code unit as
  * `\uXXXX`, which is valid JSON, and parsing on this side restores it.
  *
+ * **A second module crashes the process.** `addModule` called twice on one
+ * instance faults in native code — `EXCEPTION_ACCESS_VIOLATION`, not a
+ * catchable exception. So `core/` is flattened into a single ES module by
+ * `tools/bundle-core.mjs` before it ever reaches here. This is the defect that
+ * only the device work surfaced, and it is why doc 13's original claim that
+ * `core/` "needs no bundler" was wrong.
+ *
  * **A second evaluate on the same instance fails.** Calls alternate
  * deterministically — first succeeds, second throws `TypeError: cannot read
  * property 'value' of undefined`, third succeeds — independent of payload size
@@ -71,10 +78,9 @@ class ScoringEngine private constructor(
                 }
             )
 
-            // scoring.js imports nothing, so a flat module name is enough.
-            // Modules that do import siblings — providers/yahoo.js reaching for
-            // ../errors.js — will need registering under the exact specifier
-            // they use.
+            // Exactly one module, always. A second addModule on the same
+            // instance crashes the process — see the class comment — which is
+            // why core/ arrives pre-bundled rather than as a graph.
             quickJs.addModule(MODULE_NAME, scoringSource)
 
             quickJs.evaluate<Any?>(DRIVER, "omaha-call.js", true)
@@ -109,17 +115,30 @@ class ScoringEngine private constructor(
         """.trimIndent()
 
         /**
-         * @param coreDir the repository's `core/` directory. On Android this
-         *   becomes an asset directory; the source read is identical either way,
-         *   which is what keeps the two hosts honest.
+         * @param scoringSource the contents of `core/scoring.js`.
+         *
+         * A string rather than a path, because the two hosts get at it
+         * differently — a file on the JVM, an asset on Android — and neither
+         * difference should reach the engine.
          */
+        /** Where the generated bundle sits, relative to `core/`. */
+        const val BUNDLE_PATH = "dist/scoring.bundle.js"
+
+        fun fromSource(
+            scoringSource: String,
+            dispatcher: CoroutineDispatcher = Dispatchers.Default
+        ): ScoringEngine = ScoringEngine(scoringSource, dispatcher)
+
+        /** Convenience for hosts that do have a real directory. */
         fun create(
             coreDir: File,
             dispatcher: CoroutineDispatcher = Dispatchers.Default
         ): ScoringEngine {
-            val scoring = File(coreDir, "scoring.js")
-            require(scoring.isFile) { "core/scoring.js not found at ${scoring.absolutePath}" }
-            return ScoringEngine(scoring.readText(), dispatcher)
+            val bundle = File(coreDir, BUNDLE_PATH)
+            require(bundle.isFile) {
+                "${bundle.absolutePath} not found. Run `npm run bundle:core`."
+            }
+            return fromSource(bundle.readText(), dispatcher)
         }
     }
 }

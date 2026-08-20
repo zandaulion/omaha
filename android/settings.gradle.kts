@@ -16,7 +16,10 @@ dependencyResolutionManagement {
 
 rootProject.name = "omaha-android"
 
-// :engine is plain Kotlin/JVM for now. QuickJS is the same engine on both
-// targets, so the scoring-parity question is answerable without an emulator;
-// the Android variant is added once that answer is in.
+// :engine is plain Kotlin/JVM — the parity question is answerable there in
+// seconds, without an emulator. :engine-android runs the same source against
+// the Android build of QuickJS, on a device. :probe exists only to produce an
+// APK whose size can be measured.
 include(":engine")
+include(":engine-android")
+include(":probe")

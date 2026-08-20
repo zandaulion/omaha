@@ -11,6 +11,8 @@
  * the scorecard can be measured, no composite is emitted at all.
  */
 
+import { fixed as fixedDecimal } from './format.js';
+
 /** Below this share of measurable sub-scores, a composite would be noise. */
 const MIN_COVERAGE = 0.6;
 
@@ -43,7 +45,7 @@ function ratio(numerator, denominator, { allowNegativeDenominator = false } = {}
   return Number.isFinite(r) ? r : null;
 }
 
-const round = (v, dp = 2) => (v === null ? null : Number(v.toFixed(dp)));
+const round = (v, dp = 2) => (v === null ? null : Number(fixedDecimal(v, dp)));
 
 // =====================================================================
 // 1. Altman Z-Score
@@ -484,8 +486,8 @@ function deriveMetrics(model) {
       const change = hist.shareChangeYoY;
       if (change === null || change === undefined) return null;
       const years = hist.shareChangeYears || 1;
-      if (years <= 1) return Number((change * 100).toFixed(2));
-      return Number(((Math.pow(1 + change, 1 / years) - 1) * 100).toFixed(2));
+      if (years <= 1) return Number(fixedDecimal((change * 100), 2));
+      return Number(fixedDecimal(((Math.pow(1 + change, 1 / years) - 1) * 100), 2));
     })(),
 
     fcfPositiveYears: (hist.freeCashFlow || []).filter((v) => v !== null && v > 0).length,
@@ -534,7 +536,7 @@ function quarterlyMarginTrend(quarters) {
     quarters: margins.length,
     changeBps: Math.round((margins[margins.length - 1] - margins[0]) * 10000),
     consecutiveDeclines: declines,
-    margins: margins.map((m) => Number((m * 100).toFixed(1)))
+    margins: margins.map((m) => Number(fixedDecimal((m * 100), 1)))
   };
 }
 
@@ -752,7 +754,7 @@ function scorePillars(m) {
 const NA = { status: 'na', value: 'Not reported' };
 
 function buildChecklist(m, fmt) {
-  const pct = (v, dp = 1) => (v === null ? null : `${(v * 100).toFixed(dp)}%`);
+  const pct = (v, dp = 1) => (v === null ? null : `${fixedDecimal((v * 100), dp)}%`);
 
   const item = (id, name, category, explanation, body) => ({
     id, name, category, explanation, ...(body || NA)
@@ -766,7 +768,7 @@ function buildChecklist(m, fmt) {
             ? { status: 'na', value: 'N/A for financials', benchmark: 'Z ≥ 3.0' }
             : { status: 'na', value: 'Not reported', benchmark: 'Z ≥ 3.0' })
         : {
-            value: m.altmanZ.toFixed(2),
+            value: fixedDecimal(m.altmanZ, 2),
             benchmark: 'Z ≥ 3.0 safe zone',
             status: m.altmanZ >= 3.0 ? 'pass' : m.altmanZ >= 1.8 ? 'watch' : 'fail'
           }),
@@ -778,7 +780,7 @@ function buildChecklist(m, fmt) {
         : m.interestCoverage === null
           ? { ...NA, benchmark: '> 6.0× EBIT / interest' }
           : {
-              value: `${m.interestCoverage.toFixed(1)}×`,
+              value: `${fixedDecimal(m.interestCoverage, 1)}×`,
               benchmark: '> 6.0× EBIT / interest',
               status: m.interestCoverage >= 6 ? 'pass' : m.interestCoverage >= 2.5 ? 'watch' : 'fail'
             }),
@@ -788,7 +790,7 @@ function buildChecklist(m, fmt) {
       m.currentRatio === null
         ? { status: 'na', value: m.isFinancial ? 'N/A for financials' : 'Not reported', benchmark: '≥ 1.50' }
         : {
-            value: m.currentRatio.toFixed(2) + (m.quickRatio !== null ? ` (quick ${m.quickRatio.toFixed(2)})` : ''),
+            value: fixedDecimal(m.currentRatio, 2) + (m.quickRatio !== null ? ` (quick ${fixedDecimal(m.quickRatio, 2)})` : ''),
             benchmark: '≥ 1.50 current assets / liabilities',
             status: m.currentRatio >= 1.5 ? 'pass' : m.currentRatio >= 1.0 ? 'watch' : 'fail'
           }),
@@ -802,7 +804,7 @@ function buildChecklist(m, fmt) {
           : m.debtToEquity === null
             ? { ...NA, benchmark: '< 0.8× or net cash' }
             : {
-                value: `${m.debtToEquity.toFixed(2)}×`,
+                value: `${fixedDecimal(m.debtToEquity, 2)}×`,
                 benchmark: '< 0.8× or net cash',
                 status: m.debtToEquity < 0.8 ? 'pass' : m.debtToEquity <= 1.8 ? 'watch' : 'fail'
               }),
@@ -837,12 +839,12 @@ function buildChecklist(m, fmt) {
         ? { ...NA, benchmark: 'ROIC ≥ WACC + 5 pts' }
         : m.wacc === null
           ? {
-              value: `${m.roic.toFixed(1)}% ROIC`,
+              value: `${fixedDecimal(m.roic, 1)}% ROIC`,
               benchmark: 'ROIC ≥ 15%',
               status: m.roic >= 15 ? 'pass' : m.roic >= 9 ? 'watch' : 'fail'
             }
           : {
-              value: `${m.roic.toFixed(1)}% vs ${m.wacc.toFixed(1)}% WACC`,
+              value: `${fixedDecimal(m.roic, 1)}% vs ${fixedDecimal(m.wacc, 1)}% WACC`,
               benchmark: 'ROIC ≥ WACC + 5 pts',
               status: m.roicSpread >= 5 ? 'pass' : m.roicSpread >= 0 ? 'watch' : 'fail'
             }),
@@ -872,7 +874,7 @@ function buildChecklist(m, fmt) {
       m.shareChangeYoY === null
         ? { ...NA, benchmark: 'Shrinking or < 0.5% a year' }
         : {
-            value: `${m.shareChangeYoY <= 0 ? '' : '+'}${(m.shareChangeYoY * 100).toFixed(1)}%` +
+            value: `${m.shareChangeYoY <= 0 ? '' : '+'}${fixedDecimal((m.shareChangeYoY * 100), 1)}%` +
               (m.shareChangeYoY < 0 ? ' (buybacks)' : ' dilution') +
               // Say so when a filing gap means this is not a one-year change.
               (m.shareChangeIsAnnual === false && m.shareChangeYears
@@ -888,7 +890,7 @@ function buildChecklist(m, fmt) {
       m.fcfConversion === null
         ? { ...NA, benchmark: '> 90% conversion' }
         : {
-            value: `${(m.fcfConversion * 100).toFixed(0)}% conversion`,
+            value: `${fixedDecimal((m.fcfConversion * 100), 0)}% conversion`,
             benchmark: '> 90% conversion',
             status: m.fcfConversion >= 0.9 ? 'pass' : m.fcfConversion >= 0.6 ? 'watch' : 'fail'
           }),
@@ -900,7 +902,7 @@ function buildChecklist(m, fmt) {
         : m.pegRatio <= 0
           ? { status: 'na', value: 'N/A — negative growth', benchmark: 'PEG ≤ 1.50' }
           : {
-              value: `${m.pegRatio.toFixed(2)}×`,
+              value: `${fixedDecimal(m.pegRatio, 2)}×`,
               benchmark: 'PEG ≤ 1.50',
               status: m.pegRatio <= 1.5 ? 'pass' : m.pegRatio <= 2.2 ? 'watch' : 'fail'
             }),
@@ -910,7 +912,7 @@ function buildChecklist(m, fmt) {
       m.revenueCAGR === null
         ? { ...NA, benchmark: '> 8% CAGR' }
         : {
-            value: `${m.revenueCAGR >= 0 ? '+' : ''}${(m.revenueCAGR * 100).toFixed(1)}% CAGR` +
+            value: `${m.revenueCAGR >= 0 ? '+' : ''}${fixedDecimal((m.revenueCAGR * 100), 1)}% CAGR` +
               (m.cagrYears ? ` (${m.cagrYears}Y)` : ''),
             benchmark: '> 8% CAGR',
             status: m.revenueCAGR >= 0.08 ? 'pass' : m.revenueCAGR >= 0.02 ? 'watch' : 'fail'
@@ -937,21 +939,21 @@ function buildInsights(m, fmt) {
     catalysts.push({
       icon: '🚀',
       title: 'Elite capital efficiency',
-      text: `ROIC of ${m.roic.toFixed(1)}%${m.wacc !== null ? `, ${(m.roic - m.wacc).toFixed(1)} points above its estimated ${m.wacc.toFixed(1)}% cost of capital` : ''}.`
+      text: `ROIC of ${fixedDecimal(m.roic, 1)}%${m.wacc !== null ? `, ${fixedDecimal((m.roic - m.wacc), 1)} points above its estimated ${fixedDecimal(m.wacc, 1)}% cost of capital` : ''}.`
     });
   }
   if (m.fcfConversion !== null && m.fcfConversion >= 1) {
     catalysts.push({
       icon: '💰',
       title: 'Earnings arrive as cash',
-      text: `Free cash flow is ${(m.fcfConversion * 100).toFixed(0)}% of reported net income.`
+      text: `Free cash flow is ${fixedDecimal((m.fcfConversion * 100), 0)}% of reported net income.`
     });
   }
   if (m.grossMargin !== null && m.grossMargin >= 0.6) {
     catalysts.push({
       icon: '⚡',
       title: 'Pricing power',
-      text: `Gross margin of ${(m.grossMargin * 100).toFixed(1)}% absorbs input-cost inflation without repricing.`
+      text: `Gross margin of ${fixedDecimal((m.grossMargin * 100), 1)}% absorbs input-cost inflation without repricing.`
     });
   }
   if (m.shareChangeYoY !== null && m.shareChangeYoY < -0.01) {
@@ -961,7 +963,7 @@ function buildInsights(m, fmt) {
     catalysts.push({
       icon: '📈',
       title: 'Accretive buybacks',
-      text: `Diluted share count fell ${Math.abs(m.shareChangeYoY * 100).toFixed(1)}% ${span}.`
+      text: `Diluted share count fell ${fixedDecimal(Math.abs(m.shareChangeYoY * 100), 1)}% ${span}.`
     });
   }
   if (m.operatingMarginChangeBps !== null && m.operatingMarginChangeBps >= 150) {
@@ -983,42 +985,42 @@ function buildInsights(m, fmt) {
     risks.push({
       icon: '⚠️',
       title: 'Elevated leverage',
-      text: `Net debt is ${m.netDebtToEbitda.toFixed(1)}× EBITDA, which limits flexibility if rates stay high.`
+      text: `Net debt is ${fixedDecimal(m.netDebtToEbitda, 1)}× EBITDA, which limits flexibility if rates stay high.`
     });
   }
   if (m.shareChangeAnnualisedPct !== null && m.shareChangeAnnualisedPct > 2) {
     risks.push({
       icon: '⚠️',
       title: 'Shareholder dilution',
-      text: `Diluted share count rose ${m.shareChangeAnnualisedPct.toFixed(1)}% a year.`
+      text: `Diluted share count rose ${fixedDecimal(m.shareChangeAnnualisedPct, 1)}% a year.`
     });
   }
   if (m.forwardPE !== null && m.forwardPE > 40) {
     risks.push({
       icon: '⚠️',
       title: 'Demanding valuation',
-      text: `A forward P/E of ${m.forwardPE.toFixed(1)}× leaves little room for execution error.`
+      text: `A forward P/E of ${fixedDecimal(m.forwardPE, 1)}× leaves little room for execution error.`
     });
   }
   if (m.altmanZ !== null && m.altmanZ < 1.8) {
     risks.push({
       icon: '🚨',
       title: 'Altman Z distress zone',
-      text: `An Altman Z-Score of ${m.altmanZ.toFixed(2)} sits in the distress range.`
+      text: `An Altman Z-Score of ${fixedDecimal(m.altmanZ, 2)} sits in the distress range.`
     });
   }
   if (m.roicSpread !== null && m.roicSpread < 0) {
     risks.push({
       icon: '⚠️',
       title: 'Returns below cost of capital',
-      text: `ROIC of ${m.roic.toFixed(1)}% is under the estimated ${m.wacc.toFixed(1)}% WACC, so growth is destroying value.`
+      text: `ROIC of ${fixedDecimal(m.roic, 1)}% is under the estimated ${fixedDecimal(m.wacc, 1)}% WACC, so growth is destroying value.`
     });
   }
   if (m.fcfConversion !== null && m.fcfConversion < 0.6 && m.netIncome !== null && m.netIncome > 0) {
     risks.push({
       icon: '⚠️',
       title: 'Weak cash conversion',
-      text: `Only ${(m.fcfConversion * 100).toFixed(0)}% of net income converted to free cash flow.`
+      text: `Only ${fixedDecimal((m.fcfConversion * 100), 0)}% of net income converted to free cash flow.`
     });
   }
   if (m.quarterlyGrossMarginTrend && m.quarterlyGrossMarginTrend.changeBps <= -200) {
@@ -1097,9 +1099,9 @@ function dcfGrowthRate(m) {
   // of compounding stays inside the plausible.
   if (latestChange !== null && latestChange < 0) {
     return {
-      rate: Number(Math.max(-0.15, latestChange).toFixed(4)),
+      rate: Number(fixedDecimal(Math.max(-0.15, latestChange), 4)),
       basis: 'revenue declined in the latest filed year, so the decline is projected rather than growth',
-      unbounded: Number(base.toFixed(4))
+      unbounded: Number(fixedDecimal(base, 4))
     };
   }
 
@@ -1107,7 +1109,7 @@ function dcfGrowthRate(m) {
     m.revenueCAGR !== null && m.revenueCAGR !== undefined
       ? Math.min(0.2, m.revenueCAGR + 0.05)
       : 0.1;
-  const rate = Number(Math.min(ceiling, Math.max(0, base)).toFixed(4));
+  const rate = Number(fixedDecimal(Math.min(ceiling, Math.max(0, base)), 4));
 
   return {
     rate,
@@ -1115,7 +1117,7 @@ function dcfGrowthRate(m) {
       rate < base
         ? 'capped at revenue growth plus 5 points — cash flow cannot outgrow the top line indefinitely'
         : 'median of the filed compound growth rates',
-    unbounded: Number(base.toFixed(4))
+    unbounded: Number(fixedDecimal(base, 4))
   };
 }
 
@@ -1174,7 +1176,7 @@ function impliedGrowthRate({ price, fcf0, terminalMultiple, discountRate, cash, 
     if (valueAt(mid) > price) hi = mid;
     else lo = mid;
   }
-  return Number(((lo + hi) / 2).toFixed(4));
+  return Number(fixedDecimal(((lo + hi) / 2), 4));
 }
 
 export function computeComprehensiveHealth(model = {}) {
@@ -1272,7 +1274,7 @@ export function computeComprehensiveHealth(model = {}) {
 
     // Rescale to 20 over what was measurable, so a missing line item neither
     // credits nor penalises the company — it just does not vote.
-    const score = pPossible > 0 ? Number(((pEarned / pPossible) * 20).toFixed(1)) : null;
+    const score = pPossible > 0 ? Number(fixedDecimal(((pEarned / pPossible) * 20), 1)) : null;
     return {
       name: p.name,
       score,
@@ -1415,8 +1417,8 @@ export function formatMoney(value, currency = 'USD') {
   const sym = currencySymbol(currency);
   const abs = Math.abs(value);
   const sign = value < 0 ? '-' : '';
-  if (abs >= 1e12) return `${sign}${sym}${(abs / 1e12).toFixed(2)}T`;
-  if (abs >= 1e9) return `${sign}${sym}${(abs / 1e9).toFixed(2)}B`;
-  if (abs >= 1e6) return `${sign}${sym}${(abs / 1e6).toFixed(1)}M`;
-  return `${sign}${sym}${abs.toFixed(2)}`;
+  if (abs >= 1e12) return `${sign}${sym}${fixedDecimal((abs / 1e12), 2)}T`;
+  if (abs >= 1e9) return `${sign}${sym}${fixedDecimal((abs / 1e9), 2)}B`;
+  if (abs >= 1e6) return `${sign}${sym}${fixedDecimal((abs / 1e6), 1)}M`;
+  return `${sign}${sym}${fixedDecimal(abs, 2)}`;
 }
