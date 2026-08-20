@@ -78,7 +78,7 @@ GET /ws/fundamentals-timeseries/v1/finance/timeseries/{SYMBOL}
 ```
 
 Four annual periods come back for most filers, plus quarterly series, each
-datapoint carrying its own `currencyCode`. Implemented in `server/yahoo.js`.
+datapoint carrying its own `currencyCode`. Implemented in `core/providers/yahoo.js`.
 
 ### The rule this module enforces
 

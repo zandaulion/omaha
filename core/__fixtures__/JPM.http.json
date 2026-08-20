@@ -1,0 +1,3160 @@
+{
+  "cookie": {
+    "status": 404,
+    "headers": {
+      "set-cookie": "RECORDED=1"
+    },
+    "body": "<!DOCTYPE html>\n<html lang=\"en-us\">\n  <head>\n    <meta http-equiv=\"content-type\" content=\"text/html; charset=UTF-8\">\n    <meta charset=\"utf-8\">\n    <title>Yahoo</title>\n    <meta name=\"viewport\" content=\"width=device-width,initial-scale=1,minimal-ui\">\n    <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge,chrome=1\">\n    <style>\n      html {\n          height: 100%;\n      }\n      body {\n          background: #fafafc url(https://s.yimg.com/nn/img/sad-panda-201402200631.png) 50% 50%;\n          background-size: cover;\n          height: 100%;\n          text-align: center;\n          font: 300 18px \"helvetica neue\", helvetica, verdana, tahoma, arial, sans-serif;\n          margin: 0;\n      }\n      table {\n          height: 100%;\n          width: 100%;\n          table-layout: fixed;\n          border-collapse: collapse;\n          border-spacing: 0;\n          border: none;\n      }\n      h1 {\n          font-size: 42px;\n          font-weight: 400;\n          color: #400090;\n      }\n      p {\n          color: #1A1A1A;\n      }\n      #message-1 {\n          font-weight: bold;\n          margin: 0;\n      }\n      #message-2 {\n          display: inline-block;\n          *display: inline;\n          zoom: 1;\n          max-width: 17em;\n          _width: 17em;\n      }\n      </style>\n      <script>\n      !function(){if(window==window.top){var o=window.location.host;o.endsWith(\".yahoo.com\")&&window.location.replace(\"https://www.yahoo.com/\"),o.endsWith(\".aol.com\")&&window.location.replace(\"https://www.aol.com/\")}}();\n      </script>\n  </head>\n  <body>\n  <!-- status code : 404 -->\n  <!-- Not Found on Accelerator -->\n  <!-- host machine: e5.ycpi.deb.yahoo.com -->\n  <!-- timestamp: 1787221452.113 -->\n  <!-- url: https://fc.yahoo.com/-->\n  <script type=\"text/javascript\">\n    function buildUrl(url, parameters){\n      var qs = [];\n      for(var key in parameters) {\n        var value = parameters[key];\n        qs.push(encodeURIComponent(key) + \"=\" + encodeURIComponent(value));\n      }\n      url = url + \"?\" + qs.join('&');\n      return url;\n    }\n\n    function generateBRBMarkup(site) {\n      params.source = 'brb';\n      generateBeaconMarkup(params);\n      var englishHeader = 'Will be right back...';\n      var englishMessage1 = 'Thank you for your patience.';\n      var englishMessage2 = 'Our engineers are working quickly to resolve the issue.';\n      var defaultLogoStyle = '';\n      var siteDataMap = {\n        'default': {\n          logo: 'https://s.yimg.com/rz/p/yahoo_frontpage_en-US_s_f_p_205x58_frontpage.png',\n          logoAlt: 'Yahoo Logo',\n          logoStyle: defaultLogoStyle,\n          header: englishHeader,\n          message1: englishMessage1,\n          message2: englishMessage2\n        }\n      };\n\n      var siteDetails = siteDataMap['default'];\n\n      document.write('<table><tbody><tr><td>');\n      document.write('<div id=\"content\">');\n      document.write('<img src=\"' + siteDetails['logo'] + '\" alt=\"' + siteDetails['logoAlt'] + '\" style=\"' + siteDetails['logoStyle'] + '\">');\n      document.write('<h1 style=\"margin-top:20px;\">' + siteDetails['header'] + '</h1>');\n      document.write('<p id=\"message-1\">' + siteDetails['message1'] + '</p>');\n      document.write('<p id=\"message-2\">' + siteDetails['message2'] + '</p>');\n      document.write('</div>');\n      document.write('</td></tr></tbody></table>');\n    }\n\n    function generateBeaconMarkup(params) {\n        document.write('<img src=\"' + buildUrl('//geo.yahoo.com/b', params) + '\" style=\"display:none;\" width=\"0px\" height=\"0px\"/>');\n        var beacon = new Image();\n        beacon.src = buildUrl('//bcn.fp.yahoo.com/p', params);\n    }\n\n    var hostname = window.location.hostname;\n    var device = 'desktop';\n    var ynet = ('-' === '1');\n    var time = new Date().getTime();\n    var params = {\n        s: '1197757129',\n        t: time,\n        err_url: document.URL,\n        err: '404',\n        test: '-',\n        ats_host: 'e5.ycpi.deb.yahoo.com',\n        rid: '-',\n        message: 'Not Found on Accelerator'\n    };\n\n    if(ynet) {\n        document.write('<div style=\"height: 5px; background-color: red;\"></div>');\n    }\n    generateBRBMarkup(hostname, params);\n\n  </script>\n  <noscript>\n  <table>\n    <tbody>\n      <tr>\n        <td>\n          <div id=\"englishContent\">\n            <h1 style=\"margin-top:20px;\">Will be right back...</h1>\n            <p id=\"message-1\">Thank you for your patience.</p>\n            <p id=\"message-2\">Our engineers are working quickly to resolve the issue.</p>\n          </div>\n        </td>\n      </tr>\n    </tbody>\n  </table>\n  </noscript>\n  </body>\n</html>\n"
+  },
+  "crumb": {
+    "status": 200,
+    "headers": {},
+    "body": "CrnrnfrO1ZV"
+  },
+  "quoteSummary": {
+    "status": 200,
+    "headers": {},
+    "body": {
+      "quoteSummary": {
+        "result": [
+          {
+            "summaryDetail": {
+              "maxAge": 1,
+              "priceHint": {
+                "raw": 2,
+                "fmt": "2",
+                "longFmt": "2"
+              },
+              "previousClose": {
+                "raw": 363.25,
+                "fmt": "363.25"
+              },
+              "open": {
+                "raw": 363.01,
+                "fmt": "363.01"
+              },
+              "dayLow": {
+                "raw": 355.645,
+                "fmt": "355.64"
+              },
+              "dayHigh": {
+                "raw": 363.01,
+                "fmt": "363.01"
+              },
+              "regularMarketPreviousClose": {
+                "raw": 363.25,
+                "fmt": "363.25"
+              },
+              "regularMarketOpen": {
+                "raw": 363.01,
+                "fmt": "363.01"
+              },
+              "regularMarketDayLow": {
+                "raw": 355.645,
+                "fmt": "355.64"
+              },
+              "regularMarketDayHigh": {
+                "raw": 363.01,
+                "fmt": "363.01"
+              },
+              "dividendRate": {
+                "raw": 6,
+                "fmt": "6.00"
+              },
+              "dividendYield": {
+                "raw": 0.0165,
+                "fmt": "1.65%"
+              },
+              "exDividendDate": {
+                "raw": 1783296000,
+                "fmt": "2026-07-06"
+              },
+              "payoutRatio": {
+                "raw": 0.2571,
+                "fmt": "25.71%"
+              },
+              "fiveYearAvgDividendYield": {
+                "raw": 2.39,
+                "fmt": "2.39"
+              },
+              "beta": {
+                "raw": 0.977,
+                "fmt": "0.98"
+              },
+              "trailingPE": {
+                "raw": 15.553331,
+                "fmt": "15.55"
+              },
+              "forwardPE": {
+                "raw": 14.286406,
+                "fmt": "14.29"
+              },
+              "volume": {
+                "raw": 4951748,
+                "fmt": "4.95M",
+                "longFmt": "4,951,748"
+              },
+              "regularMarketVolume": {
+                "raw": 4951748,
+                "fmt": "4.95M",
+                "longFmt": "4,951,748"
+              },
+              "averageVolume": {
+                "raw": 8815008,
+                "fmt": "8.82M",
+                "longFmt": "8,815,008"
+              },
+              "averageVolume10days": {
+                "raw": 5231750,
+                "fmt": "5.23M",
+                "longFmt": "5,231,750"
+              },
+              "averageDailyVolume10Day": {
+                "raw": 5231750,
+                "fmt": "5.23M",
+                "longFmt": "5,231,750"
+              },
+              "bid": {
+                "raw": 0,
+                "fmt": "0.00"
+              },
+              "ask": {
+                "raw": 0,
+                "fmt": "0.00"
+              },
+              "bidSize": {
+                "raw": 4000,
+                "fmt": "4k",
+                "longFmt": "4,000"
+              },
+              "askSize": {
+                "raw": 20000,
+                "fmt": "20k",
+                "longFmt": "20,000"
+              },
+              "marketCap": {
+                "raw": 949663629312,
+                "fmt": "949.66B",
+                "longFmt": "949,663,629,312"
+              },
+              "nonDilutedMarketCap": {
+                "raw": 949663600025,
+                "fmt": "949.66B",
+                "longFmt": "949,663,600,025"
+              },
+              "yield": {},
+              "ytdReturn": {},
+              "qtdReturn": {},
+              "totalAssets": {},
+              "expireDate": {},
+              "strikePrice": {},
+              "openInterest": {},
+              "fiftyTwoWeekLow": {
+                "raw": 279.1,
+                "fmt": "279.10"
+              },
+              "fiftyTwoWeekHigh": {
+                "raw": 366.5,
+                "fmt": "366.50"
+              },
+              "allTimeHigh": {
+                "raw": 366.5,
+                "fmt": "366.50"
+              },
+              "allTimeLow": {
+                "raw": 3.208333,
+                "fmt": "3.21"
+              },
+              "fulldayPrice": {
+                "raw": 357.71,
+                "fmt": "357.71"
+              },
+              "fulldayChange": {},
+              "priceToSalesTrailing12Months": {
+                "raw": 5.0967307,
+                "fmt": "5.10"
+              },
+              "fiftyDayAverage": {
+                "raw": 342.3156,
+                "fmt": "342.32"
+              },
+              "twoHundredDayAverage": {
+                "raw": 315.65665,
+                "fmt": "315.66"
+              },
+              "trailingAnnualDividendRate": {
+                "raw": 6,
+                "fmt": "6.00"
+              },
+              "trailingAnnualDividendYield": {
+                "raw": 0.01651755,
+                "fmt": "1.65%"
+              },
+              "navPrice": {},
+              "currency": "USD",
+              "fromCurrency": null,
+              "toCurrency": null,
+              "lastMarket": null,
+              "coinMarketCapLink": null,
+              "volume24Hr": {},
+              "volumeAllCurrencies": {},
+              "circulatingSupply": {},
+              "algorithm": null,
+              "maxSupply": {},
+              "totalSupply": {},
+              "startDate": {},
+              "tradeable": false,
+              "fullyDilutedValue": {},
+              "volume24HrMarketCapPercent": {}
+            },
+            "defaultKeyStatistics": {
+              "maxAge": 1,
+              "priceHint": {
+                "raw": 2,
+                "fmt": "2",
+                "longFmt": "2"
+              },
+              "enterpriseValue": {
+                "raw": 787591593984,
+                "fmt": "787.59B",
+                "longFmt": "787,591,593,984"
+              },
+              "forwardPE": {
+                "raw": 14.286406,
+                "fmt": "14.29"
+              },
+              "profitMargins": {
+                "raw": 0.34921002,
+                "fmt": "34.92%"
+              },
+              "floatShares": {
+                "raw": 2643991481,
+                "fmt": "2.64B",
+                "longFmt": "2,643,991,481"
+              },
+              "sharesOutstanding": {
+                "raw": 2658186195,
+                "fmt": "2.66B",
+                "longFmt": "2,658,186,195"
+              },
+              "sharesShort": {
+                "raw": 28235459,
+                "fmt": "28.24M",
+                "longFmt": "28,235,459"
+              },
+              "sharesShortPriorMonth": {
+                "raw": 26871351,
+                "fmt": "26.87M",
+                "longFmt": "26,871,351"
+              },
+              "sharesShortPreviousMonthDate": {
+                "raw": 1782777600,
+                "fmt": "2026-06-30"
+              },
+              "dateShortInterest": {
+                "raw": 1785456000,
+                "fmt": "2026-07-31"
+              },
+              "sharesPercentSharesOut": {
+                "raw": 0.0106,
+                "fmt": "1.06%"
+              },
+              "heldPercentInsiders": {
+                "raw": 0.00391,
+                "fmt": "0.39%"
+              },
+              "heldPercentInstitutions": {
+                "raw": 0.75905997,
+                "fmt": "75.91%"
+              },
+              "shortRatio": {
+                "raw": 2.96,
+                "fmt": "2.96"
+              },
+              "shortPercentOfFloat": {
+                "raw": 0.0107,
+                "fmt": "1.07%"
+              },
+              "beta": {
+                "raw": 0.977,
+                "fmt": "0.98"
+              },
+              "impliedSharesOutstanding": {
+                "raw": 2658186195,
+                "fmt": "2.66B",
+                "longFmt": "2,658,186,195"
+              },
+              "morningStarOverallRating": {},
+              "morningStarRiskRating": {},
+              "category": null,
+              "bookValue": {
+                "raw": 133.007,
+                "fmt": "133.01"
+              },
+              "priceToBook": {
+                "raw": 2.686024,
+                "fmt": "2.69"
+              },
+              "annualReportExpenseRatio": {},
+              "ytdReturn": {},
+              "qtdReturn": {},
+              "beta3Year": {},
+              "totalAssets": {},
+              "yield": {},
+              "fundFamily": null,
+              "fundInceptionDate": {},
+              "legalType": null,
+              "threeYearAverageReturn": {},
+              "fiveYearAverageReturn": {},
+              "priceToSalesTrailing12Months": {},
+              "lastFiscalYearEnd": {
+                "raw": 1767139200,
+                "fmt": "2025-12-31"
+              },
+              "nextFiscalYearEnd": {
+                "raw": 1798675200,
+                "fmt": "2026-12-31"
+              },
+              "mostRecentQuarter": {
+                "raw": 1782777600,
+                "fmt": "2026-06-30"
+              },
+              "earningsQuarterlyGrowth": {
+                "raw": 0.412,
+                "fmt": "41.20%"
+              },
+              "revenueQuarterlyGrowth": {},
+              "netIncomeToCommon": {
+                "raw": 63634001920,
+                "fmt": "63.63B",
+                "longFmt": "63,634,001,920"
+              },
+              "trailingEps": {
+                "raw": 22.97,
+                "fmt": "22.97"
+              },
+              "forwardEps": {
+                "raw": 25.00699,
+                "fmt": "25.01"
+              },
+              "pegRatio": {
+                "raw": 1.77,
+                "fmt": "1.77"
+              },
+              "lastSplitFactor": "3:2",
+              "lastSplitDate": {
+                "raw": 960768000,
+                "fmt": "2000-06-12"
+              },
+              "enterpriseToRevenue": {
+                "raw": 4.227,
+                "fmt": "4.23"
+              },
+              "enterpriseToEbitda": {},
+              "52WeekChange": {
+                "raw": 0.2257179,
+                "fmt": "22.57%"
+              },
+              "SandP52WeekChange": {
+                "raw": 0.21001172,
+                "fmt": "21.00%"
+              },
+              "lastDividendValue": {
+                "raw": 1.5,
+                "fmt": "1.50"
+              },
+              "lastDividendDate": {
+                "raw": 1783296000,
+                "fmt": "2026-07-06"
+              },
+              "lastCapGain": {},
+              "annualHoldingsTurnover": {},
+              "latestFundingDate": {},
+              "latestAmountRaised": {},
+              "latestImpliedValuation": {},
+              "latestShareClass": null,
+              "leadInvestor": null,
+              "fundingToDate": {},
+              "totalFundingRounds": {}
+            },
+            "summaryProfile": {
+              "address1": "270 Park Avenue",
+              "city": "New York",
+              "state": "NY",
+              "zip": "10017",
+              "country": "United States",
+              "phone": "212 270 6000",
+              "website": "https://www.jpmorganchase.com",
+              "industry": "Banks - Diversified",
+              "industryKey": "banks-diversified",
+              "industryDisp": "Banks - Diversified",
+              "sector": "Financial Services",
+              "sectorKey": "financial-services",
+              "sectorDisp": "Financial Services",
+              "longBusinessSummary": "JPMorgan Chase & Co. operates as a bank and financial holding company in the United States, rest of North America, Europe, the Middle East, Africa, the Asia Pacific, Latin America, and the Caribbean. It operates in three segments: Consumer & Community Banking, Commercial & Investment Bank, and Asset & Wealth Management. The company offers deposit, investment and lending products, and cash management; mortgage origination and servicing activities; residential mortgages and home equity loans; and credit cards, payment solutions, travel services, merchant offers, lifestyle benefits, auto loans, and leases to consumers and small businesses through bank branches, ATMs, and digital and telephone banking. It also provides investment banking, market-making, financing, custody, and securities products and services; corporate strategy and structure advisory, equity and debt market capital-raising, and loan origination and syndication services; cash and derivative instruments, risk management solutions, prime brokerage, clearing, and research; and fund services, liquidity and trading services, and data solutions products for large corporations, financial institutions, merchants, start-ups, small and midsized companies, local governments, municipalities, nonprofits, and commercial real estate clients. In addition, the company offers multi-asset investment management solutions in equities, fixed income, alternatives, and money market funds to institutional clients and retail investors; retirement products and services, estate planning, lending, deposits, and investment management products to high-net-worth clients; and financial transaction processing. JPMorgan Chase & Co. was founded in 1799 and is headquartered in New York, New York.",
+              "fullTimeEmployees": 320560,
+              "companyOfficers": [],
+              "irWebsite": "http://investor.shareholder.com/jpmorganchase/",
+              "executiveTeam": [],
+              "maxAge": 86400
+            },
+            "price": {
+              "maxAge": 1,
+              "preMarketChangePercent": {
+                "raw": 0.0010354148,
+                "fmt": "0.10%"
+              },
+              "preMarketChange": {
+                "raw": 0.36999512,
+                "fmt": "0.37"
+              },
+              "preMarketTime": 1787221301,
+              "preMarketPrice": {
+                "raw": 357.71,
+                "fmt": "357.71"
+              },
+              "preMarketSource": "FREE_REALTIME",
+              "postMarketChangePercent": {
+                "raw": 0.0019313734,
+                "fmt": "0.19%"
+              },
+              "postMarketChange": {
+                "raw": 0.69000244,
+                "fmt": "0.69"
+              },
+              "postMarketTime": 1787183971,
+              "postMarketPrice": {
+                "raw": 357.95,
+                "fmt": "357.95"
+              },
+              "postMarketSource": "DELAYED",
+              "regularMarketChangePercent": {
+                "raw": -0.016490001,
+                "fmt": "-1.65%"
+              },
+              "regularMarketChange": {
+                "raw": -5.98999,
+                "fmt": "-5.99"
+              },
+              "regularMarketTime": 1787169602,
+              "priceHint": {
+                "raw": 2,
+                "fmt": "2",
+                "longFmt": "2"
+              },
+              "regularMarketPrice": {
+                "raw": 357.26,
+                "fmt": "357.26"
+              },
+              "regularMarketDayHigh": {
+                "raw": 363.01,
+                "fmt": "363.01"
+              },
+              "regularMarketDayLow": {
+                "raw": 355.645,
+                "fmt": "355.64"
+              },
+              "regularMarketVolume": {
+                "raw": 4951748,
+                "fmt": "4.95M",
+                "longFmt": "4,951,748.00"
+              },
+              "averageDailyVolume10Day": {
+                "raw": 5231750,
+                "fmt": "5.23M",
+                "longFmt": "5,231,750"
+              },
+              "averageDailyVolume3Month": {
+                "raw": 8815008,
+                "fmt": "8.82M",
+                "longFmt": "8,815,008"
+              },
+              "regularMarketPreviousClose": {
+                "raw": 363.25,
+                "fmt": "363.25"
+              },
+              "regularMarketSource": "FREE_REALTIME",
+              "regularMarketOpen": {
+                "raw": 363.01,
+                "fmt": "363.01"
+              },
+              "strikePrice": {},
+              "openInterest": {},
+              "fulldayChange": {},
+              "fulldayPrice": {
+                "raw": 357.71,
+                "fmt": "357.71"
+              },
+              "exchange": "NYQ",
+              "exchangeName": "NYSE",
+              "exchangeDataDelayedBy": 0,
+              "marketState": "PRE",
+              "quoteType": "EQUITY",
+              "symbol": "JPM",
+              "underlyingSymbol": null,
+              "shortName": "JP Morgan Chase & Co.",
+              "longName": null,
+              "currency": "USD",
+              "quoteSourceName": "Nasdaq Real Time Price",
+              "currencySymbol": "$",
+              "fromCurrency": null,
+              "toCurrency": null,
+              "lastMarket": null,
+              "volume24Hr": {},
+              "volumeAllCurrencies": {},
+              "circulatingSupply": {},
+              "marketCap": {
+                "raw": 949663629312,
+                "fmt": "949.66B",
+                "longFmt": "949,663,629,312.00"
+              }
+            },
+            "financialData": {
+              "maxAge": 86400,
+              "currentPrice": {
+                "raw": 357.26,
+                "fmt": "357.26"
+              },
+              "targetHighPrice": {
+                "raw": 420,
+                "fmt": "420.00"
+              },
+              "targetLowPrice": {
+                "raw": 305,
+                "fmt": "305.00"
+              },
+              "targetMeanPrice": {
+                "raw": 374.57144,
+                "fmt": "374.57"
+              },
+              "targetMedianPrice": {
+                "raw": 372,
+                "fmt": "372.00"
+              },
+              "recommendationMean": {
+                "raw": 2.125,
+                "fmt": "2.12"
+              },
+              "recommendationKey": "buy",
+              "numberOfAnalystOpinions": {
+                "raw": 21,
+                "fmt": "21",
+                "longFmt": "21"
+              },
+              "totalCash": {
+                "raw": 1526419030016,
+                "fmt": "1.53T",
+                "longFmt": "1,526,419,030,016"
+              },
+              "totalCashPerShare": {
+                "raw": 574.233,
+                "fmt": "574.23"
+              },
+              "ebitda": {},
+              "totalDebt": {
+                "raw": 1343306989568,
+                "fmt": "1.34T",
+                "longFmt": "1,343,306,989,568"
+              },
+              "quickRatio": {},
+              "currentRatio": {},
+              "totalRevenue": {
+                "raw": 186328006656,
+                "fmt": "186.33B",
+                "longFmt": "186,328,006,656"
+              },
+              "debtToEquity": {},
+              "revenuePerShare": {
+                "raw": 68.351,
+                "fmt": "68.35"
+              },
+              "returnOnAssets": {
+                "raw": 0.0136,
+                "fmt": "1.36%"
+              },
+              "returnOnEquity": {
+                "raw": 0.17789,
+                "fmt": "17.79%"
+              },
+              "grossProfits": {
+                "raw": 186328006656,
+                "fmt": "186.33B",
+                "longFmt": "186,328,006,656"
+              },
+              "freeCashflow": {},
+              "operatingCashflow": {
+                "raw": -162533998592,
+                "fmt": "-162.53B",
+                "longFmt": "-162,533,998,592"
+              },
+              "earningsGrowth": {
+                "raw": 0.469,
+                "fmt": "46.90%"
+              },
+              "revenueGrowth": {
+                "raw": 0.304,
+                "fmt": "30.40%"
+              },
+              "grossMargins": {
+                "raw": 0,
+                "fmt": "0.00%"
+              },
+              "ebitdaMargins": {
+                "raw": 0,
+                "fmt": "0.00%"
+              },
+              "operatingMargins": {
+                "raw": 0.50394,
+                "fmt": "50.39%"
+              },
+              "profitMargins": {
+                "raw": 0.34921002,
+                "fmt": "34.92%"
+              },
+              "financialCurrency": "USD"
+            }
+          }
+        ],
+        "error": null
+      }
+    }
+  },
+  "chart": {
+    "status": 200,
+    "headers": {},
+    "body": {
+      "chart": {
+        "result": [
+          {
+            "meta": {
+              "currency": "USD",
+              "symbol": "JPM",
+              "exchangeName": "NYQ",
+              "fullExchangeName": "NYSE",
+              "instrumentType": "EQUITY",
+              "firstTradeDate": 322151400,
+              "regularMarketTime": 1787169602,
+              "hasPrePostMarketData": true,
+              "gmtoffset": -14400,
+              "timezone": "EDT",
+              "exchangeTimezoneName": "America/New_York",
+              "regularMarketPrice": 357.26,
+              "fiftyTwoWeekHigh": 366.5,
+              "fiftyTwoWeekLow": 279.1,
+              "regularMarketDayHigh": 363.01,
+              "regularMarketDayLow": 355.645,
+              "regularMarketVolume": 4951748,
+              "longName": "JPMorgan Chase & Co.",
+              "shortName": "JP Morgan Chase & Co.",
+              "chartPreviousClose": 154.28,
+              "priceHint": 2,
+              "currentTradingPeriod": {
+                "pre": {
+                  "timezone": "EDT",
+                  "start": 1787212800,
+                  "end": 1787232600,
+                  "gmtoffset": -14400
+                },
+                "regular": {
+                  "timezone": "EDT",
+                  "start": 1787232600,
+                  "end": 1787256000,
+                  "gmtoffset": -14400
+                },
+                "post": {
+                  "timezone": "EDT",
+                  "start": 1787256000,
+                  "end": 1787270400,
+                  "gmtoffset": -14400
+                }
+              },
+              "dataGranularity": "1mo",
+              "range": "5y",
+              "validRanges": [
+                "1d",
+                "5d",
+                "1mo",
+                "3mo",
+                "6mo",
+                "1y",
+                "2y",
+                "5y",
+                "10y",
+                "ytd",
+                "max"
+              ]
+            },
+            "timestamp": [
+              1630468800,
+              1633060800,
+              1635739200,
+              1638334800,
+              1641013200,
+              1643691600,
+              1646110800,
+              1648785600,
+              1651377600,
+              1654056000,
+              1656648000,
+              1659326400,
+              1662004800,
+              1664596800,
+              1667275200,
+              1669870800,
+              1672549200,
+              1675227600,
+              1677646800,
+              1680321600,
+              1682913600,
+              1685592000,
+              1688184000,
+              1690862400,
+              1693540800,
+              1696132800,
+              1698811200,
+              1701406800,
+              1704085200,
+              1706763600,
+              1709269200,
+              1711944000,
+              1714536000,
+              1717214400,
+              1719806400,
+              1722484800,
+              1725163200,
+              1727755200,
+              1730433600,
+              1733029200,
+              1735707600,
+              1738386000,
+              1740805200,
+              1743480000,
+              1746072000,
+              1748750400,
+              1751342400,
+              1754020800,
+              1756699200,
+              1759291200,
+              1761969600,
+              1764565200,
+              1767243600,
+              1769922000,
+              1772341200,
+              1775016000,
+              1777608000,
+              1780286400,
+              1782878400,
+              1785556800,
+              1787169602
+            ],
+            "indicators": {
+              "quote": [
+                {
+                  "high": [
+                    169.3000030517578,
+                    172.9600067138672,
+                    172.3300018310547,
+                    163.38999938964844,
+                    169.80999755859375,
+                    159.02999877929688,
+                    143.92999267578125,
+                    137.41000366210938,
+                    133.14999389648438,
+                    132.8699951171875,
+                    116.5,
+                    124.23999786376953,
+                    121.55000305175781,
+                    127.43000030517578,
+                    138.17999267578125,
+                    138.66000366210938,
+                    143.49000549316406,
+                    144.33999633789062,
+                    144.0399932861328,
+                    141.77999877929688,
+                    143.3699951171875,
+                    146,
+                    159.3800048828125,
+                    158,
+                    150.25,
+                    153.11000061035156,
+                    156.1300048828125,
+                    170.69000244140625,
+                    178.3000030517578,
+                    186.42999267578125,
+                    200.72000122070312,
+                    200.94000244140625,
+                    205.8800048828125,
+                    202.60000610351562,
+                    217.55999755859375,
+                    225.47999572753906,
+                    224.10000610351562,
+                    226.75,
+                    254.30999755859375,
+                    250.25,
+                    270.82000732421875,
+                    280.25,
+                    266.32000732421875,
+                    247.25,
+                    269.5199890136719,
+                    292.6499938964844,
+                    301.2900085449219,
+                    302.95001220703125,
+                    318.010009765625,
+                    314.5899963378906,
+                    322.25,
+                    330.8599853515625,
+                    337.25,
+                    326.3999938964844,
+                    302.3900146484375,
+                    320.239990234375,
+                    316.29998779296875,
+                    343.45001220703125,
+                    359.29998779296875,
+                    366.5,
+                    363.010009765625
+                  ],
+                  "close": [
+                    163.69000244140625,
+                    169.88999938964844,
+                    158.8300018310547,
+                    158.35000610351562,
+                    148.60000610351562,
+                    141.8000030517578,
+                    136.32000732421875,
+                    119.36000061035156,
+                    132.22999572753906,
+                    112.61000061035156,
+                    115.36000061035156,
+                    113.7300033569336,
+                    104.5,
+                    125.87999725341797,
+                    138.17999267578125,
+                    134.10000610351562,
+                    139.9600067138672,
+                    143.35000610351562,
+                    130.30999755859375,
+                    138.24000549316406,
+                    135.7100067138672,
+                    145.44000244140625,
+                    157.9600067138672,
+                    146.3300018310547,
+                    145.02000427246094,
+                    139.05999755859375,
+                    156.0800018310547,
+                    170.10000610351562,
+                    174.36000061035156,
+                    186.05999755859375,
+                    200.3000030517578,
+                    191.74000549316406,
+                    202.6300048828125,
+                    202.25999450683594,
+                    212.8000030517578,
+                    224.8000030517578,
+                    210.86000061035156,
+                    221.9199981689453,
+                    249.72000122070312,
+                    239.7100067138672,
+                    267.29998779296875,
+                    264.6499938964844,
+                    245.3000030517578,
+                    244.6199951171875,
+                    264,
+                    289.9100036621094,
+                    296.239990234375,
+                    301.4200134277344,
+                    315.42999267578125,
+                    311.1199951171875,
+                    313.0799865722656,
+                    322.2200012207031,
+                    305.8900146484375,
+                    300.29998779296875,
+                    294.1600036621094,
+                    313.2300109863281,
+                    299.30999755859375,
+                    327.3299865722656,
+                    351.7900085449219,
+                    357.260009765625,
+                    357.260009765625
+                  ],
+                  "volume": [
+                    234791100,
+                    231680800,
+                    203498400,
+                    251966400,
+                    373950200,
+                    288730100,
+                    390796800,
+                    303650400,
+                    313630400,
+                    268201900,
+                    239623100,
+                    258430300,
+                    248558100,
+                    318197200,
+                    227228500,
+                    202046000,
+                    209965200,
+                    169562800,
+                    458474400,
+                    242865000,
+                    235306100,
+                    206562200,
+                    231261000,
+                    169299800,
+                    172239300,
+                    244013000,
+                    162193400,
+                    184769100,
+                    231656800,
+                    154730900,
+                    166255900,
+                    224749100,
+                    195900400,
+                    174847900,
+                    197445800,
+                    172435900,
+                    206487600,
+                    178337400,
+                    188851300,
+                    181266200,
+                    209826800,
+                    156634700,
+                    265181900,
+                    287378000,
+                    165122600,
+                    174361400,
+                    198593200,
+                    148828400,
+                    182562300,
+                    189429800,
+                    150218700,
+                    211615600,
+                    243473900,
+                    203073100,
+                    244150000,
+                    172933500,
+                    171046900,
+                    205963900,
+                    210986200,
+                    72500800,
+                    4951748
+                  ],
+                  "open": [
+                    160.22000122070312,
+                    164,
+                    172.0399932861328,
+                    161,
+                    159.86000061035156,
+                    148.69000244140625,
+                    140.0399932861328,
+                    137.39999389648438,
+                    119.87999725341797,
+                    132.8699951171875,
+                    112.6500015258789,
+                    114.5,
+                    113.29000091552734,
+                    105.62000274658203,
+                    126.87000274658203,
+                    138.17999267578125,
+                    135.24000549316406,
+                    138.2100067138672,
+                    142.10000610351562,
+                    129.91000366210938,
+                    142.25999450683594,
+                    136.52000427246094,
+                    146.19000244140625,
+                    157.42999267578125,
+                    146.08999633789062,
+                    144.8300018310547,
+                    139.25,
+                    155.82000732421875,
+                    169.08999633789062,
+                    173.63999938964844,
+                    185.6999969482422,
+                    199.99000549316406,
+                    192.27000427246094,
+                    202.30999755859375,
+                    202.83999633789062,
+                    213.1999969482422,
+                    222.3000030517578,
+                    208.89999389648438,
+                    223.55999755859375,
+                    249.5500030517578,
+                    240.9199981689453,
+                    261.8299865722656,
+                    264,
+                    242.6199951171875,
+                    242.83999633789062,
+                    263.0199890136719,
+                    290.8900146484375,
+                    290.3999938964844,
+                    300.260009765625,
+                    313.9700012207031,
+                    311,
+                    312.95001220703125,
+                    322.5,
+                    304.4599914550781,
+                    294.80999755859375,
+                    295.3900146484375,
+                    313.95001220703125,
+                    297.69000244140625,
+                    328.3699951171875,
+                    353.75,
+                    363.010009765625
+                  ],
+                  "low": [
+                    150.49000549316406,
+                    160.05999755859375,
+                    158.2899932861328,
+                    151.83999633789062,
+                    139.57000732421875,
+                    139.77999877929688,
+                    127.2699966430664,
+                    118.9000015258789,
+                    115.0199966430664,
+                    110.93000030517578,
+                    106.05999755859375,
+                    111.0199966430664,
+                    104.4000015258789,
+                    101.27999877929688,
+                    125.91000366210938,
+                    128.41000366210938,
+                    133.5500030517578,
+                    137.44000244140625,
+                    123.11000061035156,
+                    126.22000122070312,
+                    131.80999755859375,
+                    135.4499969482422,
+                    141.44000244140625,
+                    145.4600067138672,
+                    142.64999389648438,
+                    135.19000244140625,
+                    138.47000122070312,
+                    155.82000732421875,
+                    164.3000030517578,
+                    171.42999267578125,
+                    184.27000427246094,
+                    179.1999969482422,
+                    188.4600067138672,
+                    190.8800048828125,
+                    202.10000610351562,
+                    190.89999389648438,
+                    200.61000061035156,
+                    204.33999633789062,
+                    219.1699981689453,
+                    229.52999877929688,
+                    238.74000549316406,
+                    253.35000610351562,
+                    224.22999572753906,
+                    202.16000366210938,
+                    242.1699981689453,
+                    260.30999755859375,
+                    280.30999755859375,
+                    284.239990234375,
+                    291.44000244140625,
+                    290.5400085449219,
+                    292.80999755859375,
+                    298.4599914550781,
+                    296.510009765625,
+                    291.3800048828125,
+                    279.1000061035156,
+                    288.7200012207031,
+                    293.6700134277344,
+                    295.2699890136719,
+                    325.010009765625,
+                    350.8399963378906,
+                    355.6449890136719
+                  ]
+                }
+              ],
+              "adjclose": [
+                {
+                  "adjclose": [
+                    144.4410858154297,
+                    150.81536865234375,
+                    140.99713134765625,
+                    140.57106018066406,
+                    132.7064666748047,
+                    126.63373565673828,
+                    121.7398910522461,
+                    107.3839340209961,
+                    118.96261596679688,
+                    101.31121063232422,
+                    104.70333099365234,
+                    103.2238998413086,
+                    94.8465576171875,
+                    115.27373504638672,
+                    126.53736877441406,
+                    122.8011474609375,
+                    129.11410522460938,
+                    132.2414093017578,
+                    120.21190643310547,
+                    128.5282440185547,
+                    126.17596435546875,
+                    135.222412109375,
+                    147.8714599609375,
+                    136.98423767089844,
+                    135.7579345703125,
+                    131.13909912109375,
+                    147.18963623046875,
+                    160.41107177734375,
+                    165.44235229492188,
+                    176.54393005371094,
+                    190.0556182861328,
+                    182.99468994140625,
+                    193.38800048828125,
+                    193.0348358154297,
+                    204.21946716308594,
+                    215.73561096191406,
+                    202.35772705078125,
+                    214.27685546875,
+                    241.119384765625,
+                    231.45413208007812,
+                    259.4268798828125,
+                    256.8549499511719,
+                    238.07485961914062,
+                    238.87725830078125,
+                    257.8022766113281,
+                    283.10400390625,
+                    290.6790771484375,
+                    295.7618713378906,
+                    309.50885009765625,
+                    306.76397705078125,
+                    308.696533203125,
+                    317.70855712890625,
+                    302.9676818847656,
+                    297.4310607910156,
+                    291.3497314453125,
+                    311.82525634765625,
+                    297.9676818847656,
+                    325.86199951171875,
+                    351.7900085449219,
+                    357.260009765625,
+                    357.260009765625
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "error": null
+      }
+    }
+  },
+  "timeseries:annual": {
+    "status": 200,
+    "headers": {},
+    "body": {
+      "timeseries": {
+        "result": [
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualCashDividendsPaid"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualCashDividendsPaid": [
+              {
+                "dataId": 26007,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": -13562000000,
+                  "fmt": "-13.56B"
+                }
+              },
+              {
+                "dataId": 26007,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": -13463000000,
+                  "fmt": "-13.46B"
+                }
+              },
+              {
+                "dataId": 26007,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": -14783000000,
+                  "fmt": "-14.78B"
+                }
+              },
+              {
+                "dataId": 26007,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": -16625000000,
+                  "fmt": "-16.62B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualPretaxIncome"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualPretaxIncome": [
+              {
+                "dataId": 20136,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 46166000000,
+                  "fmt": "46.17B"
+                }
+              },
+              {
+                "dataId": 20136,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 61612000000,
+                  "fmt": "61.61B"
+                }
+              },
+              {
+                "dataId": 20136,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 75081000000,
+                  "fmt": "75.08B"
+                }
+              },
+              {
+                "dataId": 20136,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 72595000000,
+                  "fmt": "72.59B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualTotalEquityGrossMinorityInterest"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualTotalEquityGrossMinorityInterest": [
+              {
+                "dataId": 23261,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 292332000000,
+                  "fmt": "292.33B"
+                }
+              },
+              {
+                "dataId": 23261,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 327878000000,
+                  "fmt": "327.88B"
+                }
+              },
+              {
+                "dataId": 23261,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 344758000000,
+                  "fmt": "344.76B"
+                }
+              },
+              {
+                "dataId": 23261,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 362438000000,
+                  "fmt": "362.44B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualLongTermDebt"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualLongTermDebt": [
+              {
+                "dataId": 23123,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 295865000000,
+                  "fmt": "295.87B"
+                }
+              },
+              {
+                "dataId": 23123,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 391825000000,
+                  "fmt": "391.82B"
+                }
+              },
+              {
+                "dataId": 23123,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 401418000000,
+                  "fmt": "401.42B"
+                }
+              },
+              {
+                "dataId": 23123,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 433970000000,
+                  "fmt": "433.97B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualCommonStockDividendPaid"
+              ]
+            }
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualRepurchaseOfCapitalStock"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualRepurchaseOfCapitalStock": [
+              {
+                "dataId": 26184,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": -10596000000,
+                  "fmt": "-10.60B"
+                }
+              },
+              {
+                "dataId": 26184,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": -9824000000,
+                  "fmt": "-9.82B"
+                }
+              },
+              {
+                "dataId": 26184,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": -28680000000,
+                  "fmt": "-28.68B"
+                }
+              },
+              {
+                "dataId": 26184,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": -34591000000,
+                  "fmt": "-34.59B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualTotalLiabilitiesNetMinorityInterest"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualTotalLiabilitiesNetMinorityInterest": [
+              {
+                "dataId": 23259,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 3373411000000,
+                  "fmt": "3.37T"
+                }
+              },
+              {
+                "dataId": 23259,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 3547515000000,
+                  "fmt": "3.55T"
+                }
+              },
+              {
+                "dataId": 23259,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 3658056000000,
+                  "fmt": "3.66T"
+                }
+              },
+              {
+                "dataId": 23259,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 4062462000000,
+                  "fmt": "4.06T"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualTaxProvision"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualTaxProvision": [
+              {
+                "dataId": 20145,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 8490000000,
+                  "fmt": "8.49B"
+                }
+              },
+              {
+                "dataId": 20145,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 12060000000,
+                  "fmt": "12.06B"
+                }
+              },
+              {
+                "dataId": 20145,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 16610000000,
+                  "fmt": "16.61B"
+                }
+              },
+              {
+                "dataId": 20145,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 15547000000,
+                  "fmt": "15.55B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualTotalAssets"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualTotalAssets": [
+              {
+                "dataId": 23220,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 3665743000000,
+                  "fmt": "3.67T"
+                },
+                "businessSegmentData": [
+                  {
+                    "dataValue": 232037000000,
+                    "segmentType": "Business",
+                    "segmentName": "Asset & Wealth Management",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 1591402000000,
+                    "segmentType": "Business",
+                    "segmentName": "Commercial & Investment Bank",
+                    "isPrimarySegment": 1
+                  },
+                  {
+                    "dataValue": 257106000000,
+                    "segmentType": "Business",
+                    "segmentName": "Commercial Banking",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 514085000000,
+                    "segmentType": "Business",
+                    "segmentName": "Consumer & Community Banking",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 1328219000000,
+                    "segmentType": "Business",
+                    "segmentName": "Corporate",
+                    "isPrimarySegment": 0
+                  }
+                ],
+                "geographicSegmentData": [
+                  {
+                    "dataValue": 281479000000,
+                    "segmentType": "Geographic",
+                    "segmentName": "Asia-Pacific",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 201430000000,
+                    "segmentType": "Geographic",
+                    "segmentName": "Europe/Middle East/Africa",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 78673000000,
+                    "segmentType": "Geographic",
+                    "segmentName": "Latin America/Caribbean",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 2747161000000,
+                    "segmentType": "Geographic",
+                    "segmentName": "North America",
+                    "isPrimarySegment": 1
+                  },
+                  {
+                    "dataValue": 357000000000,
+                    "segmentType": "Geographic",
+                    "segmentName": "United Kingdom",
+                    "isPrimarySegment": 0
+                  }
+                ]
+              },
+              {
+                "dataId": 23220,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 3875393000000,
+                  "fmt": "3.88T"
+                },
+                "businessSegmentData": [
+                  {
+                    "dataValue": 245512000000,
+                    "segmentType": "Business",
+                    "segmentName": "Asset & Wealth Management",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 1638493000000,
+                    "segmentType": "Business",
+                    "segmentName": "Commercial & Investment Bank",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 300325000000,
+                    "segmentType": "Business",
+                    "segmentName": "Commercial Banking",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 642951000000,
+                    "segmentType": "Business",
+                    "segmentName": "Consumer & Community Banking",
+                    "isPrimarySegment": 1
+                  },
+                  {
+                    "dataValue": 1348437000000,
+                    "segmentType": "Business",
+                    "segmentName": "Corporate",
+                    "isPrimarySegment": 0
+                  }
+                ],
+                "geographicSegmentData": [
+                  {
+                    "dataValue": 251588000000,
+                    "segmentType": "Geographic",
+                    "segmentName": "Asia-Pacific",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 177335000000,
+                    "segmentType": "Geographic",
+                    "segmentName": "Europe/Middle East/Africa",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 83003000000,
+                    "segmentType": "Geographic",
+                    "segmentName": "Latin America/Caribbean",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 3011467000000,
+                    "segmentType": "Geographic",
+                    "segmentName": "North America",
+                    "isPrimarySegment": 1
+                  },
+                  {
+                    "dataValue": 352000000000,
+                    "segmentType": "Geographic",
+                    "segmentName": "United Kingdom",
+                    "isPrimarySegment": 0
+                  }
+                ]
+              },
+              {
+                "dataId": 23220,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 4002814000000,
+                  "fmt": "4.00T"
+                },
+                "businessSegmentData": [
+                  {
+                    "dataValue": 255385000000,
+                    "segmentType": "Business",
+                    "segmentName": "Asset & Wealth Management",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 1773194000000,
+                    "segmentType": "Business",
+                    "segmentName": "Commercial & Investment Bank",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 650268000000,
+                    "segmentType": "Business",
+                    "segmentName": "Consumer & Community Banking",
+                    "isPrimarySegment": 1
+                  },
+                  {
+                    "dataValue": 1323967000000,
+                    "segmentType": "Business",
+                    "segmentName": "Corporate",
+                    "isPrimarySegment": 0
+                  }
+                ],
+                "geographicSegmentData": [
+                  {
+                    "dataValue": 296430000000,
+                    "segmentType": "Geographic",
+                    "segmentName": "Asia-Pacific",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 183407000000,
+                    "segmentType": "Geographic",
+                    "segmentName": "Europe/Middle East/Africa",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 73631000000,
+                    "segmentType": "Geographic",
+                    "segmentName": "Latin America/Caribbean",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 3080346000000,
+                    "segmentType": "Geographic",
+                    "segmentName": "North America",
+                    "isPrimarySegment": 1
+                  },
+                  {
+                    "dataValue": 369000000000,
+                    "segmentType": "Geographic",
+                    "segmentName": "United Kingdom",
+                    "isPrimarySegment": 0
+                  }
+                ]
+              },
+              {
+                "dataId": 23220,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 4424900000000,
+                  "fmt": "4.42T"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualNetIncome"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualNetIncome": [
+              {
+                "dataId": 20091,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 37676000000,
+                  "fmt": "37.68B"
+                }
+              },
+              {
+                "dataId": 20091,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 49552000000,
+                  "fmt": "49.55B"
+                }
+              },
+              {
+                "dataId": 20091,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 58471000000,
+                  "fmt": "58.47B"
+                }
+              },
+              {
+                "dataId": 20091,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 57048000000,
+                  "fmt": "57.05B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualCurrentDebt"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualCurrentDebt": [
+              {
+                "dataId": 23045,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 44027000000,
+                  "fmt": "44.03B"
+                }
+              },
+              {
+                "dataId": 23045,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 44712000000,
+                  "fmt": "44.71B"
+                }
+              },
+              {
+                "dataId": 23045,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 52893000000,
+                  "fmt": "52.89B"
+                }
+              },
+              {
+                "dataId": 23045,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 66012000000,
+                  "fmt": "66.01B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualFreeCashFlow"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualFreeCashFlow": [
+              {
+                "dataId": 26185,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 107119000000,
+                  "fmt": "107.12B"
+                }
+              },
+              {
+                "dataId": 26185,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 12974000000,
+                  "fmt": "12.97B"
+                }
+              },
+              {
+                "dataId": 26185,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": -42012000000,
+                  "fmt": "-42.01B"
+                }
+              },
+              {
+                "dataId": 26185,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": -147782000000,
+                  "fmt": "-147.78B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualDilutedEPS"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualDilutedEPS": [
+              {
+                "dataId": 29009,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 12.09,
+                  "fmt": "12.09"
+                }
+              },
+              {
+                "dataId": 29009,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 16.23,
+                  "fmt": "16.23"
+                }
+              },
+              {
+                "dataId": 29009,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 19.75,
+                  "fmt": "19.75"
+                }
+              },
+              {
+                "dataId": 29009,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 20.02,
+                  "fmt": "20.02"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualStockholdersEquity"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualStockholdersEquity": [
+              {
+                "dataId": 23215,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 292332000000,
+                  "fmt": "292.33B"
+                }
+              },
+              {
+                "dataId": 23215,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 327878000000,
+                  "fmt": "327.88B"
+                }
+              },
+              {
+                "dataId": 23215,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 344758000000,
+                  "fmt": "344.76B"
+                }
+              },
+              {
+                "dataId": 23215,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 362438000000,
+                  "fmt": "362.44B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualInterestExpense"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualInterestExpense": [
+              {
+                "dataId": 20057,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 26097000000,
+                  "fmt": "26.10B"
+                }
+              },
+              {
+                "dataId": 20057,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 81321000000,
+                  "fmt": "81.32B"
+                }
+              },
+              {
+                "dataId": 20057,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 101350000000,
+                  "fmt": "101.35B"
+                }
+              },
+              {
+                "dataId": 20057,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 97898000000,
+                  "fmt": "97.90B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualOtherShortTermInvestments"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualOtherShortTermInvestments": [
+              {
+                "dataId": 23163,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 196699000000,
+                  "fmt": "196.70B"
+                }
+              },
+              {
+                "dataId": 23163,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 192485000000,
+                  "fmt": "192.49B"
+                }
+              },
+              {
+                "dataId": 23163,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 396690000000,
+                  "fmt": "396.69B"
+                }
+              },
+              {
+                "dataId": 23163,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 499463000000,
+                  "fmt": "499.46B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualNetIncomeCommonStockholders"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualNetIncomeCommonStockholders": [
+              {
+                "dataId": 20093,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 35892000000,
+                  "fmt": "35.89B"
+                },
+                "businessSegmentData": [
+                  {
+                    "dataValue": 4365000000,
+                    "segmentType": "Business",
+                    "segmentName": "Asset & Wealth Management",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 19138000000,
+                    "segmentType": "Business",
+                    "segmentName": "Commercial & Investment Bank",
+                    "isPrimarySegment": 1
+                  },
+                  {
+                    "dataValue": 4213000000,
+                    "segmentType": "Business",
+                    "segmentName": "Commercial Banking",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 14916000000,
+                    "segmentType": "Business",
+                    "segmentName": "Consumer & Community Banking",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": -743000000,
+                    "segmentType": "Business",
+                    "segmentName": "Corporate",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 0,
+                    "segmentType": "Business",
+                    "segmentName": "Reconciling Items",
+                    "isPrimarySegment": 0
+                  }
+                ],
+                "geographicSegmentData": [
+                  {
+                    "dataValue": 2119000000,
+                    "segmentType": "Geographic",
+                    "segmentName": "Asia-Pacific",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 5158000000,
+                    "segmentType": "Geographic",
+                    "segmentName": "Europe/Middle East/Africa",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 1156000000,
+                    "segmentType": "Geographic",
+                    "segmentName": "Latin America/Caribbean",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 29243000000,
+                    "segmentType": "Geographic",
+                    "segmentName": "North America",
+                    "isPrimarySegment": 1
+                  }
+                ]
+              },
+              {
+                "dataId": 20093,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 47760000000,
+                  "fmt": "47.76B"
+                },
+                "businessSegmentData": [
+                  {
+                    "dataValue": 5227000000,
+                    "segmentType": "Business",
+                    "segmentName": "Asset & Wealth Management",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 20272000000,
+                    "segmentType": "Business",
+                    "segmentName": "Commercial & Investment Bank",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 6143000000,
+                    "segmentType": "Business",
+                    "segmentName": "Commercial Banking",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 21232000000,
+                    "segmentType": "Business",
+                    "segmentName": "Consumer & Community Banking",
+                    "isPrimarySegment": 1
+                  },
+                  {
+                    "dataValue": 2821000000,
+                    "segmentType": "Business",
+                    "segmentName": "Corporate",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 0,
+                    "segmentType": "Business",
+                    "segmentName": "Reconciling Items",
+                    "isPrimarySegment": 0
+                  }
+                ],
+                "geographicSegmentData": [
+                  {
+                    "dataValue": 2709000000,
+                    "segmentType": "Geographic",
+                    "segmentName": "Asia-Pacific",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 6402000000,
+                    "segmentType": "Geographic",
+                    "segmentName": "Europe/Middle East/Africa",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 994000000,
+                    "segmentType": "Geographic",
+                    "segmentName": "Latin America/Caribbean",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 39447000000,
+                    "segmentType": "Geographic",
+                    "segmentName": "North America",
+                    "isPrimarySegment": 1
+                  }
+                ]
+              },
+              {
+                "dataId": 20093,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 56868000000,
+                  "fmt": "56.87B"
+                },
+                "businessSegmentData": [
+                  {
+                    "dataValue": 5421000000,
+                    "segmentType": "Business",
+                    "segmentName": "Asset & Wealth Management",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 24846000000,
+                    "segmentType": "Business",
+                    "segmentName": "Commercial & Investment Bank",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 17603000000,
+                    "segmentType": "Business",
+                    "segmentName": "Consumer & Community Banking",
+                    "isPrimarySegment": 1
+                  },
+                  {
+                    "dataValue": 10601000000,
+                    "segmentType": "Business",
+                    "segmentName": "Corporate",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 0,
+                    "segmentType": "Business",
+                    "segmentName": "Reconciling Items",
+                    "isPrimarySegment": 0
+                  }
+                ],
+                "geographicSegmentData": [
+                  {
+                    "dataValue": 3615000000,
+                    "segmentType": "Geographic",
+                    "segmentName": "Asia-Pacific",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 6713000000,
+                    "segmentType": "Geographic",
+                    "segmentName": "Europe/Middle East/Africa",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 1512000000,
+                    "segmentType": "Geographic",
+                    "segmentName": "Latin America/Caribbean",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 46631000000,
+                    "segmentType": "Geographic",
+                    "segmentName": "North America",
+                    "isPrimarySegment": 1
+                  }
+                ]
+              },
+              {
+                "dataId": 20093,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 55681000000,
+                  "fmt": "55.68B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualAvailableForSaleSecurities"
+              ]
+            }
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualBasicAverageShares"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualBasicAverageShares": [
+              {
+                "dataId": 29010,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 2965800000,
+                  "fmt": "2.97B"
+                }
+              },
+              {
+                "dataId": 29010,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 2938600000,
+                  "fmt": "2.94B"
+                }
+              },
+              {
+                "dataId": 29010,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 2873900000,
+                  "fmt": "2.87B"
+                }
+              },
+              {
+                "dataId": 29010,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 2776500000,
+                  "fmt": "2.78B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualCashAndCashEquivalents"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualCashAndCashEquivalents": [
+              {
+                "dataId": 23030,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 567234000000,
+                  "fmt": "567.23B"
+                }
+              },
+              {
+                "dataId": 23030,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 624151000000,
+                  "fmt": "624.15B"
+                }
+              },
+              {
+                "dataId": 23030,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 469317000000,
+                  "fmt": "469.32B"
+                }
+              },
+              {
+                "dataId": 23030,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 343338000000,
+                  "fmt": "343.34B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualTotalRevenue"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualTotalRevenue": [
+              {
+                "dataId": 20100,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 127727000000,
+                  "fmt": "127.73B"
+                }
+              },
+              {
+                "dataId": 20100,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 154952000000,
+                  "fmt": "154.95B"
+                }
+              },
+              {
+                "dataId": 20100,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 169439000000,
+                  "fmt": "169.44B"
+                }
+              },
+              {
+                "dataId": 20100,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 181847000000,
+                  "fmt": "181.85B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualOperatingCashFlow"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualOperatingCashFlow": [
+              {
+                "dataId": 26014,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 107119000000,
+                  "fmt": "107.12B"
+                }
+              },
+              {
+                "dataId": 26014,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 12974000000,
+                  "fmt": "12.97B"
+                }
+              },
+              {
+                "dataId": 26014,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": -42012000000,
+                  "fmt": "-42.01B"
+                }
+              },
+              {
+                "dataId": 26014,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": -147782000000,
+                  "fmt": "-147.78B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualTotalDebt"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualTotalDebt": [
+              {
+                "dataId": 23386,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 339892000000,
+                  "fmt": "339.89B"
+                }
+              },
+              {
+                "dataId": 23386,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 436537000000,
+                  "fmt": "436.54B"
+                }
+              },
+              {
+                "dataId": 23386,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 454311000000,
+                  "fmt": "454.31B"
+                }
+              },
+              {
+                "dataId": 23386,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 499982000000,
+                  "fmt": "499.98B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualRetainedEarnings"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualRetainedEarnings": [
+              {
+                "dataId": 23204,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 296456000000,
+                  "fmt": "296.46B"
+                }
+              },
+              {
+                "dataId": 23204,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 332901000000,
+                  "fmt": "332.90B"
+                }
+              },
+              {
+                "dataId": 23204,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 376166000000,
+                  "fmt": "376.17B"
+                }
+              },
+              {
+                "dataId": 23204,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 416055000000,
+                  "fmt": "416.06B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualDilutedAverageShares"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualDilutedAverageShares": [
+              {
+                "dataId": 29011,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 2970000000,
+                  "fmt": "2.97B"
+                }
+              },
+              {
+                "dataId": 29011,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 2943100000,
+                  "fmt": "2.94B"
+                }
+              },
+              {
+                "dataId": 29011,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 2879000000,
+                  "fmt": "2.88B"
+                }
+              },
+              {
+                "dataId": 29011,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 2781500000,
+                  "fmt": "2.78B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualEBITDA"
+              ]
+            }
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualEBIT"
+              ]
+            }
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualGrossProfit"
+              ]
+            }
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualOperatingIncome"
+              ]
+            }
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualCurrentAssets"
+              ]
+            }
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualInterestExpenseNonOperating"
+              ]
+            }
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualCapitalExpenditure"
+              ]
+            }
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualNormalizedEBITDA"
+              ]
+            }
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualCurrentLiabilities"
+              ]
+            }
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualCostOfRevenue"
+              ]
+            }
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "annualInventory"
+              ]
+            }
+          }
+        ],
+        "error": null
+      }
+    }
+  },
+  "timeseries:quarterly": {
+    "status": 200,
+    "headers": {},
+    "body": {
+      "timeseries": {
+        "result": [
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "quarterlyNetIncome"
+              ]
+            },
+            "timestamp": [
+              1751241600,
+              1759190400,
+              1767139200,
+              1774915200,
+              1782777600
+            ],
+            "quarterlyNetIncome": [
+              {
+                "dataId": 20091,
+                "asOfDate": "2025-06-30",
+                "periodType": "3M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 14987000000,
+                  "fmt": "14.99B"
+                }
+              },
+              {
+                "dataId": 20091,
+                "asOfDate": "2025-09-30",
+                "periodType": "3M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 14393000000,
+                  "fmt": "14.39B"
+                }
+              },
+              {
+                "dataId": 20091,
+                "asOfDate": "2025-12-31",
+                "periodType": "3M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 13025000000,
+                  "fmt": "13.03B"
+                }
+              },
+              {
+                "dataId": 20091,
+                "asOfDate": "2026-03-31",
+                "periodType": "3M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 16494000000,
+                  "fmt": "16.49B"
+                }
+              },
+              {
+                "dataId": 20091,
+                "asOfDate": "2026-06-30",
+                "periodType": "3M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 21155000000,
+                  "fmt": "21.16B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "quarterlyTotalRevenue"
+              ]
+            },
+            "timestamp": [
+              1751241600,
+              1759190400,
+              1767139200,
+              1774915200,
+              1782777600
+            ],
+            "quarterlyTotalRevenue": [
+              {
+                "dataId": 20100,
+                "asOfDate": "2025-06-30",
+                "periodType": "3M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 44882000000,
+                  "fmt": "44.88B"
+                }
+              },
+              {
+                "dataId": 20100,
+                "asOfDate": "2025-09-30",
+                "periodType": "3M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 46430000000,
+                  "fmt": "46.43B"
+                }
+              },
+              {
+                "dataId": 20100,
+                "asOfDate": "2025-12-31",
+                "periodType": "3M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 45796000000,
+                  "fmt": "45.80B"
+                }
+              },
+              {
+                "dataId": 20100,
+                "asOfDate": "2026-03-31",
+                "periodType": "3M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 49833000000,
+                  "fmt": "49.83B"
+                }
+              },
+              {
+                "dataId": 20100,
+                "asOfDate": "2026-06-30",
+                "periodType": "3M",
+                "currencyCode": "USD",
+                "reportedValue": {
+                  "raw": 52852000000,
+                  "fmt": "52.85B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "quarterlyOperatingIncome"
+              ]
+            }
+          },
+          {
+            "meta": {
+              "symbol": [
+                "JPM"
+              ],
+              "type": [
+                "quarterlyGrossProfit"
+              ]
+            }
+          }
+        ],
+        "error": null
+      }
+    }
+  }
+}
