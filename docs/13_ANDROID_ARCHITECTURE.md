@@ -966,22 +966,38 @@ same bytes.
 assemble, score, persist. The model it produces is byte-identical to Node's for
 all three fixtures. Nine instrumented tests.
 
-Live, on a handset:
+Measured on the Galaxy Z Fold 4:
 
 ```
 Live pipeline  (fetch, score and cache, on device)
   fetched    Nokia Corporation Sponsored
-  price      10.075 USD
+  price      10.06 USD
   health     55/100 across 12 checks
-  cold       3000 ms
-  cached       13 ms
+  cold       1733 ms
+  cached       21 ms
 ```
 
-**The cached read is about 230 times faster than the cold one.** That is the
+**The cached read is about eighty times faster than the cold one.** That is the
 fifteen-minute quote tier — the one that had never worked in the PWA, because
 `new Date()` read SQLite's timestamps as local time and inflated every cache age
 by the host's UTC offset. Fixed in step 1 as a portability concern; measured
-here as the difference between an instant screen and a three-second one.
+here as the difference between an instant screen and a two-second one.
+
+### Where the 21 ms goes, and what it is paying for
+
+A cached read never scores anything — `getStockData` returns early from
+`formatCachedStock`. So those 21 ms are almost entirely the cost of *starting*:
+a fresh QuickJS interpreter, and parsing an 83 KB bundle, on every call.
+
+That is the price of the alpha13 workaround. A second evaluate on one instance
+throws, so each call gets its own interpreter and re-parses the whole bundle.
+When the binding is fixed and a warm instance can be held, a cached read should
+fall to something close to the Room query alone.
+
+It is not worth optimising now — 21 ms is imperceptible, and the cold path is
+eighty times larger and entirely network. But it is worth knowing that the
+number is a workaround cost rather than an inherent one, so that nobody later
+concludes the engine is slow.
 
 ### Making the contract awaitable cost nothing
 
