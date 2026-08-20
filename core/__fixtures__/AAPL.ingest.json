@@ -1,0 +1,453 @@
+{
+  "ok": true,
+  "quote": {
+    "beta": 1.086,
+    "changePct": 2.19333,
+    "currency": "USD",
+    "dividendYield": 0.0034,
+    "fiveYearAvgDividendYield": 0.5,
+    "forwardPE": 33.213127,
+    "industry": "Consumer Electronics",
+    "marketCap": 4623874129920,
+    "name": "Apple Inc.",
+    "payoutRatio": 0.1204,
+    "pegRatio": 2.47,
+    "price": 316.83,
+    "priceToBook": 43.04755,
+    "sector": "Technology",
+    "sharesOutstanding": 14594180000,
+    "ticker": "AAPL",
+    "trailingPE": 35.598877,
+    "ttm": {
+      "currentRatio": 1.003,
+      "debtToEquity": 78.445,
+      "earningsGrowth": 0.287,
+      "ebitda": 167959003136,
+      "freeCashFlow": 107721875456,
+      "grossMargin": 0.48653,
+      "operatingCashFlow": 146723995648,
+      "operatingMargin": 0.32623002,
+      "profitMargin": 0.27618998,
+      "quickRatio": 0.812,
+      "returnOnEquity": 1.4875101,
+      "revenue": 466822987776,
+      "revenueGrowth": 0.164,
+      "totalCash": 62399000576,
+      "totalDebt": 84343996416
+    }
+  },
+  "statements": {
+    "annual": [
+      {
+        "asOfDate": "2022-09-30",
+        "buybacks": -89402000000,
+        "capitalExpenditure": 10708000000,
+        "cash": 23646000000,
+        "costOfRevenue": 223546000000,
+        "currentAssets": 135405000000,
+        "currentDebt": 21110000000,
+        "currentLiabilities": 153982000000,
+        "dilutedEPS": 6.11,
+        "dilutedShares": 16325819000,
+        "dividendsPaid": 14841000000,
+        "ebit": 119437000000,
+        "ebitda": 130541000000,
+        "equity": 50672000000,
+        "freeCashFlow": 111443000000,
+        "grossProfit": 170782000000,
+        "interestExpense": 2931000000,
+        "inventory": 4946000000,
+        "longTermDebt": 98959000000,
+        "netIncome": 99803000000,
+        "operatingCashFlow": 122151000000,
+        "operatingIncome": 119437000000,
+        "pretaxIncome": 119103000000,
+        "retainedEarnings": -3068000000,
+        "revenue": 394328000000,
+        "shortTermInvestments": 24658000000,
+        "taxProvision": 19300000000,
+        "totalAssets": 352755000000,
+        "totalDebt": 132480000000,
+        "totalLiabilities": 302083000000
+      },
+      {
+        "asOfDate": "2023-09-30",
+        "buybacks": -77550000000,
+        "capitalExpenditure": 10959000000,
+        "cash": 29965000000,
+        "costOfRevenue": 214137000000,
+        "currentAssets": 143566000000,
+        "currentDebt": 15807000000,
+        "currentLiabilities": 145308000000,
+        "dilutedEPS": 6.13,
+        "dilutedShares": 15812547000,
+        "dividendsPaid": 15025000000,
+        "ebit": 114301000000,
+        "ebitda": 125820000000,
+        "equity": 62146000000,
+        "freeCashFlow": 99584000000,
+        "grossProfit": 169148000000,
+        "interestExpense": 3933000000,
+        "inventory": 6331000000,
+        "longTermDebt": 95281000000,
+        "netIncome": 96995000000,
+        "operatingCashFlow": 110543000000,
+        "operatingIncome": 114301000000,
+        "pretaxIncome": 113736000000,
+        "retainedEarnings": -214000000,
+        "revenue": 383285000000,
+        "shortTermInvestments": 31590000000,
+        "taxProvision": 16741000000,
+        "totalAssets": 352583000000,
+        "totalDebt": 111088000000,
+        "totalLiabilities": 290437000000
+      },
+      {
+        "asOfDate": "2024-09-30",
+        "buybacks": -94949000000,
+        "capitalExpenditure": 9447000000,
+        "cash": 29943000000,
+        "costOfRevenue": 210352000000,
+        "currentAssets": 152987000000,
+        "currentDebt": 20879000000,
+        "currentLiabilities": 176392000000,
+        "dilutedEPS": 6.08,
+        "dilutedShares": 15408095000,
+        "dividendsPaid": 15234000000,
+        "ebit": 123216000000,
+        "ebitda": 134661000000,
+        "equity": 56950000000,
+        "freeCashFlow": 108807000000,
+        "grossProfit": 180683000000,
+        "interestExpense": null,
+        "inventory": 7286000000,
+        "longTermDebt": 85750000000,
+        "netIncome": 93736000000,
+        "operatingCashFlow": 118254000000,
+        "operatingIncome": 123216000000,
+        "pretaxIncome": 123485000000,
+        "retainedEarnings": -19154000000,
+        "revenue": 391035000000,
+        "shortTermInvestments": 35228000000,
+        "taxProvision": 29749000000,
+        "totalAssets": 364980000000,
+        "totalDebt": 106629000000,
+        "totalLiabilities": 308030000000
+      },
+      {
+        "asOfDate": "2025-09-30",
+        "buybacks": -90711000000,
+        "capitalExpenditure": 12715000000,
+        "cash": 35934000000,
+        "costOfRevenue": 220960000000,
+        "currentAssets": 147957000000,
+        "currentDebt": 20329000000,
+        "currentLiabilities": 165631000000,
+        "dilutedEPS": 7.46,
+        "dilutedShares": 15004697000,
+        "dividendsPaid": 15421000000,
+        "ebit": 133050000000,
+        "ebitda": 144748000000,
+        "equity": 73733000000,
+        "freeCashFlow": 98767000000,
+        "grossProfit": 195201000000,
+        "interestExpense": null,
+        "inventory": 5718000000,
+        "longTermDebt": 78328000000,
+        "netIncome": 112010000000,
+        "operatingCashFlow": 111482000000,
+        "operatingIncome": 133050000000,
+        "pretaxIncome": 132729000000,
+        "retainedEarnings": -14264000000,
+        "revenue": 416161000000,
+        "shortTermInvestments": 18763000000,
+        "taxProvision": 20719000000,
+        "totalAssets": 359241000000,
+        "totalDebt": 98657000000,
+        "totalLiabilities": 285508000000
+      }
+    ],
+    "latestReported": {
+      "buybacks": {
+        "asOfDate": "2025-09-30",
+        "value": -90711000000
+      },
+      "capitalExpenditure": {
+        "asOfDate": "2025-09-30",
+        "value": 12715000000
+      },
+      "cash": {
+        "asOfDate": "2025-09-30",
+        "value": 35934000000
+      },
+      "costOfRevenue": {
+        "asOfDate": "2025-09-30",
+        "value": 220960000000
+      },
+      "currentAssets": {
+        "asOfDate": "2025-09-30",
+        "value": 147957000000
+      },
+      "currentDebt": {
+        "asOfDate": "2025-09-30",
+        "value": 20329000000
+      },
+      "currentLiabilities": {
+        "asOfDate": "2025-09-30",
+        "value": 165631000000
+      },
+      "dilutedEPS": {
+        "asOfDate": "2025-09-30",
+        "value": 7.46
+      },
+      "dilutedShares": {
+        "asOfDate": "2025-09-30",
+        "value": 15004697000
+      },
+      "dividendsPaid": {
+        "asOfDate": "2025-09-30",
+        "value": 15421000000
+      },
+      "ebit": {
+        "asOfDate": "2025-09-30",
+        "value": 133050000000
+      },
+      "ebitda": {
+        "asOfDate": "2025-09-30",
+        "value": 144748000000
+      },
+      "equity": {
+        "asOfDate": "2025-09-30",
+        "value": 73733000000
+      },
+      "freeCashFlow": {
+        "asOfDate": "2025-09-30",
+        "value": 98767000000
+      },
+      "grossProfit": {
+        "asOfDate": "2025-09-30",
+        "value": 195201000000
+      },
+      "interestExpense": {
+        "asOfDate": "2023-09-30",
+        "value": 3933000000
+      },
+      "inventory": {
+        "asOfDate": "2025-09-30",
+        "value": 5718000000
+      },
+      "longTermDebt": {
+        "asOfDate": "2025-09-30",
+        "value": 78328000000
+      },
+      "netIncome": {
+        "asOfDate": "2025-09-30",
+        "value": 112010000000
+      },
+      "operatingCashFlow": {
+        "asOfDate": "2025-09-30",
+        "value": 111482000000
+      },
+      "operatingIncome": {
+        "asOfDate": "2025-09-30",
+        "value": 133050000000
+      },
+      "pretaxIncome": {
+        "asOfDate": "2025-09-30",
+        "value": 132729000000
+      },
+      "retainedEarnings": {
+        "asOfDate": "2025-09-30",
+        "value": -14264000000
+      },
+      "revenue": {
+        "asOfDate": "2025-09-30",
+        "value": 416161000000
+      },
+      "shortTermInvestments": {
+        "asOfDate": "2025-09-30",
+        "value": 18763000000
+      },
+      "taxProvision": {
+        "asOfDate": "2025-09-30",
+        "value": 20719000000
+      },
+      "totalAssets": {
+        "asOfDate": "2025-09-30",
+        "value": 359241000000
+      },
+      "totalDebt": {
+        "asOfDate": "2025-09-30",
+        "value": 98657000000
+      },
+      "totalLiabilities": {
+        "asOfDate": "2025-09-30",
+        "value": 285508000000
+      }
+    },
+    "quarterly": [
+      {
+        "asOfDate": "2025-06-30",
+        "buybacks": null,
+        "capitalExpenditure": null,
+        "cash": null,
+        "costOfRevenue": null,
+        "currentAssets": null,
+        "currentDebt": null,
+        "currentLiabilities": null,
+        "dilutedEPS": null,
+        "dilutedShares": null,
+        "dividendsPaid": null,
+        "ebit": null,
+        "ebitda": null,
+        "equity": null,
+        "freeCashFlow": null,
+        "grossProfit": 43718000000,
+        "interestExpense": null,
+        "inventory": null,
+        "longTermDebt": null,
+        "netIncome": 23434000000,
+        "operatingCashFlow": null,
+        "operatingIncome": 28202000000,
+        "pretaxIncome": null,
+        "retainedEarnings": null,
+        "revenue": 94036000000,
+        "shortTermInvestments": null,
+        "taxProvision": null,
+        "totalAssets": null,
+        "totalDebt": null,
+        "totalLiabilities": null
+      },
+      {
+        "asOfDate": "2025-09-30",
+        "buybacks": null,
+        "capitalExpenditure": null,
+        "cash": null,
+        "costOfRevenue": null,
+        "currentAssets": null,
+        "currentDebt": null,
+        "currentLiabilities": null,
+        "dilutedEPS": null,
+        "dilutedShares": null,
+        "dividendsPaid": null,
+        "ebit": null,
+        "ebitda": null,
+        "equity": null,
+        "freeCashFlow": null,
+        "grossProfit": 48341000000,
+        "interestExpense": null,
+        "inventory": null,
+        "longTermDebt": null,
+        "netIncome": 27466000000,
+        "operatingCashFlow": null,
+        "operatingIncome": 32427000000,
+        "pretaxIncome": null,
+        "retainedEarnings": null,
+        "revenue": 102466000000,
+        "shortTermInvestments": null,
+        "taxProvision": null,
+        "totalAssets": null,
+        "totalDebt": null,
+        "totalLiabilities": null
+      },
+      {
+        "asOfDate": "2025-12-31",
+        "buybacks": null,
+        "capitalExpenditure": null,
+        "cash": null,
+        "costOfRevenue": null,
+        "currentAssets": null,
+        "currentDebt": null,
+        "currentLiabilities": null,
+        "dilutedEPS": null,
+        "dilutedShares": null,
+        "dividendsPaid": null,
+        "ebit": null,
+        "ebitda": null,
+        "equity": null,
+        "freeCashFlow": null,
+        "grossProfit": 69231000000,
+        "interestExpense": null,
+        "inventory": null,
+        "longTermDebt": null,
+        "netIncome": 42097000000,
+        "operatingCashFlow": null,
+        "operatingIncome": 50852000000,
+        "pretaxIncome": null,
+        "retainedEarnings": null,
+        "revenue": 143756000000,
+        "shortTermInvestments": null,
+        "taxProvision": null,
+        "totalAssets": null,
+        "totalDebt": null,
+        "totalLiabilities": null
+      },
+      {
+        "asOfDate": "2026-03-31",
+        "buybacks": null,
+        "capitalExpenditure": null,
+        "cash": null,
+        "costOfRevenue": null,
+        "currentAssets": null,
+        "currentDebt": null,
+        "currentLiabilities": null,
+        "dilutedEPS": null,
+        "dilutedShares": null,
+        "dividendsPaid": null,
+        "ebit": null,
+        "ebitda": null,
+        "equity": null,
+        "freeCashFlow": null,
+        "grossProfit": 54781000000,
+        "interestExpense": null,
+        "inventory": null,
+        "longTermDebt": null,
+        "netIncome": 29578000000,
+        "operatingCashFlow": null,
+        "operatingIncome": 35885000000,
+        "pretaxIncome": null,
+        "retainedEarnings": null,
+        "revenue": 111184000000,
+        "shortTermInvestments": null,
+        "taxProvision": null,
+        "totalAssets": null,
+        "totalDebt": null,
+        "totalLiabilities": null
+      },
+      {
+        "asOfDate": "2026-06-30",
+        "buybacks": null,
+        "capitalExpenditure": null,
+        "cash": null,
+        "costOfRevenue": null,
+        "currentAssets": null,
+        "currentDebt": null,
+        "currentLiabilities": null,
+        "dilutedEPS": null,
+        "dilutedShares": null,
+        "dividendsPaid": null,
+        "ebit": null,
+        "ebitda": null,
+        "equity": null,
+        "freeCashFlow": null,
+        "grossProfit": 54770000000,
+        "interestExpense": null,
+        "inventory": null,
+        "longTermDebt": null,
+        "netIncome": 29789000000,
+        "operatingCashFlow": null,
+        "operatingIncome": 35695000000,
+        "pretaxIncome": null,
+        "retainedEarnings": null,
+        "revenue": 109417000000,
+        "shortTermInvestments": null,
+        "taxProvision": null,
+        "totalAssets": null,
+        "totalDebt": null,
+        "totalLiabilities": null
+      }
+    ],
+    "reportingCurrency": "USD"
+  },
+  "ticker": "AAPL"
+}

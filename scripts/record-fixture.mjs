@@ -52,6 +52,7 @@ process.env.DATA_DIR = scratch;
 const { initDatabase, db } = await import('../server/db.js');
 const { getStockData, __observeModel } = await import('../server/finance.js');
 const { __resetSession } = await import('../core/providers/yahoo.js');
+const { ingest } = await import('../core/host/ingest.js');
 
 // The QuickJS spike runs core/scoring.js against this exact input and must
 // return this exact output. Captured here because the model is assembled
@@ -140,6 +141,20 @@ for (const ticker of tickers) {
         JSON.stringify(normaliseModel(scoringPair.output), null, 2)
       );
       scoringPair = null;
+    }
+
+    // What core/host/ingest.js produces from these same bytes. The Android
+    // host runs that module under QuickJS and must match this exactly.
+    __resetSession();
+    const replayForIngest = installReplayFetch(loadFixture(ticker));
+    try {
+      const ingested = await ingest(ticker);
+      fs.writeFileSync(
+        fixturePath(ticker, 'ingest'),
+        JSON.stringify(normaliseModel(ingested), null, 2)
+      );
+    } finally {
+      replayForIngest();
     }
 
     const kb = (n) => `${Math.round(n / 1024)} KB`;

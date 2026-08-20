@@ -18,6 +18,8 @@ import androidx.room.Room
 import com.zandaulion.omaha.data.OmahaDatabase
 import com.zandaulion.omaha.data.PersonalDataStore
 import com.zandaulion.omaha.engine.BackupEngine
+import com.zandaulion.omaha.engine.IngestEngine
+import com.zandaulion.omaha.engine.OkHttpBridge
 import com.zandaulion.omaha.engine.JsBridgeException
 import com.zandaulion.omaha.engine.ScoringEngine
 import kotlinx.coroutines.CoroutineScope
@@ -121,6 +123,7 @@ class SelfTestActivity : Activity() {
         try {
             scoringChecks()
             backupChecks()
+            liveIngestion()
         } catch (err: Throwable) {
             failures++
             line("  FAIL  unexpected: " + err.javaClass.simpleName + ": " + err.message, BAD)
@@ -217,6 +220,54 @@ class SelfTestActivity : Activity() {
         } finally {
             db.close()
         }
+    }
+
+    /**
+     * Fetch a real ticker over the network, on this device.
+     *
+     * The one check here that is not a repeat of CI. Everything above replays
+     * recorded bytes; this proves the shim, the socket and the parser work
+     * together against the live upstream — which is what the PWA needs a server
+     * for and this client does not.
+     *
+     * A failure is reported as SKIP rather than FAIL. No network, or a rate
+     * limit, says nothing about the code, and marking it red would train
+     * whoever runs this to ignore red.
+     */
+    private suspend fun liveIngestion() {
+        heading("Live ingestion  (core/providers/yahoo.js over OkHttp)")
+
+        val engine = IngestEngine.fromSource(
+            asset("core/" + IngestEngine.BUNDLE_PATH),
+            OkHttpBridge()
+        )
+
+        val started = System.nanoTime()
+        val raw = withContext(Dispatchers.IO) { engine.ingest("NOK") }
+        val elapsed = (System.nanoTime() - started) / 1_000_000.0
+
+        val result = Json.parseToJsonElement(raw) as JsonObject
+        val succeeded = (result["ok"] as? JsonPrimitive)?.content == "true"
+
+        if (!succeeded) {
+            val error = result["error"] as? JsonObject
+            val kind = (error?.get("kind") as? JsonPrimitive)?.content ?: "unknown"
+            val message = (error?.get("message") as? JsonPrimitive)?.content ?: ""
+            line("  SKIP  no live data (" + kind + ") " + message.take(60), MUTED)
+            return
+        }
+
+        val quote = result["quote"] as? JsonObject
+        val name = (quote?.get("name") as? JsonPrimitive)?.content ?: "?"
+        val price = (quote?.get("price") as? JsonPrimitive)?.content ?: "?"
+        val currency = (quote?.get("currency") as? JsonPrimitive)?.content ?: ""
+        val periods = ((result["statements"] as? JsonObject)?.get("annual") as? JsonArray)?.size ?: 0
+
+        line("  fetched    " + name)
+        line("  price      " + price + " " + currency)
+        line("  filings    " + periods + " annual periods")
+        line(String.format("  round trip %.0f ms", elapsed))
+        check("a live ticker fetches and parses on device", periods > 0)
     }
 
     // ------------------------------------------------------------ helpers

@@ -24,7 +24,7 @@ class BackupEngine private constructor(private val bridge: JsBridge) {
      * @param exportedAt ISO-8601
      */
     suspend fun build(dataJson: String, exportedAt: String): String =
-        bridge.call("buildBackup", dataJson, quote(exportedAt))
+        bridge.call("buildBackup", dataJson, jsonString(exportedAt))
 
     /**
      * Merge an imported file against what is already here.
@@ -55,17 +55,5 @@ class BackupEngine private constructor(private val bridge: JsBridge) {
             return fromSource(bundle.readText(), dispatcher)
         }
 
-        /**
-         * The one bare string this bridge passes is an ISO-8601 timestamp,
-         * which by construction contains nothing JSON needs escaped. Checked
-         * rather than assumed, and checked rather than escaped: a hand-rolled
-         * JSON escaper is a liability out of all proportion to one timestamp.
-         */
-        private fun quote(value: String): String {
-            require(value.none { it == '"' || it == '\\' || it < ' ' }) {
-                "Expected a plain timestamp with no JSON metacharacters, got: $value"
-            }
-            return "\"" + value + "\""
-        }
     }
 }
