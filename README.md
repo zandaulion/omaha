@@ -181,6 +181,7 @@ pocket-omaha/
 │   ├── manifest.webmanifest   # PWA web manifest
 │   ├── sw.js                  # Offline caching and push listener
 │   └── icons/                 # High-res PWA icons and SVG assets
+├── BACKLOG.md                 # Deferred work with pick-up-cold context
 ├── admin.sh                   # Administration CLI tool
 ├── LICENSE                    # GNU General Public License v3.0 (GPL-3.0)
 └── package.json               # Node.js project manifest
