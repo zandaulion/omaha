@@ -106,10 +106,25 @@ regenerate rather than committing a snapshot that will drift.
 npm test
 ```
 
-32 assertions in `server/scoring.test.js`, each one corresponding to a defect
-that shipped in an earlier build of the scoring engine. They are the reason the
-engine can be changed with any confidence — every one of these produced a
-plausible, wrong number that looked correct on screen.
+84 assertions. The 48 in `core/scoring.test.js` each correspond to a defect that
+shipped in an earlier build of the scoring engine, and they are the reason the
+engine can be changed with any confidence — every one of them produced a
+plausible, wrong number that looked correct on screen. The rest cover ingestion
+failure handling (`core/providers/yahoo.test.js`), timestamp parsing
+(`core/time.test.js`), the alert rules and the Gemini payload.
+
+`test/golden.test.js` runs the whole pipeline — raw upstream bytes to scored
+model — against recorded responses in `core/__fixtures__/`, for a bank, a
+depositary receipt with a currency split, and an industrial on a September year
+end. Re-record with:
+
+```bash
+node scripts/record-fixture.mjs NOK AAPL JPM
+```
+
+Those fixtures are real captured responses, not hand-written. A hand-made
+fixture encodes what we believe the upstream returns, and the defects worth
+catching are the ones where that belief is wrong.
 
 ---
 
@@ -177,18 +192,31 @@ Manage device invites and authorizations from the terminal:
 
 ```
 pocket-omaha/
-├── docs/                      # 12 detailed architecture and product specifications
-├── scripts/
-│   └── dump-prompt.mjs        # Renders the exact Gemini prompt as Markdown
-├── server/
-│   ├── index.js               # Express API and static server
-│   ├── db.js                  # SQLite database engine (node:sqlite)
+├── core/                      # Shared engine — pure JS, no I/O, no environment
 │   ├── scoring.js             # Scoring engine (Altman Z, Piotroski, ROIC, WACC, DCF)
 │   ├── scoring.test.js        # Regression suite — one test per historical defect
-│   ├── yahoo.js               # Statement ingestion; returns null for absent fields
+│   ├── errors.js              # Typed ingestion failures (rate limit vs dead ticker)
+│   ├── time.js                # Timestamp parsing that does not vary by JS engine
+│   ├── providers/
+│   │   ├── index.js           # Market-data seam — getStatements, getQuote, …
+│   │   └── yahoo.js           # Statement ingestion; returns null for absent fields
+│   ├── analysis/prompt.js     # Gemini payload, prompt and response schema
+│   ├── alerts/triggers.js     # Trigger rules — what counts as a real change
+│   └── __fixtures__/          # Recorded upstream responses for the golden tests
+├── docs/                      # Architecture and product specifications
+├── scripts/
+│   ├── dump-prompt.mjs        # Renders the exact Gemini prompt as Markdown
+│   └── record-fixture.mjs     # Captures live upstream responses as fixtures
+├── test/
+│   └── golden.test.js         # Whole pipeline, replayed offline from fixtures
+├── tools/
+│   └── fixture-http.js        # Record/replay classifier shared by both
+├── server/                    # PWA host — everything core/ deliberately is not
+│   ├── index.js               # Express API and static server
+│   ├── db.js                  # SQLite database engine (node:sqlite)
 │   ├── finance.js             # Model assembly, cache tiers, sector and P/E context
-│   ├── alerts.js              # Trigger rules, delta engine, sweep and digest worker
-│   ├── gemini.js              # AI analysis payload and prompt
+│   ├── alerts.js              # Sweep and digest worker, delivery, snapshots
+│   ├── gemini.js              # Gemini transport and summary cache
 │   ├── auth.js                # Invites, device binding, redemption throttle
 │   └── push.js                # Web Push VAPID notification service
 ├── web/

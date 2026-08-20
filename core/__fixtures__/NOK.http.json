@@ -1,0 +1,3970 @@
+{
+  "cookie": {
+    "status": 404,
+    "headers": {
+      "set-cookie": "RECORDED=1"
+    },
+    "body": "<!DOCTYPE html>\n<html lang=\"en-us\">\n  <head>\n    <meta http-equiv=\"content-type\" content=\"text/html; charset=UTF-8\">\n    <meta charset=\"utf-8\">\n    <title>Yahoo</title>\n    <meta name=\"viewport\" content=\"width=device-width,initial-scale=1,minimal-ui\">\n    <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge,chrome=1\">\n    <style>\n      html {\n          height: 100%;\n      }\n      body {\n          background: #fafafc url(https://s.yimg.com/nn/img/sad-panda-201402200631.png) 50% 50%;\n          background-size: cover;\n          height: 100%;\n          text-align: center;\n          font: 300 18px \"helvetica neue\", helvetica, verdana, tahoma, arial, sans-serif;\n          margin: 0;\n      }\n      table {\n          height: 100%;\n          width: 100%;\n          table-layout: fixed;\n          border-collapse: collapse;\n          border-spacing: 0;\n          border: none;\n      }\n      h1 {\n          font-size: 42px;\n          font-weight: 400;\n          color: #400090;\n      }\n      p {\n          color: #1A1A1A;\n      }\n      #message-1 {\n          font-weight: bold;\n          margin: 0;\n      }\n      #message-2 {\n          display: inline-block;\n          *display: inline;\n          zoom: 1;\n          max-width: 17em;\n          _width: 17em;\n      }\n      </style>\n      <script>\n      !function(){if(window==window.top){var o=window.location.host;o.endsWith(\".yahoo.com\")&&window.location.replace(\"https://www.yahoo.com/\"),o.endsWith(\".aol.com\")&&window.location.replace(\"https://www.aol.com/\")}}();\n      </script>\n  </head>\n  <body>\n  <!-- status code : 404 -->\n  <!-- Not Found on Accelerator -->\n  <!-- host machine: e5.ycpi.deb.yahoo.com -->\n  <!-- timestamp: 1787221450.181 -->\n  <!-- url: https://fc.yahoo.com/-->\n  <script type=\"text/javascript\">\n    function buildUrl(url, parameters){\n      var qs = [];\n      for(var key in parameters) {\n        var value = parameters[key];\n        qs.push(encodeURIComponent(key) + \"=\" + encodeURIComponent(value));\n      }\n      url = url + \"?\" + qs.join('&');\n      return url;\n    }\n\n    function generateBRBMarkup(site) {\n      params.source = 'brb';\n      generateBeaconMarkup(params);\n      var englishHeader = 'Will be right back...';\n      var englishMessage1 = 'Thank you for your patience.';\n      var englishMessage2 = 'Our engineers are working quickly to resolve the issue.';\n      var defaultLogoStyle = '';\n      var siteDataMap = {\n        'default': {\n          logo: 'https://s.yimg.com/rz/p/yahoo_frontpage_en-US_s_f_p_205x58_frontpage.png',\n          logoAlt: 'Yahoo Logo',\n          logoStyle: defaultLogoStyle,\n          header: englishHeader,\n          message1: englishMessage1,\n          message2: englishMessage2\n        }\n      };\n\n      var siteDetails = siteDataMap['default'];\n\n      document.write('<table><tbody><tr><td>');\n      document.write('<div id=\"content\">');\n      document.write('<img src=\"' + siteDetails['logo'] + '\" alt=\"' + siteDetails['logoAlt'] + '\" style=\"' + siteDetails['logoStyle'] + '\">');\n      document.write('<h1 style=\"margin-top:20px;\">' + siteDetails['header'] + '</h1>');\n      document.write('<p id=\"message-1\">' + siteDetails['message1'] + '</p>');\n      document.write('<p id=\"message-2\">' + siteDetails['message2'] + '</p>');\n      document.write('</div>');\n      document.write('</td></tr></tbody></table>');\n    }\n\n    function generateBeaconMarkup(params) {\n        document.write('<img src=\"' + buildUrl('//geo.yahoo.com/b', params) + '\" style=\"display:none;\" width=\"0px\" height=\"0px\"/>');\n        var beacon = new Image();\n        beacon.src = buildUrl('//bcn.fp.yahoo.com/p', params);\n    }\n\n    var hostname = window.location.hostname;\n    var device = 'desktop';\n    var ynet = ('-' === '1');\n    var time = new Date().getTime();\n    var params = {\n        s: '1197757129',\n        t: time,\n        err_url: document.URL,\n        err: '404',\n        test: '-',\n        ats_host: 'e5.ycpi.deb.yahoo.com',\n        rid: '-',\n        message: 'Not Found on Accelerator'\n    };\n\n    if(ynet) {\n        document.write('<div style=\"height: 5px; background-color: red;\"></div>');\n    }\n    generateBRBMarkup(hostname, params);\n\n  </script>\n  <noscript>\n  <table>\n    <tbody>\n      <tr>\n        <td>\n          <div id=\"englishContent\">\n            <h1 style=\"margin-top:20px;\">Will be right back...</h1>\n            <p id=\"message-1\">Thank you for your patience.</p>\n            <p id=\"message-2\">Our engineers are working quickly to resolve the issue.</p>\n          </div>\n        </td>\n      </tr>\n    </tbody>\n  </table>\n  </noscript>\n  </body>\n</html>\n"
+  },
+  "crumb": {
+    "status": 200,
+    "headers": {},
+    "body": "oNwRL7lWAE3"
+  },
+  "quoteSummary": {
+    "status": 200,
+    "headers": {},
+    "body": {
+      "quoteSummary": {
+        "result": [
+          {
+            "summaryDetail": {
+              "maxAge": 1,
+              "priceHint": {
+                "raw": 2,
+                "fmt": "2",
+                "longFmt": "2"
+              },
+              "previousClose": {
+                "raw": 10.39,
+                "fmt": "10.39"
+              },
+              "open": {
+                "raw": 10.71,
+                "fmt": "10.71"
+              },
+              "dayLow": {
+                "raw": 10.09,
+                "fmt": "10.09"
+              },
+              "dayHigh": {
+                "raw": 10.74,
+                "fmt": "10.74"
+              },
+              "regularMarketPreviousClose": {
+                "raw": 10.39,
+                "fmt": "10.39"
+              },
+              "regularMarketOpen": {
+                "raw": 10.71,
+                "fmt": "10.71"
+              },
+              "regularMarketDayLow": {
+                "raw": 10.09,
+                "fmt": "10.09"
+              },
+              "regularMarketDayHigh": {
+                "raw": 10.74,
+                "fmt": "10.74"
+              },
+              "dividendRate": {
+                "raw": 0.16,
+                "fmt": "0.16"
+              },
+              "dividendYield": {
+                "raw": 0.0161,
+                "fmt": "1.61%"
+              },
+              "exDividendDate": {
+                "raw": 1785196800,
+                "fmt": "2026-07-28"
+              },
+              "payoutRatio": {
+                "raw": 1.175,
+                "fmt": "117.50%"
+              },
+              "fiveYearAvgDividendYield": {
+                "raw": 3.5,
+                "fmt": "3.50"
+              },
+              "beta": {
+                "raw": 0.76,
+                "fmt": "0.76"
+              },
+              "trailingPE": {
+                "raw": 72.35714,
+                "fmt": "72.36"
+              },
+              "forwardPE": {
+                "raw": 20.385576,
+                "fmt": "20.39"
+              },
+              "volume": {
+                "raw": 79492316,
+                "fmt": "79.49M",
+                "longFmt": "79,492,316"
+              },
+              "regularMarketVolume": {
+                "raw": 79492316,
+                "fmt": "79.49M",
+                "longFmt": "79,492,316"
+              },
+              "averageVolume": {
+                "raw": 102957022,
+                "fmt": "102.96M",
+                "longFmt": "102,957,022"
+              },
+              "averageVolume10days": {
+                "raw": 79247510,
+                "fmt": "79.25M",
+                "longFmt": "79,247,510"
+              },
+              "averageDailyVolume10Day": {
+                "raw": 79247510,
+                "fmt": "79.25M",
+                "longFmt": "79,247,510"
+              },
+              "bid": {
+                "raw": 0,
+                "fmt": "0.00"
+              },
+              "ask": {
+                "raw": 0,
+                "fmt": "0.00"
+              },
+              "bidSize": {
+                "raw": 4330000,
+                "fmt": "4.33M",
+                "longFmt": "4,330,000"
+              },
+              "askSize": {
+                "raw": 6120000,
+                "fmt": "6.12M",
+                "longFmt": "6,120,000"
+              },
+              "marketCap": {},
+              "nonDilutedMarketCap": {
+                "raw": 57540173288,
+                "fmt": "57.54B",
+                "longFmt": "57,540,173,288"
+              },
+              "yield": {},
+              "ytdReturn": {},
+              "qtdReturn": {},
+              "totalAssets": {},
+              "expireDate": {},
+              "strikePrice": {},
+              "openInterest": {},
+              "fiftyTwoWeekLow": {
+                "raw": 4.2,
+                "fmt": "4.20"
+              },
+              "fiftyTwoWeekHigh": {
+                "raw": 17.45,
+                "fmt": "17.45"
+              },
+              "allTimeHigh": {
+                "raw": 62.5,
+                "fmt": "62.50"
+              },
+              "allTimeLow": {
+                "raw": 1.289063,
+                "fmt": "1.29"
+              },
+              "fulldayPrice": {
+                "raw": 10.16,
+                "fmt": "10.16"
+              },
+              "fulldayChange": {},
+              "priceToSalesTrailing12Months": {},
+              "fiftyDayAverage": {
+                "raw": 11.462,
+                "fmt": "11.46"
+              },
+              "twoHundredDayAverage": {
+                "raw": 9.41075,
+                "fmt": "9.41"
+              },
+              "trailingAnnualDividendRate": {
+                "raw": 0.14,
+                "fmt": "0.14"
+              },
+              "trailingAnnualDividendYield": {
+                "raw": 0.013474494,
+                "fmt": "1.35%"
+              },
+              "navPrice": {},
+              "currency": "USD",
+              "fromCurrency": null,
+              "toCurrency": null,
+              "lastMarket": null,
+              "coinMarketCapLink": null,
+              "volume24Hr": {},
+              "volumeAllCurrencies": {},
+              "circulatingSupply": {},
+              "algorithm": null,
+              "maxSupply": {},
+              "totalSupply": {},
+              "startDate": {},
+              "tradeable": false,
+              "fullyDilutedValue": {},
+              "volume24HrMarketCapPercent": {}
+            },
+            "defaultKeyStatistics": {
+              "maxAge": 1,
+              "priceHint": {
+                "raw": 2,
+                "fmt": "2",
+                "longFmt": "2"
+              },
+              "enterpriseValue": {
+                "raw": 55040270336,
+                "fmt": "55.04B",
+                "longFmt": "55,040,270,336"
+              },
+              "forwardPE": {
+                "raw": 20.385576,
+                "fmt": "20.39"
+              },
+              "profitMargins": {
+                "raw": 0.03472,
+                "fmt": "3.47%"
+              },
+              "floatShares": {
+                "raw": 4445547757,
+                "fmt": "4.45B",
+                "longFmt": "4,445,547,757"
+              },
+              "sharesOutstanding": {},
+              "sharesShort": {
+                "raw": 36602951,
+                "fmt": "36.6M",
+                "longFmt": "36,602,951"
+              },
+              "sharesShortPriorMonth": {
+                "raw": 59694241,
+                "fmt": "59.69M",
+                "longFmt": "59,694,241"
+              },
+              "sharesShortPreviousMonthDate": {
+                "raw": 1782777600,
+                "fmt": "2026-06-30"
+              },
+              "dateShortInterest": {
+                "raw": 1785456000,
+                "fmt": "2026-07-31"
+              },
+              "sharesPercentSharesOut": {
+                "raw": 0.0066000004,
+                "fmt": "0.66%"
+              },
+              "heldPercentInsiders": {
+                "raw": 0.02973,
+                "fmt": "2.97%"
+              },
+              "heldPercentInstitutions": {
+                "raw": 0.1685,
+                "fmt": "16.85%"
+              },
+              "shortRatio": {
+                "raw": 0.39,
+                "fmt": "0.39"
+              },
+              "shortPercentOfFloat": {
+                "raw": 0.0066000004,
+                "fmt": "0.66%"
+              },
+              "beta": {
+                "raw": 0.76,
+                "fmt": "0.76"
+              },
+              "impliedSharesOutstanding": {},
+              "morningStarOverallRating": {},
+              "morningStarRiskRating": {},
+              "category": null,
+              "bookValue": {
+                "raw": 4.3666587,
+                "fmt": "4.37"
+              },
+              "priceToBook": {
+                "raw": 2.3198516,
+                "fmt": "2.32"
+              },
+              "annualReportExpenseRatio": {},
+              "ytdReturn": {},
+              "qtdReturn": {},
+              "beta3Year": {},
+              "totalAssets": {},
+              "yield": {},
+              "fundFamily": null,
+              "fundInceptionDate": {},
+              "legalType": null,
+              "threeYearAverageReturn": {},
+              "fiveYearAverageReturn": {},
+              "priceToSalesTrailing12Months": {},
+              "lastFiscalYearEnd": {
+                "raw": 1767139200,
+                "fmt": "2025-12-31"
+              },
+              "nextFiscalYearEnd": {
+                "raw": 1798675200,
+                "fmt": "2026-12-31"
+              },
+              "mostRecentQuarter": {
+                "raw": 1782777600,
+                "fmt": "2026-06-30"
+              },
+              "earningsQuarterlyGrowth": {
+                "raw": -0.978,
+                "fmt": "-97.80%"
+              },
+              "revenueQuarterlyGrowth": {},
+              "netIncomeToCommon": {
+                "raw": 702000000,
+                "fmt": "702M",
+                "longFmt": "702,000,000"
+              },
+              "trailingEps": {
+                "raw": 0.14,
+                "fmt": "0.14"
+              },
+              "forwardEps": {
+                "raw": 0.49692,
+                "fmt": "0.5"
+              },
+              "pegRatio": {
+                "raw": 1.05,
+                "fmt": "1.05"
+              },
+              "lastSplitFactor": "4:1",
+              "lastSplitDate": {
+                "raw": 955411200,
+                "fmt": "2000-04-11"
+              },
+              "enterpriseToRevenue": {
+                "raw": 2.699,
+                "fmt": "2.70"
+              },
+              "enterpriseToEbitda": {
+                "raw": 21.129,
+                "fmt": "21.13"
+              },
+              "52WeekChange": {
+                "raw": 1.3891509,
+                "fmt": "138.92%"
+              },
+              "SandP52WeekChange": {
+                "raw": 0.21001172,
+                "fmt": "21.00%"
+              },
+              "lastDividendValue": {
+                "raw": 0.047,
+                "fmt": "0.05"
+              },
+              "lastDividendDate": {
+                "raw": 1753747200,
+                "fmt": "2025-07-29"
+              },
+              "lastCapGain": {},
+              "annualHoldingsTurnover": {},
+              "latestFundingDate": {},
+              "latestAmountRaised": {},
+              "latestImpliedValuation": {},
+              "latestShareClass": null,
+              "leadInvestor": null,
+              "fundingToDate": {},
+              "totalFundingRounds": {}
+            },
+            "summaryProfile": {
+              "address1": "Karakaari 7",
+              "city": "Espoo",
+              "zip": "02610",
+              "country": "Finland",
+              "phone": "358 1044 88000",
+              "fax": "358 104 481 002",
+              "website": "https://www.nokia.com",
+              "industry": "Communication Equipment",
+              "industryKey": "communication-equipment",
+              "industryDisp": "Communication Equipment",
+              "sector": "Technology",
+              "sectorKey": "technology",
+              "sectorDisp": "Technology",
+              "longBusinessSummary": "Nokia Oyj, together with its subsidiaries, provides mobile, fixed, and cloud network solutions in North and Latin America, Greater China, India, Asia Pacific, Europe, the Middle East, and Africa. It operates in four segments: Network Infrastructure, Mobile Networks, Cloud and Network Services, and Nokia Technologies. The company offers fixed network solutions, such as fiber and copper technologies, access infrastructure, in-home Wi-Fi solutions, and cloud and virtualization services; IP network solutions, which delivers IP edge routing and data center networking solutions for residential, mobile, enterprise, and cloud applications; and optical networks solutions, which provides optical transport networks for metro, regional, and long-haul applications. It also provides mobile technology products and services for radio access networks and microwave radio links for transport networks; and network management solutions, as well as network planning, optimization, network deployment, and technical support services. In addition, the company offers cloud and network services, including open, secure, automated, and scalable software and solutions; and 5G core, secure autonomous networks, private wireless and industrial edge, and network APIs. Further, it licenses intellectual property, including patents, technologies, and the Nokia brand. The company serves its products and services to defense communications energy and resources, enterprise and industrial campus, private networks, public sector, and transportation industries. Nokia Oyj was founded in 1865 and is headquartered in Espoo, Finland.",
+              "fullTimeEmployees": 78005,
+              "companyOfficers": [],
+              "irWebsite": "http://www.nokia.com/global/about-nokia/investors/investors/",
+              "executiveTeam": [],
+              "maxAge": 86400
+            },
+            "price": {
+              "maxAge": 1,
+              "preMarketChangePercent": {
+                "raw": 0.0034567749,
+                "fmt": "0.35%"
+              },
+              "preMarketChange": {
+                "raw": 0.034999847,
+                "fmt": "0.03"
+              },
+              "preMarketTime": 1787221328,
+              "preMarketPrice": {
+                "raw": 10.16,
+                "fmt": "10.16"
+              },
+              "preMarketSource": "FREE_REALTIME",
+              "postMarketChangePercent": {
+                "raw": 0.0069101374,
+                "fmt": "0.69%"
+              },
+              "postMarketChange": {
+                "raw": 0.069999695,
+                "fmt": "0.07"
+              },
+              "postMarketTime": 1787183980,
+              "postMarketPrice": {
+                "raw": 10.2,
+                "fmt": "10.20"
+              },
+              "postMarketSource": "FREE_REALTIME",
+              "regularMarketChangePercent": {
+                "raw": -0.0250241,
+                "fmt": "-2.50%"
+              },
+              "regularMarketChange": {
+                "raw": -0.26,
+                "fmt": "-0.26"
+              },
+              "regularMarketTime": 1787169902,
+              "priceHint": {
+                "raw": 2,
+                "fmt": "2",
+                "longFmt": "2"
+              },
+              "regularMarketPrice": {
+                "raw": 10.13,
+                "fmt": "10.13"
+              },
+              "regularMarketDayHigh": {
+                "raw": 10.74,
+                "fmt": "10.74"
+              },
+              "regularMarketDayLow": {
+                "raw": 10.09,
+                "fmt": "10.09"
+              },
+              "regularMarketVolume": {
+                "raw": 79492316,
+                "fmt": "79.49M",
+                "longFmt": "79,492,316.00"
+              },
+              "averageDailyVolume10Day": {
+                "raw": 79247510,
+                "fmt": "79.25M",
+                "longFmt": "79,247,510"
+              },
+              "averageDailyVolume3Month": {
+                "raw": 102957022,
+                "fmt": "102.96M",
+                "longFmt": "102,957,022"
+              },
+              "regularMarketPreviousClose": {
+                "raw": 10.39,
+                "fmt": "10.39"
+              },
+              "regularMarketSource": "FREE_REALTIME",
+              "regularMarketOpen": {
+                "raw": 10.71,
+                "fmt": "10.71"
+              },
+              "strikePrice": {},
+              "openInterest": {},
+              "fulldayChange": {},
+              "fulldayPrice": {
+                "raw": 10.16,
+                "fmt": "10.16"
+              },
+              "exchange": "NYQ",
+              "exchangeName": "NYSE",
+              "exchangeDataDelayedBy": 0,
+              "marketState": "PRE",
+              "quoteType": "EQUITY",
+              "symbol": "NOK",
+              "underlyingSymbol": null,
+              "shortName": "Nokia Corporation Sponsored",
+              "longName": null,
+              "currency": "USD",
+              "quoteSourceName": "Nasdaq Real Time Price",
+              "currencySymbol": "$",
+              "fromCurrency": null,
+              "toCurrency": null,
+              "lastMarket": null,
+              "volume24Hr": {},
+              "volumeAllCurrencies": {},
+              "circulatingSupply": {},
+              "marketCap": {}
+            },
+            "financialData": {
+              "maxAge": 86400,
+              "currentPrice": {
+                "raw": 10.13,
+                "fmt": "10.13"
+              },
+              "targetHighPrice": {
+                "raw": 21,
+                "fmt": "21.00"
+              },
+              "targetLowPrice": {
+                "raw": 8.5,
+                "fmt": "8.50"
+              },
+              "targetMeanPrice": {
+                "raw": 15.02222,
+                "fmt": "15.02"
+              },
+              "targetMedianPrice": {
+                "raw": 15,
+                "fmt": "15.00"
+              },
+              "recommendationMean": {
+                "raw": 2,
+                "fmt": "2.00"
+              },
+              "recommendationKey": "buy",
+              "numberOfAnalystOpinions": {
+                "raw": 9,
+                "fmt": "9",
+                "longFmt": "9"
+              },
+              "totalCash": {
+                "raw": 5129999872,
+                "fmt": "5.13B",
+                "longFmt": "5,129,999,872"
+              },
+              "totalCashPerShare": {
+                "raw": 0.916,
+                "fmt": "0.92"
+              },
+              "ebitda": {
+                "raw": 2604999936,
+                "fmt": "2.6B",
+                "longFmt": "2,604,999,936"
+              },
+              "totalDebt": {
+                "raw": 3359000064,
+                "fmt": "3.36B",
+                "longFmt": "3,359,000,064"
+              },
+              "quickRatio": {
+                "raw": 1.22,
+                "fmt": "1.22"
+              },
+              "currentRatio": {
+                "raw": 1.505,
+                "fmt": "1.50"
+              },
+              "totalRevenue": {
+                "raw": 20394000384,
+                "fmt": "20.39B",
+                "longFmt": "20,394,000,384"
+              },
+              "debtToEquity": {
+                "raw": 15.776,
+                "fmt": "15.78%"
+              },
+              "revenuePerShare": {
+                "raw": 3.692,
+                "fmt": "3.69"
+              },
+              "returnOnAssets": {
+                "raw": 0.03121,
+                "fmt": "3.12%"
+              },
+              "returnOnEquity": {
+                "raw": 0.03455,
+                "fmt": "3.45%"
+              },
+              "grossProfits": {
+                "raw": 9280000000,
+                "fmt": "9.28B",
+                "longFmt": "9,280,000,000"
+              },
+              "freeCashflow": {
+                "raw": 1182875008,
+                "fmt": "1.18B",
+                "longFmt": "1,182,875,008"
+              },
+              "operatingCashflow": {
+                "raw": 1134000000,
+                "fmt": "1.13B",
+                "longFmt": "1,134,000,000"
+              },
+              "earningsGrowth": {
+                "raw": -0.979,
+                "fmt": "-97.90%"
+              },
+              "revenueGrowth": {
+                "raw": 0.084,
+                "fmt": "8.40%"
+              },
+              "grossMargins": {
+                "raw": 0.45504,
+                "fmt": "45.50%"
+              },
+              "ebitdaMargins": {
+                "raw": 0.12773,
+                "fmt": "12.77%"
+              },
+              "operatingMargins": {
+                "raw": 0.07934,
+                "fmt": "7.93%"
+              },
+              "profitMargins": {
+                "raw": 0.03472,
+                "fmt": "3.47%"
+              },
+              "financialCurrency": "EUR"
+            }
+          }
+        ],
+        "error": null
+      }
+    }
+  },
+  "chart": {
+    "status": 200,
+    "headers": {},
+    "body": {
+      "chart": {
+        "result": [
+          {
+            "meta": {
+              "currency": "USD",
+              "symbol": "NOK",
+              "exchangeName": "NYQ",
+              "fullExchangeName": "NYSE",
+              "instrumentType": "EQUITY",
+              "firstTradeDate": 773069400,
+              "regularMarketTime": 1787169902,
+              "hasPrePostMarketData": true,
+              "gmtoffset": -14400,
+              "timezone": "EDT",
+              "exchangeTimezoneName": "America/New_York",
+              "regularMarketPrice": 10.13,
+              "fiftyTwoWeekHigh": 17.45,
+              "fiftyTwoWeekLow": 4.2,
+              "regularMarketDayHigh": 10.74,
+              "regularMarketDayLow": 10.09,
+              "regularMarketVolume": 79492316,
+              "longName": "Nokia Oyj",
+              "shortName": "Nokia Corporation Sponsored",
+              "chartPreviousClose": 5.89,
+              "priceHint": 2,
+              "currentTradingPeriod": {
+                "pre": {
+                  "timezone": "EDT",
+                  "start": 1787212800,
+                  "end": 1787232600,
+                  "gmtoffset": -14400
+                },
+                "regular": {
+                  "timezone": "EDT",
+                  "start": 1787232600,
+                  "end": 1787256000,
+                  "gmtoffset": -14400
+                },
+                "post": {
+                  "timezone": "EDT",
+                  "start": 1787256000,
+                  "end": 1787270400,
+                  "gmtoffset": -14400
+                }
+              },
+              "dataGranularity": "1mo",
+              "range": "5y",
+              "validRanges": [
+                "1d",
+                "5d",
+                "1mo",
+                "3mo",
+                "6mo",
+                "1y",
+                "2y",
+                "5y",
+                "10y",
+                "ytd",
+                "max"
+              ]
+            },
+            "timestamp": [
+              1630468800,
+              1633060800,
+              1635739200,
+              1638334800,
+              1641013200,
+              1643691600,
+              1646110800,
+              1648785600,
+              1651377600,
+              1654056000,
+              1656648000,
+              1659326400,
+              1662004800,
+              1664596800,
+              1667275200,
+              1669870800,
+              1672549200,
+              1675227600,
+              1677646800,
+              1680321600,
+              1682913600,
+              1685592000,
+              1688184000,
+              1690862400,
+              1693540800,
+              1696132800,
+              1698811200,
+              1701406800,
+              1704085200,
+              1706763600,
+              1709269200,
+              1711944000,
+              1714536000,
+              1717214400,
+              1719806400,
+              1722484800,
+              1725163200,
+              1727755200,
+              1730433600,
+              1733029200,
+              1735707600,
+              1738386000,
+              1740805200,
+              1743480000,
+              1746072000,
+              1748750400,
+              1751342400,
+              1754020800,
+              1756699200,
+              1759291200,
+              1761969600,
+              1764565200,
+              1767243600,
+              1769922000,
+              1772341200,
+              1775016000,
+              1777608000,
+              1780286400,
+              1782878400,
+              1785556800,
+              1787169902
+            ],
+            "indicators": {
+              "quote": [
+                {
+                  "volume": [
+                    408676800,
+                    408823700,
+                    402341000,
+                    469857700,
+                    614002600,
+                    544552500,
+                    661398000,
+                    561834400,
+                    777416100,
+                    750005100,
+                    473724600,
+                    610341700,
+                    529063200,
+                    610360000,
+                    464904100,
+                    332704600,
+                    425136100,
+                    297619600,
+                    372779100,
+                    393513500,
+                    322297200,
+                    302665700,
+                    386082600,
+                    315128100,
+                    328536900,
+                    525426400,
+                    222057700,
+                    401608400,
+                    360312300,
+                    255149000,
+                    301968100,
+                    354363700,
+                    284429100,
+                    212512300,
+                    312172800,
+                    308357600,
+                    455973100,
+                    494329200,
+                    368095900,
+                    256360500,
+                    384613800,
+                    372535800,
+                    511113000,
+                    493753500,
+                    337949900,
+                    300189800,
+                    526865100,
+                    346056500,
+                    685214400,
+                    1646924300,
+                    796060300,
+                    400397600,
+                    761604900,
+                    721891400,
+                    1332493300,
+                    2158950400,
+                    2350259300,
+                    2520748700,
+                    2104327700,
+                    1021130600,
+                    79492316
+                  ],
+                  "high": [
+                    6.070000171661377,
+                    5.980000019073486,
+                    5.900000095367432,
+                    6.400000095367432,
+                    6.340000152587891,
+                    6,
+                    5.599999904632568,
+                    5.590000152587891,
+                    5.340000152587891,
+                    5.090000152587891,
+                    5.210000038146973,
+                    5.28000020980835,
+                    5.190000057220459,
+                    4.730000019073486,
+                    4.929999828338623,
+                    5.110000133514404,
+                    5.039999961853027,
+                    4.940000057220459,
+                    4.909999847412109,
+                    4.96999979019165,
+                    4.21999979019165,
+                    4.289999961853027,
+                    4.360000133514404,
+                    4,
+                    4.090000152587891,
+                    3.740000009536743,
+                    3.609999895095825,
+                    3.5,
+                    3.859999895095825,
+                    3.680000066757202,
+                    3.7200000286102295,
+                    3.7300000190734863,
+                    4.019999980926514,
+                    3.9800000190734863,
+                    4.019999980926514,
+                    4.519999980926514,
+                    4.440000057220459,
+                    4.949999809265137,
+                    4.769999980926514,
+                    4.550000190734863,
+                    4.849999904632568,
+                    5.059999942779541,
+                    5.480000019073486,
+                    5.409999847412109,
+                    5.449999809265137,
+                    5.46999979019165,
+                    5.239999771118164,
+                    4.360000133514404,
+                    4.880000114440918,
+                    8.1899995803833,
+                    7.230000019073486,
+                    6.71999979019165,
+                    7.090000152587891,
+                    7.800000190734863,
+                    8.819999694824219,
+                    12.920000076293945,
+                    16.6299991607666,
+                    17.450000762939453,
+                    13.130000114440918,
+                    11.130000114440918,
+                    10.739999771118164
+                  ],
+                  "close": [
+                    5.449999809265137,
+                    5.679999828338623,
+                    5.599999904632568,
+                    6.21999979019165,
+                    5.900000095367432,
+                    5.349999904632568,
+                    5.460000038146973,
+                    5.039999961853027,
+                    5.010000228881836,
+                    4.610000133514404,
+                    5.179999828338623,
+                    5.050000190734863,
+                    4.269999980926514,
+                    4.400000095367432,
+                    4.929999828338623,
+                    4.639999866485596,
+                    4.760000228881836,
+                    4.599999904632568,
+                    4.909999847412109,
+                    4.190000057220459,
+                    4.010000228881836,
+                    4.159999847412109,
+                    3.940000057220459,
+                    3.990000009536743,
+                    3.740000009536743,
+                    3.309999942779541,
+                    3.4800000190734863,
+                    3.4200000762939453,
+                    3.5999999046325684,
+                    3.5299999713897705,
+                    3.5399999618530273,
+                    3.6500000953674316,
+                    3.9000000953674316,
+                    3.7799999713897705,
+                    3.9200000762939453,
+                    4.460000038146973,
+                    4.369999885559082,
+                    4.710000038146973,
+                    4.199999809265137,
+                    4.429999828338623,
+                    4.599999904632568,
+                    4.800000190734863,
+                    5.269999980926514,
+                    4.989999771118164,
+                    5.21999979019165,
+                    5.179999828338623,
+                    4.079999923706055,
+                    4.300000190734863,
+                    4.809999942779541,
+                    6.909999847412109,
+                    6.079999923706055,
+                    6.46999979019165,
+                    6.429999828338623,
+                    7.71999979019165,
+                    8.039999961853027,
+                    12.90999984741211,
+                    14.84000015258789,
+                    13.279999732971191,
+                    9.140000343322754,
+                    10.130000114440918,
+                    10.130000114440918
+                  ],
+                  "open": [
+                    5.989999771118164,
+                    5.5,
+                    5.599999904632568,
+                    5.659999847412109,
+                    6.320000171661377,
+                    5.920000076293945,
+                    5.289999961853027,
+                    5.53000020980835,
+                    4.96999979019165,
+                    5.010000228881836,
+                    4.610000133514404,
+                    5.21999979019165,
+                    5,
+                    4.360000133514404,
+                    4.440000057220459,
+                    5,
+                    4.679999828338623,
+                    4.739999771118164,
+                    4.659999847412109,
+                    4.889999866485596,
+                    4.190000057220459,
+                    4.019999980926514,
+                    4.239999771118164,
+                    3.9100000858306885,
+                    4.010000228881836,
+                    3.7200000286102295,
+                    3.2799999713897705,
+                    3.440000057220459,
+                    3.390000104904175,
+                    3.619999885559082,
+                    3.5199999809265137,
+                    3.549999952316284,
+                    3.6500000953674316,
+                    3.9600000381469727,
+                    3.890000104904175,
+                    4,
+                    4.409999847412109,
+                    4.400000095367432,
+                    4.75,
+                    4.199999809265137,
+                    4.460000038146973,
+                    4.550000190734863,
+                    5.090000152587891,
+                    5.400000095367432,
+                    4.989999771118164,
+                    5.230000019073486,
+                    5.159999847412109,
+                    4.050000190734863,
+                    4.28000020980835,
+                    4.800000190734863,
+                    7.150000095367432,
+                    6.159999847412109,
+                    6.590000152587891,
+                    6.489999771118164,
+                    7.590000152587891,
+                    8.130000114440918,
+                    13.050000190734863,
+                    15.069999694824219,
+                    12.84000015258789,
+                    8.880000114440918,
+                    10.710000038146973
+                  ],
+                  "low": [
+                    5.269999980926514,
+                    5.389999866485596,
+                    5.480000019073486,
+                    5.519999980926514,
+                    5.260000228881836,
+                    5.119999885559082,
+                    4.510000228881836,
+                    4.75,
+                    4.579999923706055,
+                    4.550000190734863,
+                    4.369999885559082,
+                    4.789999961853027,
+                    4.190000057220459,
+                    4.079999923706055,
+                    4.21999979019165,
+                    4.550000190734863,
+                    4.510000228881836,
+                    4.550000190734863,
+                    4.420000076293945,
+                    4.090000152587891,
+                    3.930000066757202,
+                    3.9700000286102295,
+                    3.8299999237060547,
+                    3.75,
+                    3.6700000762939453,
+                    3.049999952316284,
+                    3.2200000286102295,
+                    2.940000057220459,
+                    3.309999942779541,
+                    3.4600000381469727,
+                    3.4700000286102295,
+                    3.2899999618530273,
+                    3.630000114440918,
+                    3.569999933242798,
+                    3.5999999046325684,
+                    3.700000047683716,
+                    4.119999885559082,
+                    4.139999866485596,
+                    3.9100000858306885,
+                    4.159999847412109,
+                    4.409999847412109,
+                    4.539999961853027,
+                    4.869999885559082,
+                    4.539999961853027,
+                    4.989999771118164,
+                    5.039999961853027,
+                    4.059999942779541,
+                    4,
+                    4.230000019073486,
+                    4.78000020980835,
+                    5.860000133514404,
+                    6.050000190734863,
+                    6.059999942779541,
+                    6.480000019073486,
+                    7.559999942779541,
+                    8.069999694824219,
+                    12.130000114440918,
+                    12.15999984741211,
+                    8.369999885559082,
+                    8.770000457763672,
+                    10.09000015258789
+                  ]
+                }
+              ],
+              "adjclose": [
+                {
+                  "adjclose": [
+                    4.895575523376465,
+                    5.102177143096924,
+                    5.03031587600708,
+                    5.587244033813477,
+                    5.299797058105469,
+                    4.80574893951416,
+                    4.904557704925537,
+                    4.527284622192383,
+                    4.519166469573975,
+                    4.158354759216309,
+                    4.690906524658203,
+                    4.573181629180908,
+                    3.866828441619873,
+                    4.003393173217773,
+                    4.485620975494385,
+                    4.221759796142578,
+                    4.351181983947754,
+                    4.2049241065979,
+                    4.488298416137695,
+                    3.8603248596191406,
+                    3.6944875717163086,
+                    3.8326845169067383,
+                    3.6615922451019287,
+                    3.708059549331665,
+                    3.475724935531616,
+                    3.1073784828186035,
+                    3.266972541809082,
+                    3.2106449604034424,
+                    3.4081761837005615,
+                    3.3419063091278076,
+                    3.3513731956481934,
+                    3.498246669769287,
+                    3.7378523349761963,
+                    3.6228415966033936,
+                    3.7894439697265625,
+                    4.311459064483643,
+                    4.224456310272217,
+                    4.584718227386475,
+                    4.088284015655518,
+                    4.3121657371521,
+                    4.477644443511963,
+                    4.703887462615967,
+                    5.16447639465332,
+                    4.890082359313965,
+                    5.162408351898193,
+                    5.122849464416504,
+                    4.079999923706055,
+                    4.300000190734863,
+                    4.809999942779541,
+                    6.909999847412109,
+                    6.079999923706055,
+                    6.46999979019165,
+                    6.429999828338623,
+                    7.71999979019165,
+                    8.039999961853027,
+                    12.90999984741211,
+                    14.84000015258789,
+                    13.279999732971191,
+                    9.140000343322754,
+                    10.130000114440918,
+                    10.130000114440918
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "error": null
+      }
+    }
+  },
+  "timeseries:annual": {
+    "status": 200,
+    "headers": {},
+    "body": {
+      "timeseries": {
+        "result": [
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualRetainedEarnings"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualRetainedEarnings": [
+              {
+                "dataId": 23204,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 1375000000,
+                  "fmt": "1.38B"
+                }
+              },
+              {
+                "dataId": 23204,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 1404000000,
+                  "fmt": "1.40B"
+                }
+              },
+              {
+                "dataId": 23204,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 1956000000,
+                  "fmt": "1.96B"
+                }
+              },
+              {
+                "dataId": 23204,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 1857000000,
+                  "fmt": "1.86B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualEBIT"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualEBIT": [
+              {
+                "dataId": 20189,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 2389000000,
+                  "fmt": "2.39B"
+                }
+              },
+              {
+                "dataId": 20189,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 1823000000,
+                  "fmt": "1.82B"
+                }
+              },
+              {
+                "dataId": 20189,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 2417000000,
+                  "fmt": "2.42B"
+                }
+              },
+              {
+                "dataId": 20189,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 1134000000,
+                  "fmt": "1.13B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualAvailableForSaleSecurities"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualAvailableForSaleSecurities": [
+              {
+                "dataId": 23020,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 1777000000,
+                  "fmt": "1.78B"
+                }
+              },
+              {
+                "dataId": 23020,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 1815000000,
+                  "fmt": "1.81B"
+                }
+              },
+              {
+                "dataId": 23020,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 1639000000,
+                  "fmt": "1.64B"
+                }
+              },
+              {
+                "dataId": 23020,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 1440000000,
+                  "fmt": "1.44B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualOtherShortTermInvestments"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualOtherShortTermInvestments": [
+              {
+                "dataId": 23163,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 3695000000,
+                  "fmt": "3.69B"
+                }
+              },
+              {
+                "dataId": 23163,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 2006000000,
+                  "fmt": "2.01B"
+                }
+              },
+              {
+                "dataId": 23163,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 2290000000,
+                  "fmt": "2.29B"
+                }
+              },
+              {
+                "dataId": 23163,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 1301000000,
+                  "fmt": "1.30B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualGrossProfit"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualGrossProfit": [
+              {
+                "dataId": 20046,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 10101000000,
+                  "fmt": "10.10B"
+                }
+              },
+              {
+                "dataId": 20046,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 8546000000,
+                  "fmt": "8.55B"
+                }
+              },
+              {
+                "dataId": 20046,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 8864000000,
+                  "fmt": "8.86B"
+                }
+              },
+              {
+                "dataId": 20046,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 8659000000,
+                  "fmt": "8.66B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualCurrentLiabilities"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualCurrentLiabilities": [
+              {
+                "dataId": 23047,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 12774000000,
+                  "fmt": "12.77B"
+                }
+              },
+              {
+                "dataId": 23047,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 10933000000,
+                  "fmt": "10.93B"
+                }
+              },
+              {
+                "dataId": 23047,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 11394000000,
+                  "fmt": "11.39B"
+                }
+              },
+              {
+                "dataId": 23047,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 10004000000,
+                  "fmt": "10.00B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualBasicAverageShares"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualBasicAverageShares": [
+              {
+                "dataId": 29010,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 5614182000,
+                  "fmt": "5.61B"
+                }
+              },
+              {
+                "dataId": 29010,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 5549468000,
+                  "fmt": "5.55B"
+                }
+              },
+              {
+                "dataId": 29010,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 5475817000,
+                  "fmt": "5.48B"
+                }
+              },
+              {
+                "dataId": 29010,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 5415876000,
+                  "fmt": "5.42B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualInventory"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualInventory": [
+              {
+                "dataId": 23108,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 3265000000,
+                  "fmt": "3.27B"
+                }
+              },
+              {
+                "dataId": 23108,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 2719000000,
+                  "fmt": "2.72B"
+                }
+              },
+              {
+                "dataId": 23108,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 2163000000,
+                  "fmt": "2.16B"
+                }
+              },
+              {
+                "dataId": 23108,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 2209000000,
+                  "fmt": "2.21B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualNetIncomeCommonStockholders"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualNetIncomeCommonStockholders": [
+              {
+                "dataId": 20093,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 4250000000,
+                  "fmt": "4.25B"
+                }
+              },
+              {
+                "dataId": 20093,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 665000000,
+                  "fmt": "665.00M"
+                }
+              },
+              {
+                "dataId": 20093,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 1277000000,
+                  "fmt": "1.28B"
+                }
+              },
+              {
+                "dataId": 20093,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 651000000,
+                  "fmt": "651.00M"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualOperatingIncome"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualOperatingIncome": [
+              {
+                "dataId": 20109,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 2444000000,
+                  "fmt": "2.44B"
+                },
+                "businessSegmentData": [
+                  {
+                    "dataValue": 177000000,
+                    "segmentType": "Business",
+                    "segmentName": "Cloud and Network Services",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": -777000000,
+                    "segmentType": "Business",
+                    "segmentName": "Eliminations and unallocated items",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": -318000000,
+                    "segmentType": "Business",
+                    "segmentName": "Group Common and Other",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 940000000,
+                    "segmentType": "Business",
+                    "segmentName": "Mobile Networks",
+                    "isPrimarySegment": 1
+                  },
+                  {
+                    "dataValue": 1069000000,
+                    "segmentType": "Business",
+                    "segmentName": "Network infrastructure",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 1208000000,
+                    "segmentType": "Business",
+                    "segmentName": "Nokia Technologies",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": -777000000,
+                    "segmentType": "Business",
+                    "segmentName": "Other unallocated items",
+                    "isPrimarySegment": 0
+                  }
+                ]
+              },
+              {
+                "dataId": 20109,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 1470000000,
+                  "fmt": "1.47B"
+                },
+                "businessSegmentData": [
+                  {
+                    "dataValue": 194000000,
+                    "segmentType": "Business",
+                    "segmentName": "Cloud and Network Services",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": -676000000,
+                    "segmentType": "Business",
+                    "segmentName": "Eliminations and unallocated items",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": -318000000,
+                    "segmentType": "Business",
+                    "segmentName": "Group Common and Other",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 783000000,
+                    "segmentType": "Business",
+                    "segmentName": "Mobile Networks",
+                    "isPrimarySegment": 1
+                  },
+                  {
+                    "dataValue": 1016000000,
+                    "segmentType": "Business",
+                    "segmentName": "Network infrastructure",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 734000000,
+                    "segmentType": "Business",
+                    "segmentName": "Nokia Technologies",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": -676000000,
+                    "segmentType": "Business",
+                    "segmentName": "Other unallocated items",
+                    "isPrimarySegment": 0
+                  }
+                ]
+              },
+              {
+                "dataId": 20109,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 1590000000,
+                  "fmt": "1.59B"
+                },
+                "businessSegmentData": [
+                  {
+                    "dataValue": 206000000,
+                    "segmentType": "Business",
+                    "segmentName": "Cloud and Network Services",
+                    "isPrimarySegment": 1
+                  },
+                  {
+                    "dataValue": -614000000,
+                    "segmentType": "Business",
+                    "segmentName": "Eliminations and unallocated items",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": -349000000,
+                    "segmentType": "Business",
+                    "segmentName": "Group Common and Other",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 452000000,
+                    "segmentType": "Business",
+                    "segmentName": "Mobile Networks",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 761000000,
+                    "segmentType": "Business",
+                    "segmentName": "Network infrastructure",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 1514000000,
+                    "segmentType": "Business",
+                    "segmentName": "Nokia Technologies",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": -614000000,
+                    "segmentType": "Business",
+                    "segmentName": "Other unallocated items",
+                    "isPrimarySegment": 0
+                  }
+                ]
+              },
+              {
+                "dataId": 20109,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 782000000,
+                  "fmt": "782.00M"
+                },
+                "businessSegmentData": [
+                  {
+                    "dataValue": 338000000,
+                    "segmentType": "Business",
+                    "segmentName": "Cloud and Network Services",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": -1139000000,
+                    "segmentType": "Business",
+                    "segmentName": "Eliminations and unallocated items",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": -373000000,
+                    "segmentType": "Business",
+                    "segmentName": "Group Common and Other",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 220000000,
+                    "segmentType": "Business",
+                    "segmentName": "Mobile Networks",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 780000000,
+                    "segmentType": "Business",
+                    "segmentName": "Network infrastructure",
+                    "isPrimarySegment": 1
+                  },
+                  {
+                    "dataValue": 1059000000,
+                    "segmentType": "Business",
+                    "segmentName": "Nokia Technologies",
+                    "isPrimarySegment": 0
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualNormalizedEBITDA"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualNormalizedEBITDA": [
+              {
+                "dataId": 20420,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 3653000000,
+                  "fmt": "3.65B"
+                }
+              },
+              {
+                "dataId": 20420,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 2844000000,
+                  "fmt": "2.84B"
+                }
+              },
+              {
+                "dataId": 20420,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 3038000000,
+                  "fmt": "3.04B"
+                }
+              },
+              {
+                "dataId": 20420,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 2145000000,
+                  "fmt": "2.15B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualRepurchaseOfCapitalStock"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualRepurchaseOfCapitalStock": [
+              {
+                "dataId": 26184,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": -300000000,
+                  "fmt": "-300.00M"
+                }
+              },
+              {
+                "dataId": 26184,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": -300000000,
+                  "fmt": "-300.00M"
+                }
+              },
+              {
+                "dataId": 26184,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": -680000000,
+                  "fmt": "-680.00M"
+                }
+              },
+              {
+                "dataId": 26184,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": -624000000,
+                  "fmt": "-624.00M"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualTotalDebt"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualTotalDebt": [
+              {
+                "dataId": 23386,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 5519000000,
+                  "fmt": "5.52B"
+                }
+              },
+              {
+                "dataId": 23386,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 5188000000,
+                  "fmt": "5.19B"
+                }
+              },
+              {
+                "dataId": 23386,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 4750000000,
+                  "fmt": "4.75B"
+                }
+              },
+              {
+                "dataId": 23386,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 4413000000,
+                  "fmt": "4.41B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualCapitalExpenditure"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualCapitalExpenditure": [
+              {
+                "dataId": 26005,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": -601000000,
+                  "fmt": "-601.00M"
+                }
+              },
+              {
+                "dataId": 26005,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": -652000000,
+                  "fmt": "-652.00M"
+                }
+              },
+              {
+                "dataId": 26005,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": -472000000,
+                  "fmt": "-472.00M"
+                }
+              },
+              {
+                "dataId": 26005,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": -606000000,
+                  "fmt": "-606.00M"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualCashAndCashEquivalents"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualCashAndCashEquivalents": [
+              {
+                "dataId": 23030,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 5467000000,
+                  "fmt": "5.47B"
+                }
+              },
+              {
+                "dataId": 23030,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 6234000000,
+                  "fmt": "6.23B"
+                }
+              },
+              {
+                "dataId": 23030,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 6623000000,
+                  "fmt": "6.62B"
+                }
+              },
+              {
+                "dataId": 23030,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 5462000000,
+                  "fmt": "5.46B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualTotalRevenue"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualTotalRevenue": [
+              {
+                "dataId": 20100,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 23761000000,
+                  "fmt": "23.76B"
+                }
+              },
+              {
+                "dataId": 20100,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 21138000000,
+                  "fmt": "21.14B"
+                }
+              },
+              {
+                "dataId": 20100,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 19220000000,
+                  "fmt": "19.22B"
+                }
+              },
+              {
+                "dataId": 20100,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 19889000000,
+                  "fmt": "19.89B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualOperatingCashFlow"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualOperatingCashFlow": [
+              {
+                "dataId": 26014,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 1474000000,
+                  "fmt": "1.47B"
+                }
+              },
+              {
+                "dataId": 26014,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 1317000000,
+                  "fmt": "1.32B"
+                }
+              },
+              {
+                "dataId": 26014,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 2493000000,
+                  "fmt": "2.49B"
+                }
+              },
+              {
+                "dataId": 26014,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 2071000000,
+                  "fmt": "2.07B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualDilutedAverageShares"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualDilutedAverageShares": [
+              {
+                "dataId": 29011,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 5670020000,
+                  "fmt": "5.67B"
+                }
+              },
+              {
+                "dataId": 29011,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 5585923000,
+                  "fmt": "5.59B"
+                }
+              },
+              {
+                "dataId": 29011,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 5530603000,
+                  "fmt": "5.53B"
+                }
+              },
+              {
+                "dataId": 29011,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 5502781000,
+                  "fmt": "5.50B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualInterestExpenseNonOperating"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualInterestExpenseNonOperating": [
+              {
+                "dataId": 20064,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 220000000,
+                  "fmt": "220.00M"
+                }
+              },
+              {
+                "dataId": 20064,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 354000000,
+                  "fmt": "354.00M"
+                }
+              },
+              {
+                "dataId": 20064,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 326000000,
+                  "fmt": "326.00M"
+                }
+              },
+              {
+                "dataId": 20064,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 219000000,
+                  "fmt": "219.00M"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualTotalEquityGrossMinorityInterest"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualTotalEquityGrossMinorityInterest": [
+              {
+                "dataId": 23261,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 21426000000,
+                  "fmt": "21.43B"
+                }
+              },
+              {
+                "dataId": 23261,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 20628000000,
+                  "fmt": "20.63B"
+                }
+              },
+              {
+                "dataId": 23261,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 20747000000,
+                  "fmt": "20.75B"
+                }
+              },
+              {
+                "dataId": 23261,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 21058000000,
+                  "fmt": "21.06B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualCurrentAssets"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualCurrentAssets": [
+              {
+                "dataId": 23044,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 20266000000,
+                  "fmt": "20.27B"
+                }
+              },
+              {
+                "dataId": 23044,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 18166000000,
+                  "fmt": "18.17B"
+                }
+              },
+              {
+                "dataId": 23044,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 17987000000,
+                  "fmt": "17.99B"
+                }
+              },
+              {
+                "dataId": 23044,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 15792000000,
+                  "fmt": "15.79B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualEBITDA"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualEBITDA": [
+              {
+                "dataId": 20190,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 3529000000,
+                  "fmt": "3.53B"
+                }
+              },
+              {
+                "dataId": 20190,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 2910000000,
+                  "fmt": "2.91B"
+                }
+              },
+              {
+                "dataId": 20190,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 3431000000,
+                  "fmt": "3.43B"
+                }
+              },
+              {
+                "dataId": 20190,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 2253000000,
+                  "fmt": "2.25B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualStockholdersEquity"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualStockholdersEquity": [
+              {
+                "dataId": 23215,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 21333000000,
+                  "fmt": "21.33B"
+                }
+              },
+              {
+                "dataId": 23215,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 20537000000,
+                  "fmt": "20.54B"
+                }
+              },
+              {
+                "dataId": 23215,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 20657000000,
+                  "fmt": "20.66B"
+                }
+              },
+              {
+                "dataId": 23215,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 20967000000,
+                  "fmt": "20.97B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualCashDividendsPaid"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualCashDividendsPaid": [
+              {
+                "dataId": 26007,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": -353000000,
+                  "fmt": "-353.00M"
+                }
+              },
+              {
+                "dataId": 26007,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": -621000000,
+                  "fmt": "-621.00M"
+                }
+              },
+              {
+                "dataId": 26007,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": -723000000,
+                  "fmt": "-723.00M"
+                }
+              },
+              {
+                "dataId": 26007,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": -759000000,
+                  "fmt": "-759.00M"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualCostOfRevenue"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualCostOfRevenue": [
+              {
+                "dataId": 20013,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 13660000000,
+                  "fmt": "13.66B"
+                }
+              },
+              {
+                "dataId": 20013,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 12592000000,
+                  "fmt": "12.59B"
+                }
+              },
+              {
+                "dataId": 20013,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 10356000000,
+                  "fmt": "10.36B"
+                }
+              },
+              {
+                "dataId": 20013,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 11230000000,
+                  "fmt": "11.23B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualCommonStockDividendPaid"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualCommonStockDividendPaid": [
+              {
+                "dataId": 26154,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": -353000000,
+                  "fmt": "-353.00M"
+                }
+              },
+              {
+                "dataId": 26154,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": -621000000,
+                  "fmt": "-621.00M"
+                }
+              },
+              {
+                "dataId": 26154,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": -723000000,
+                  "fmt": "-723.00M"
+                }
+              },
+              {
+                "dataId": 26154,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": -759000000,
+                  "fmt": "-759.00M"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualLongTermDebt"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualLongTermDebt": [
+              {
+                "dataId": 23123,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 4249000000,
+                  "fmt": "4.25B"
+                }
+              },
+              {
+                "dataId": 23123,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 3637000000,
+                  "fmt": "3.64B"
+                }
+              },
+              {
+                "dataId": 23123,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 2918000000,
+                  "fmt": "2.92B"
+                }
+              },
+              {
+                "dataId": 23123,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 2329000000,
+                  "fmt": "2.33B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualNetIncome"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualNetIncome": [
+              {
+                "dataId": 20091,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 4250000000,
+                  "fmt": "4.25B"
+                }
+              },
+              {
+                "dataId": 20091,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 665000000,
+                  "fmt": "665.00M"
+                }
+              },
+              {
+                "dataId": 20091,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 1277000000,
+                  "fmt": "1.28B"
+                }
+              },
+              {
+                "dataId": 20091,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 651000000,
+                  "fmt": "651.00M"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualCurrentDebt"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualCurrentDebt": [
+              {
+                "dataId": 23045,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 228000000,
+                  "fmt": "228.00M"
+                }
+              },
+              {
+                "dataId": 23045,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 554000000,
+                  "fmt": "554.00M"
+                }
+              },
+              {
+                "dataId": 23045,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 969000000,
+                  "fmt": "969.00M"
+                }
+              },
+              {
+                "dataId": 23045,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 1084000000,
+                  "fmt": "1.08B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualTotalLiabilitiesNetMinorityInterest"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualTotalLiabilitiesNetMinorityInterest": [
+              {
+                "dataId": 23259,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 21517000000,
+                  "fmt": "21.52B"
+                }
+              },
+              {
+                "dataId": 23259,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 19232000000,
+                  "fmt": "19.23B"
+                }
+              },
+              {
+                "dataId": 23259,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 18402000000,
+                  "fmt": "18.40B"
+                }
+              },
+              {
+                "dataId": 23259,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 16539000000,
+                  "fmt": "16.54B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualTaxProvision"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualTaxProvision": [
+              {
+                "dataId": 20145,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": -2033000000,
+                  "fmt": "-2.03B"
+                }
+              },
+              {
+                "dataId": 20145,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 820000000,
+                  "fmt": "820.00M"
+                }
+              },
+              {
+                "dataId": 20145,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 380000000,
+                  "fmt": "380.00M"
+                }
+              },
+              {
+                "dataId": 20145,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 277000000,
+                  "fmt": "277.00M"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualPretaxIncome"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualPretaxIncome": [
+              {
+                "dataId": 20136,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 2169000000,
+                  "fmt": "2.17B"
+                }
+              },
+              {
+                "dataId": 20136,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 1469000000,
+                  "fmt": "1.47B"
+                }
+              },
+              {
+                "dataId": 20136,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 2091000000,
+                  "fmt": "2.09B"
+                }
+              },
+              {
+                "dataId": 20136,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 915000000,
+                  "fmt": "915.00M"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualInterestExpense"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualInterestExpense": [
+              {
+                "dataId": 20057,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 220000000,
+                  "fmt": "220.00M"
+                }
+              },
+              {
+                "dataId": 20057,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 354000000,
+                  "fmt": "354.00M"
+                }
+              },
+              {
+                "dataId": 20057,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 326000000,
+                  "fmt": "326.00M"
+                }
+              },
+              {
+                "dataId": 20057,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 219000000,
+                  "fmt": "219.00M"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualTotalAssets"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualTotalAssets": [
+              {
+                "dataId": 23220,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 42943000000,
+                  "fmt": "42.94B"
+                }
+              },
+              {
+                "dataId": 23220,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 39860000000,
+                  "fmt": "39.86B"
+                }
+              },
+              {
+                "dataId": 23220,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 39149000000,
+                  "fmt": "39.15B"
+                }
+              },
+              {
+                "dataId": 23220,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 37597000000,
+                  "fmt": "37.60B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualFreeCashFlow"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualFreeCashFlow": [
+              {
+                "dataId": 26185,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 873000000,
+                  "fmt": "873.00M"
+                }
+              },
+              {
+                "dataId": 26185,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 665000000,
+                  "fmt": "665.00M"
+                }
+              },
+              {
+                "dataId": 26185,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 2021000000,
+                  "fmt": "2.02B"
+                }
+              },
+              {
+                "dataId": 26185,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 1465000000,
+                  "fmt": "1.47B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "annualDilutedEPS"
+              ]
+            },
+            "timestamp": [
+              1672444800,
+              1703980800,
+              1735603200,
+              1767139200
+            ],
+            "annualDilutedEPS": [
+              {
+                "dataId": 29009,
+                "asOfDate": "2022-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 0.75,
+                  "fmt": "0.75"
+                }
+              },
+              {
+                "dataId": 29009,
+                "asOfDate": "2023-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 0.12,
+                  "fmt": "0.12"
+                }
+              },
+              {
+                "dataId": 29009,
+                "asOfDate": "2024-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 0.23,
+                  "fmt": "0.23"
+                }
+              },
+              {
+                "dataId": 29009,
+                "asOfDate": "2025-12-31",
+                "periodType": "12M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 0.12,
+                  "fmt": "0.12"
+                }
+              }
+            ]
+          }
+        ],
+        "error": null
+      }
+    }
+  },
+  "timeseries:quarterly": {
+    "status": 200,
+    "headers": {},
+    "body": {
+      "timeseries": {
+        "result": [
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "quarterlyTotalRevenue"
+              ]
+            },
+            "timestamp": [
+              1751241600,
+              1759190400,
+              1767139200,
+              1774915200,
+              1782777600
+            ],
+            "quarterlyTotalRevenue": [
+              {
+                "dataId": 20100,
+                "asOfDate": "2025-06-30",
+                "periodType": "3M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 4443000000,
+                  "fmt": "4.44B"
+                }
+              },
+              {
+                "dataId": 20100,
+                "asOfDate": "2025-09-30",
+                "periodType": "3M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 4828000000,
+                  "fmt": "4.83B"
+                }
+              },
+              {
+                "dataId": 20100,
+                "asOfDate": "2025-12-31",
+                "periodType": "3M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 6125000000,
+                  "fmt": "6.12B"
+                }
+              },
+              {
+                "dataId": 20100,
+                "asOfDate": "2026-03-31",
+                "periodType": "3M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 4497000000,
+                  "fmt": "4.50B"
+                }
+              },
+              {
+                "dataId": 20100,
+                "asOfDate": "2026-06-30",
+                "periodType": "3M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 4815000000,
+                  "fmt": "4.82B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "quarterlyOperatingIncome"
+              ]
+            },
+            "timestamp": [
+              1751241600,
+              1759190400,
+              1767139200,
+              1774915200,
+              1782777600
+            ],
+            "quarterlyOperatingIncome": [
+              {
+                "dataId": 20109,
+                "asOfDate": "2025-06-30",
+                "periodType": "3M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 148000000,
+                  "fmt": "148.00M"
+                },
+                "businessSegmentData": [
+                  {
+                    "dataValue": 9000000,
+                    "segmentType": "Business",
+                    "segmentName": "Cloud and Network Services",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": -220000000,
+                    "segmentType": "Business",
+                    "segmentName": "Eliminations and unallocated items",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": -49000000,
+                    "segmentType": "Business",
+                    "segmentName": "Group Common and Other",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 310000000,
+                    "segmentType": "Business",
+                    "segmentName": "Mobile infrastructure",
+                    "isPrimarySegment": 1
+                  },
+                  {
+                    "dataValue": 77000000,
+                    "segmentType": "Business",
+                    "segmentName": "Mobile Networks",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 117000000,
+                    "segmentType": "Business",
+                    "segmentName": "Network infrastructure",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 255000000,
+                    "segmentType": "Business",
+                    "segmentName": "Nokia Technologies",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": -220000000,
+                    "segmentType": "Business",
+                    "segmentName": "Other unallocated items",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": -11000000,
+                    "segmentType": "Business",
+                    "segmentName": "Portfolio Businesses",
+                    "isPrimarySegment": 0
+                  }
+                ]
+              },
+              {
+                "dataId": 20109,
+                "asOfDate": "2025-09-30",
+                "periodType": "3M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 239000000,
+                  "fmt": "239.00M"
+                },
+                "businessSegmentData": [
+                  {
+                    "dataValue": 77000000,
+                    "segmentType": "Business",
+                    "segmentName": "Cloud and Network Services",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": -196000000,
+                    "segmentType": "Business",
+                    "segmentName": "Eliminations and unallocated items",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": -89000000,
+                    "segmentType": "Business",
+                    "segmentName": "Group Common and Other",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 12000000,
+                    "segmentType": "Business",
+                    "segmentName": "Mobile Networks",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 139000000,
+                    "segmentType": "Business",
+                    "segmentName": "Network infrastructure",
+                    "isPrimarySegment": 1
+                  },
+                  {
+                    "dataValue": 296000000,
+                    "segmentType": "Business",
+                    "segmentName": "Nokia Technologies",
+                    "isPrimarySegment": 0
+                  }
+                ]
+              },
+              {
+                "dataId": 20109,
+                "asOfDate": "2025-12-31",
+                "periodType": "3M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 437000000,
+                  "fmt": "437.00M"
+                },
+                "businessSegmentData": [
+                  {
+                    "dataValue": 238000000,
+                    "segmentType": "Business",
+                    "segmentName": "Cloud and Network Services",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": -518000000,
+                    "segmentType": "Business",
+                    "segmentName": "Eliminations and unallocated items",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": -109000000,
+                    "segmentType": "Business",
+                    "segmentName": "Group Common and Other",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 284000000,
+                    "segmentType": "Business",
+                    "segmentName": "Mobile Networks",
+                    "isPrimarySegment": 1
+                  },
+                  {
+                    "dataValue": 397000000,
+                    "segmentType": "Business",
+                    "segmentName": "Network infrastructure",
+                    "isPrimarySegment": 0
+                  },
+                  {
+                    "dataValue": 249000000,
+                    "segmentType": "Business",
+                    "segmentName": "Nokia Technologies",
+                    "isPrimarySegment": 0
+                  }
+                ]
+              },
+              {
+                "dataId": 20109,
+                "asOfDate": "2026-03-31",
+                "periodType": "3M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 63000000,
+                  "fmt": "63.00M"
+                }
+              },
+              {
+                "dataId": 20109,
+                "asOfDate": "2026-06-30",
+                "periodType": "3M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": -50000000,
+                  "fmt": "-50.00M"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "quarterlyGrossProfit"
+              ]
+            },
+            "timestamp": [
+              1751241600,
+              1759190400,
+              1767139200,
+              1774915200,
+              1782777600
+            ],
+            "quarterlyGrossProfit": [
+              {
+                "dataId": 20046,
+                "asOfDate": "2025-06-30",
+                "periodType": "3M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 1954000000,
+                  "fmt": "1.95B"
+                }
+              },
+              {
+                "dataId": 20046,
+                "asOfDate": "2025-09-30",
+                "periodType": "3M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 2110000000,
+                  "fmt": "2.11B"
+                }
+              },
+              {
+                "dataId": 20046,
+                "asOfDate": "2025-12-31",
+                "periodType": "3M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 2754000000,
+                  "fmt": "2.75B"
+                }
+              },
+              {
+                "dataId": 20046,
+                "asOfDate": "2026-03-31",
+                "periodType": "3M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 1988000000,
+                  "fmt": "1.99B"
+                }
+              },
+              {
+                "dataId": 20046,
+                "asOfDate": "2026-06-30",
+                "periodType": "3M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 2146000000,
+                  "fmt": "2.15B"
+                }
+              }
+            ]
+          },
+          {
+            "meta": {
+              "symbol": [
+                "NOK"
+              ],
+              "type": [
+                "quarterlyNetIncome"
+              ]
+            },
+            "timestamp": [
+              1751241600,
+              1759190400,
+              1767139200,
+              1774915200,
+              1782777600
+            ],
+            "quarterlyNetIncome": [
+              {
+                "dataId": 20091,
+                "asOfDate": "2025-06-30",
+                "periodType": "3M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 90000000,
+                  "fmt": "90.00M"
+                }
+              },
+              {
+                "dataId": 20091,
+                "asOfDate": "2025-09-30",
+                "periodType": "3M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 78000000,
+                  "fmt": "78.00M"
+                }
+              },
+              {
+                "dataId": 20091,
+                "asOfDate": "2025-12-31",
+                "periodType": "3M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 542000000,
+                  "fmt": "542.00M"
+                }
+              },
+              {
+                "dataId": 20091,
+                "asOfDate": "2026-03-31",
+                "periodType": "3M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 86000000,
+                  "fmt": "86.00M"
+                }
+              },
+              {
+                "dataId": 20091,
+                "asOfDate": "2026-06-30",
+                "periodType": "3M",
+                "currencyCode": "EUR",
+                "reportedValue": {
+                  "raw": 2000000,
+                  "fmt": "2.00M"
+                }
+              }
+            ]
+          }
+        ],
+        "error": null
+      }
+    }
+  },
+  "fx": {
+    "status": 200,
+    "headers": {},
+    "body": {
+      "chart": {
+        "result": [
+          {
+            "meta": {
+              "currency": "EUR",
+              "symbol": "USDEUR=X",
+              "exchangeName": "CCY",
+              "fullExchangeName": "CCY",
+              "instrumentType": "CURRENCY",
+              "firstTradeDate": 1070236800,
+              "regularMarketTime": 1787221436,
+              "hasPrePostMarketData": false,
+              "gmtoffset": 3600,
+              "timezone": "BST",
+              "exchangeTimezoneName": "Europe/London",
+              "regularMarketPrice": 0.8541,
+              "fiftyTwoWeekHigh": 0.883,
+              "fiftyTwoWeekLow": 0.8317,
+              "regularMarketDayHigh": 0.8566,
+              "regularMarketDayLow": 0.8537,
+              "regularMarketVolume": 0,
+              "longName": "USD/EUR",
+              "shortName": "USD/EUR",
+              "chartPreviousClose": 0.8669,
+              "priceHint": 4,
+              "currentTradingPeriod": {
+                "pre": {
+                  "timezone": "BST",
+                  "start": 1787180400,
+                  "end": 1787180400,
+                  "gmtoffset": 3600
+                },
+                "regular": {
+                  "timezone": "BST",
+                  "start": 1787180400,
+                  "end": 1787266740,
+                  "gmtoffset": 3600
+                },
+                "post": {
+                  "timezone": "BST",
+                  "start": 1787266740,
+                  "end": 1787266740,
+                  "gmtoffset": 3600
+                }
+              },
+              "dataGranularity": "1d",
+              "range": "5d",
+              "validRanges": [
+                "1d",
+                "5d",
+                "1mo",
+                "3mo",
+                "6mo",
+                "1y",
+                "2y",
+                "5y",
+                "10y",
+                "ytd",
+                "max"
+              ]
+            },
+            "timestamp": [
+              1786662000,
+              1786921200,
+              1787007600,
+              1787094000,
+              1787180400,
+              1787221436
+            ],
+            "indicators": {
+              "quote": [
+                {
+                  "open": [
+                    0.8669899702072144,
+                    0.8638899922370911,
+                    0.8632000088691711,
+                    0.863789975643158,
+                    0.8560000061988831,
+                    0.8560000061988831
+                  ],
+                  "volume": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "high": [
+                    0.867110013961792,
+                    0.8638899922370911,
+                    0.8645099997520447,
+                    0.8641300201416016,
+                    0.8565999865531921,
+                    0.8565999865531921
+                  ],
+                  "close": [
+                    0.8669000267982483,
+                    0.8640099763870239,
+                    0.863349974155426,
+                    0.8636000156402588,
+                    null,
+                    0.8540999889373779
+                  ],
+                  "low": [
+                    0.863099992275238,
+                    0.8610299825668335,
+                    0.8629000186920166,
+                    0.8562999963760376,
+                    0.8536999821662903,
+                    0.8536999821662903
+                  ]
+                }
+              ],
+              "adjclose": [
+                {
+                  "adjclose": [
+                    0.8669000267982483,
+                    0.8640099763870239,
+                    0.863349974155426,
+                    0.8636000156402588,
+                    null,
+                    0.8540999889373779
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "error": null
+      }
+    }
+  }
+}

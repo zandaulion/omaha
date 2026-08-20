@@ -145,9 +145,10 @@ than mixing currencies.
 
 ## 4. Test coverage
 
-`npm test` — 54 assertions across `server/scoring.test.js` and
-`server/gemini.test.js`, each corresponding to a defect found in an audit. The
-load-bearing ones:
+`npm test` — 84 assertions. The engine suite is `core/scoring.test.js` (48),
+each corresponding to a defect found in an audit; ingestion, timestamps, alert
+rules, the Gemini payload and the end-to-end golden models make up the rest.
+The load-bearing ones:
 
 * An empty input produces no score.
 * Piotroski's year-on-year tests can actually fail.
