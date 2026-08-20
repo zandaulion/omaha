@@ -8,7 +8,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { evaluateTriggers } from './alerts.js';
+import { evaluateTriggers } from './triggers.js';
 
 const SETTINGS = {
   notify_earnings_filings: 1, notify_red_flags: 1, notify_margin_of_safety: 1,
