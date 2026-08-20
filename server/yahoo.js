@@ -365,6 +365,49 @@ export async function fetchPriceHistory(ticker) {
   return out;
 }
 
+/**
+ * Spot FX rate, cached in process.
+ *
+ * Needed because a depositary receipt trades in one currency while the company
+ * files in another: NOK quotes in USD and reports in EUR, SBSW quotes in USD
+ * and reports in ZAR. Without a conversion the engine divides a USD market
+ * capitalisation by EUR liabilities, and compares a EUR discounted-cash-flow
+ * value against a USD share price.
+ */
+const fxCache = new Map();
+const FX_TTL_MS = 6 * 3600 * 1000;
+
+export async function fetchFxRate(from, to) {
+  if (!from || !to) return null;
+  if (from === to) return 1;
+
+  const pair = `${from}${to}=X`;
+  const hit = fxCache.get(pair);
+  if (hit && Date.now() < hit.expires) return hit.rate;
+
+  const sess = await getSession();
+  try {
+    const res = await fetch(
+      `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(pair)}?interval=1d&range=5d`,
+      { headers: authHeaders(sess), signal: AbortSignal.timeout(6000) }
+    );
+    if (!res.ok) throw new Error(`chart HTTP ${res.status}`);
+
+    const meta = (await res.json())?.chart?.result?.[0]?.meta;
+    const rate = meta?.regularMarketPrice;
+    if (typeof rate !== 'number' || !Number.isFinite(rate) || rate <= 0) {
+      throw new Error('no usable rate');
+    }
+
+    fxCache.set(pair, { rate, expires: Date.now() + FX_TTL_MS });
+    return rate;
+  } catch (err) {
+    console.warn(`[Yahoo] FX ${pair} failed: ${err.message}`);
+    // A stale rate beats no conversion; a missing one is reported as such.
+    return hit ? hit.rate : null;
+  }
+}
+
 /** Ticker / company-name search. */
 export async function search(query) {
   const clean = (query || '').trim();

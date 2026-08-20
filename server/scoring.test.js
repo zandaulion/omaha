@@ -637,3 +637,62 @@ test('capital destruction cuts the terminal multiple further than low returns', 
   const b = computeComprehensiveHealth(destroying).dcf.assumptions.terminalMultiple;
   assert.ok(b < a, `negative ROIC should score below merely low ROIC: ${b} vs ${a}`);
 });
+
+// =====================================================================
+// Depositary receipts: traded currency vs reporting currency
+// =====================================================================
+
+test('market figures enter the model in the reporting currency', () => {
+  // NOK trades in USD and files in EUR. Unconverted, Altman's X4 divides a USD
+  // market capitalisation by EUR liabilities and the DCF returns a EUR fair
+  // value to be compared against a USD price.
+  const model = healthyModel();
+  model.reportingCurrency = 'EUR';
+  model.tradedCurrency = 'USD';
+  model.fx = { needed: true, rate: 0.856, from: 'USD', to: 'EUR', available: true };
+  model.quote = {
+    ...model.quote,
+    currency: 'USD',
+    price: 10.13,
+    priceReporting: 10.13 * 0.856,
+    marketCap: null,
+    marketCapReporting: null,
+    sharesOutstanding: 5.5e9
+  };
+
+  const r = computeComprehensiveHealth(model);
+  assert.ok(Math.abs(r.metrics.price - 8.671) < 0.01, 'ratios must use the converted price');
+  assert.equal(r.metrics.tradedPrice, 10.13, 'the quoted price is preserved separately');
+  assert.equal(r.metrics.tradedCurrency, 'USD');
+  assert.equal(r.metrics.reportingCurrency, 'EUR');
+  assert.ok(Math.abs(r.metrics.marketCap - 10.13 * 0.856 * 5.5e9) < 1,
+    'market cap must be built from the converted price');
+});
+
+test('an unavailable exchange rate withholds the mixed-currency metrics', () => {
+  const model = healthyModel();
+  model.reportingCurrency = 'EUR';
+  model.tradedCurrency = 'USD';
+  model.fx = { needed: true, rate: null, from: 'USD', to: 'EUR', available: false };
+  model.quote = {
+    ...model.quote, currency: 'USD', price: 10.13,
+    priceReporting: null, marketCap: null, marketCapReporting: null
+  };
+
+  const r = computeComprehensiveHealth(model);
+  assert.equal(r.metrics.price, null);
+  assert.equal(r.metrics.marketCap, null);
+  assert.equal(r.altmanZ, null, 'X4 must not mix currencies');
+  // A fair value per share is still computable without a price — it needs
+  // cash flow and a share count. What cannot be stated is the comparison.
+  assert.equal(r.dcf.marginOfSafetyPct, null, 'no price means no margin of safety');
+  assert.equal(r.metrics.fcfYield, null, 'no market cap means no yield');
+  assert.equal(r.metrics.enterpriseValue, null);
+});
+
+test('a single-currency company is unaffected by the conversion path', () => {
+  const r = computeComprehensiveHealth(healthyModel());
+  assert.equal(r.metrics.price, 150);
+  assert.equal(r.metrics.marketCap, 600e9);
+  assert.ok(r.altmanZ !== null);
+});

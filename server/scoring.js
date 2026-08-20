@@ -343,9 +343,17 @@ function deriveMetrics(model) {
   // the filed diluted share count is the same quantity, so the whole valuation
   // pillar and Altman's X4 stay computable.
   const sharesForCap = num(q.sharesOutstanding) ?? num(cur.dilutedShares);
+
+  // Market figures are taken in the currency the company reports in. A
+  // depositary receipt trades in one currency and files in another, and every
+  // ratio below combines the two — Altman's X4, enterprise value, the cash
+  // flow yields and the whole discounted-cash-flow model. Where the rate could
+  // not be fetched these are null, and the dependent metrics report as
+  // unavailable rather than mixing currencies.
+  const priceReporting = num(q.priceReporting) ?? (model.fx?.needed ? null : num(q.price));
   const marketCap =
-    num(q.marketCap) ??
-    (num(q.price) !== null && sharesForCap !== null ? q.price * sharesForCap : null);
+    num(q.marketCapReporting) ??
+    (priceReporting !== null && sharesForCap !== null ? priceReporting * sharesForCap : null);
   const enterpriseValue =
     marketCap === null || totalDebt === null || cash === null
       ? null
@@ -493,8 +501,14 @@ function deriveMetrics(model) {
     pegRatio: num(q.pegRatio),
     priceToBook: num(q.priceToBook),
     marketCap,
-    marketCapDerived: num(q.marketCap) === null && marketCap !== null,
-    price: num(q.price),
+    marketCapDerived: num(q.marketCapReporting) === null && marketCap !== null,
+    // `price` is the figure every ratio here is computed against, so it is the
+    // one in the reporting currency. The traded price is carried separately.
+    price: priceReporting,
+    tradedPrice: num(q.price),
+    tradedCurrency: model.tradedCurrency ?? q.currency ?? null,
+    reportingCurrency: model.reportingCurrency ?? null,
+    fx: model.fx ?? null,
     sharesOutstanding: sharesForCap
   };
 }
