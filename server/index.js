@@ -21,6 +21,8 @@ import {
 } from './auth.js';
 import { initVapid, getVapidPublicKey, saveSubscription, broadcastPush, sendToDevice } from './push.js';
 import { generateStockAISummary, getCachedAISummary } from './gemini.js';
+import { buildBackup, mergeBackup } from '../core/backup.js';
+import { readPersonalData, writePersonalData } from './backup-store.js';
 import {
   startAlertWorker,
   runSweep,
@@ -714,32 +716,49 @@ app.post('/api/theses/:ticker', requireDeviceAuth, (req, res) => {
 
 // Full Backup Export
 app.get('/api/theses', requireDeviceAuth, (req, res) => {
-  const theses = db.prepare('SELECT * FROM theses').all();
-  const watchlists = db.prepare('SELECT * FROM watchlists').all();
-
-  const exportData = {
-    exportedAt: new Date().toISOString(),
-    theses: theses.map(t => ({
-      ticker: t.ticker,
-      conviction: t.conviction,
-      targetBuyPrice: t.target_buy_price,
-      coreRationale: t.core_rationale,
-      moatTags: JSON.parse(t.moat_tags_json || '[]'),
-      sellTriggers: JSON.parse(t.sell_triggers_json || '[]'),
-      journalEntries: JSON.parse(t.journal_entries_json || '[]'),
-      updatedAt: t.updated_at
-    })),
-    watchlists: watchlists.map(w => ({
-      id: w.id,
-      name: w.name,
-      tickers: JSON.parse(w.tickers_json || '[]'),
-      is_default: Boolean(w.is_default)
-    }))
-  };
+  const exportData = buildBackup(readPersonalData(), new Date().toISOString());
 
   res.setHeader('Content-Disposition', 'attachment; filename="pocket-omaha-backup.json"');
   res.setHeader('Content-Type', 'application/json');
   return res.json(exportData);
+});
+
+/**
+ * Restore a backup.
+ *
+ * Merges rather than replaces. The README has promised "backup export and
+ * restore" while only export existed, and a restore that wiped what was
+ * already here would be worse than none — people import onto a device that
+ * already has notes on it.
+ *
+ * The merge rules live in core/backup.js so the Android client applies exactly
+ * the same ones. This handler reads the current state, hands both sides over,
+ * and writes the result back.
+ *
+ * Deliberately not /api/theses/import: `/api/theses/:ticker` is declared above
+ * and would match it first, quietly filing the whole backup as a thesis for a
+ * company called IMPORT. It did exactly that once. A path that cannot collide
+ * survives someone reordering the routes later.
+ */
+app.post('/api/backup/import', requireDeviceAuth, (req, res) => {
+  let merged;
+  try {
+    merged = mergeBackup(req.body, readPersonalData());
+  } catch (err) {
+    if (err?.name === 'BackupError') {
+      return res.status(400).json({ error: err.message, kind: err.kind });
+    }
+    throw err;
+  }
+
+  try {
+    writePersonalData(merged);
+  } catch (err) {
+    console.error('[Import] rolled back:', err.message);
+    return res.status(500).json({ error: 'Import failed; nothing was changed.' });
+  }
+
+  return res.json({ success: true, ...merged.report });
 });
 
 // Unmatched API routes get a JSON 404. Falling through to index.html made a
