@@ -721,6 +721,7 @@ function initEventListeners() {
 
   // Push Notifications Button
   document.getElementById('enablePushBtn')?.addEventListener('click', handleEnablePush);
+  document.getElementById('testPushBtn')?.addEventListener('click', handleTestPush);
 
   // Export Backup JSON Button
   document.getElementById('exportBackupBtn')?.addEventListener('click', () => {
@@ -2730,12 +2731,14 @@ async function checkPushStatus() {
   if (!('Notification' in window) || !('serviceWorker' in navigator)) {
     btn.textContent = 'Unsupported';
     btn.disabled = true;
+    setTestPushEnabled(false, 'This browser cannot show notifications.');
     return;
   }
 
   if (Notification.permission === 'denied') {
     btn.textContent = 'Blocked';
     btn.disabled = true;
+    setTestPushEnabled(false, 'Notifications are blocked in your browser settings.');
     return;
   }
 
@@ -2751,6 +2754,7 @@ async function checkPushStatus() {
       btn.className = 'btn-secondary';
       btn.disabled = false;
     }
+    setTestPushEnabled(Boolean(sub));
   } catch (e) {
     console.warn('Error checking push status:', e);
   }
@@ -2817,7 +2821,8 @@ async function handleEnablePush() {
       btn.disabled = true;
     }
 
-    showToast('Push notifications enabled!', '🔔');
+    setTestPushEnabled(true);
+    showToast('Push notifications enabled', '🔔');
 
     // Trigger an immediate confirmation notification via Service Worker
     if (reg.showNotification) {
@@ -2988,4 +2993,71 @@ function formatRelativeTime(stamp) {
   if (hours < 24) return `${hours} h ago`;
   const days = Math.round(hours / 24);
   return days === 1 ? 'yesterday' : `${days} days ago`;
+}
+
+// ----------------- TEST NOTIFICATION -----------------
+
+/** The test button is only honest once the browser has actually granted push. */
+function setTestPushEnabled(enabled, reason = '') {
+  const btn = document.getElementById('testPushBtn');
+  if (btn) btn.disabled = !enabled;
+  if (reason) setTestPushStatus(reason, 'error');
+}
+
+function setTestPushStatus(message, kind = '') {
+  const el = document.getElementById('testPushStatus');
+  if (!el) return;
+  el.textContent = message;
+  el.className = 'push-test-status' + (kind ? ` is-${kind}` : '');
+}
+
+/**
+ * Sends a real push through the real delivery path — same icon, badge and tag
+ * as an alert — rather than calling showNotification locally. A local call
+ * would light up even when the subscription is dead, which is exactly the
+ * failure this button exists to catch.
+ */
+async function handleTestPush() {
+  const btn = document.getElementById('testPushBtn');
+  if (!btn || btn.disabled) return;
+
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  setTestPushStatus('');
+  haptic();
+
+  try {
+    const res = await apiFetch('/api/push/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}'
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      setTestPushStatus(data.error || 'Could not send the test notification.', 'error');
+      // A dead subscription is worth re-offering, not just reporting.
+      if (data.code === 'no-subscription' || data.code === 'delivery-failed') {
+        const enableBtn = document.getElementById('enablePushBtn');
+        if (enableBtn) {
+          enableBtn.textContent = 'Enable';
+          enableBtn.className = 'btn-secondary';
+          enableBtn.disabled = false;
+        }
+      }
+      return;
+    }
+
+    setTestPushStatus(
+      `Sent to ${data.scope || 'this device'}. If nothing appears within a few ` +
+      'seconds, check notification permissions for this app.',
+      'ok'
+    );
+  } catch (err) {
+    setTestPushStatus('Could not reach the server. Check your connection.', 'error');
+  } finally {
+    btn.textContent = label;
+    btn.disabled = false;
+  }
 }

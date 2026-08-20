@@ -91,6 +91,33 @@ export async function sendPushNotification(subscription, payload) {
   }
 }
 
+/**
+ * Deliver to one device's endpoints only.
+ *
+ * A test notification must not broadcast: the household has several registered
+ * devices, and tapping "send a test" on one phone should not set off the
+ * others. Returns enough detail for the caller to tell "sent" apart from
+ * "this device never subscribed", which are different problems with different
+ * fixes.
+ */
+export async function sendToDevice(deviceId, payload) {
+  const subs = db
+    .prepare('SELECT * FROM push_subscriptions WHERE device_id = ?')
+    .all(deviceId);
+
+  if (!subs.length) return { subscriptions: 0, delivered: 0, failed: 0, errors: [] };
+
+  const results = await Promise.all(subs.map((sub) => sendPushNotification(sub, payload)));
+  const failures = results.filter((r) => !r.success);
+
+  return {
+    subscriptions: subs.length,
+    delivered: results.length - failures.length,
+    failed: failures.length,
+    errors: failures.map((f) => f.error).filter(Boolean)
+  };
+}
+
 export async function broadcastPush(payload) {
   const subscriptions = db.prepare('SELECT * FROM push_subscriptions').all();
   const results = await Promise.allSettled(
