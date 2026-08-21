@@ -254,6 +254,13 @@ would be lost.
 
 **Ship Yahoo. Build the seam. Defer the migration.**
 
+> **Revised 2026-08-22 — see `14_DATA_SOURCING_AND_PLAY_RELEASE.md`.** The seam
+> is built. The migration trigger below ("sustained 429s or a schema break")
+> should be brought forward to precede the public Play release: EDGAR turns out
+> to cost nothing, cover every ticker tested including foreign issuers, and
+> carry the reporting currency explicitly. Doc 14 has the verified numbers, the
+> IFRS tag map and the provider contract.
+
 Risk is a function of install count. The seam — a provider interface
 (`getStatements(ticker)`, `getQuote(ticker)`) with Yahoo as the sole
 implementation — costs an hour of care during a refactor already scheduled, and
