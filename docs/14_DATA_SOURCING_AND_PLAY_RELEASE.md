@@ -205,6 +205,9 @@ are lost.
    project and answers instantly when given one. Worth testing whether Yahoo's
    endpoints still respond without a spoofed desktop agent — if they do, the
    ingestion path becomes uniformly above-board and doc 13 §8 can be rewritten.
-3. **Non-US-listed tickers** — unsupported, or Yahoo fallback?
+3. **Non-US-listed tickers** — unsupported, or Yahoo fallback? This is a
+   positioning question rather than a technical one; see
+   `15_COMPETITIVE_POSITION.md` §5, which sets it against the coverage the
+   comparators advertise.
 4. **Monetisation** — free app with paid Gemini analysis is a sound model and
    raises no policy problem. It is not, however, a substitute for item 1.
