@@ -118,3 +118,60 @@ declare generously: portfolio management for the watchlist and aggregator,
 financial advice for the Gemini analysis. Neither attracts a licensing
 requirement, while an inaccurate declaration is a documented and repeated cause
 of rejection.
+
+---
+
+## Decide whether Pocket Omaha is a business or a household tool
+
+**Raised 2026-08-22.** Blocks the launch scope. Full reasoning in
+`docs/15_COMPETITIVE_POSITION.md` §4 and §6.
+
+An audit of every doc found a **cost-recovery design but no commercial
+strategy**. Doc 13 §7 is explicit and self-consistent — the paywall exists for
+"cost control, not revenue protection", copying and forking are "explicitly not
+a concern" — and from that follow credit packs, anonymous auth and server-side
+purchase verification. All sound for a personal tool shipped publicly.
+
+Undefined anywhere: the price point (open item in doc 13, needs a measured
+cost-per-analysis), any free-tier allowance, the target market beyond doc 01's
+"Primary Investor / Wife", revenue expectations, distribution, discovery and
+retention.
+
+That is a coherent position. It is simply not the position implied by
+benchmarking against Simply Wall St. The two answers lead to different launch
+scopes, so decide before fixing scope — it determines whether the widget is
+worth building, whether portfolio accounting stays closed, whether the free tier
+is capped, and whether doc 14's EDGAR migration resolves toward US-only or a
+global hybrid.
+
+---
+
+## Android home-screen widget
+
+**Raised 2026-08-22.** Context in `docs/15_COMPETITIVE_POSITION.md` §2.3.
+Gated on the decision above.
+
+Doc 13 never mentions widgets. The market survey gives widget depth its own
+column, and for the native/lightweight archetype it is the primary
+differentiator — My Stocks Portfolio sells largely on resizable, sortable,
+themable home-screen widgets.
+
+This is the most visible gap relative to effort for an Android launch. Glance
+keeps it contained. Worth noting that every widget in that market shows
+**prices**; one showing a health score and its delta would have no direct
+equivalent, which fits the positioning in §3.
+
+---
+
+## Rename the screener
+
+**Raised 2026-08-22.** Small. `docs/15_COMPETITIVE_POSITION.md` §2.5.
+
+`/api/screener` filters the watchlist universe — `server/index.js:340` says so
+in its own comment. Competitors screening 120,000 stocks across 90 markets have
+set the expectation that "screener" means discovery. Ours is a filter over
+things already under consideration, which is useful and honest but differently
+named. *Filter* or *Compare across watchlist* both fit.
+
+Building real discovery screening is out of scope: it needs a universe we do not
+ingest.
