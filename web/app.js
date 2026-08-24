@@ -1512,6 +1512,13 @@ function updateOverviewAICard(ticker, summary) {
         <span class="ai-verdict-badge ${badgeClass}" style="font-size: 11px; padding: 2px 8px;">${summary.verdictBadge || '👑 Moat Verdict'}</span>
         <span class="ai-origin-tag">✨ AI-generated</span>
       </div>
+      ${summary.staleness?.stale ? `
+        <div style="font-size: 11px; color: #FBBF24; font-weight: 600; margin-bottom: 6px;">
+          ${summary.staleness.scope === 'all'
+            ? '📄 Superseded by newer filings'
+            : '📉 Price has moved since this was written'}
+        </div>
+      ` : ''}
       <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); line-height: 1.4; margin-bottom: 6px;">
         "${summary.verdict}"
       </div>
@@ -1552,7 +1559,25 @@ function renderGeminiDashboard(data) {
         : ' · <span class="ai-notes-note">financial data only</span>')
     : '';
 
+  // Stated plainly and near the top, rather than styled subtly further down.
+  // A person who has scrolled into the moat reasoning has already begun
+  // trusting it. Never auto-regenerates: every call costs money and latency,
+  // and quietly rewriting an analysis somebody may have acted on is worse than
+  // telling them it is out of date.
+  const st = data.staleness;
+  const stalenessNotice = st?.stale ? `
+    <div class="staleness-notice ${st.scope === 'all' ? 'is-superseded' : ''}">
+      <span class="staleness-icon">${st.scope === 'all' ? '📄' : '📉'}</span>
+      <div class="staleness-text">
+        <div class="staleness-headline">${st.headline}</div>
+        <div class="staleness-detail">${st.detail}</div>
+      </div>
+      <button class="btn-secondary" id="staleRefreshBtn">🔄 Re-analyze</button>
+    </div>
+  ` : '';
+
   container.innerHTML = `
+    ${stalenessNotice}
     <!-- 1. AI Verdict Hero Card.
          Everything from here to the meta bar is model output. The origin tag
          sits at the top because that is where a reader starts, and a label
@@ -1720,6 +1745,11 @@ function renderGeminiDashboard(data) {
   `;
 
   document.getElementById('reAnalyzeGeminiBtn')?.addEventListener('click', () => {
+    generateGeminiSummary(data.ticker, true);
+  });
+
+  document.getElementById('staleRefreshBtn')?.addEventListener('click', () => {
+    haptic();
     generateGeminiSummary(data.ticker, true);
   });
 }

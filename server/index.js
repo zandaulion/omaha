@@ -22,6 +22,7 @@ import {
 import { initVapid, getVapidPublicKey, saveSubscription, broadcastPush, sendToDevice } from './push.js';
 import { generateStockAISummary, getCachedAISummary } from './gemini.js';
 import { getAppSettings, updateAppSettings, shouldIncludeNotesInAI } from './app-settings.js';
+import { assessSummaryStaleness } from '../core/analysis/staleness.js';
 import { buildBackup, mergeBackup } from '../core/backup.js';
 import { readPersonalData, writePersonalData } from './backup-store.js';
 import {
@@ -220,12 +221,36 @@ app.get('/api/stock/:ticker', requireDeviceAuth, async (req, res) => {
   }
 });
 
+/**
+ * Whether a cached analysis still describes the company it was written about.
+ *
+ * The comparison itself is `core/analysis/staleness.js`, so Android reaches the
+ * same verdict through its own bridge rather than through a second opinion
+ * written in Kotlin.
+ *
+ * The stock read is deliberately not forced. `getStockData` serves the
+ * 15-minute quote tier, and the deep dive has just fetched this ticker, so on
+ * the path that matters this costs a cache read and no upstream request. If it
+ * fails, the analysis is returned without a verdict rather than not at all: a
+ * missing staleness banner is a smaller loss than a missing analysis.
+ */
+async function withStaleness(ticker, summary) {
+  if (!summary) return summary;
+  try {
+    const current = await getStockData(ticker);
+    return { ...summary, staleness: assessSummaryStaleness(summary, current) };
+  } catch (err) {
+    console.warn(`[Staleness] could not evaluate ${ticker}:`, err.message);
+    return summary;
+  }
+}
+
 // Get Cached Gemini AI Summary
 app.get('/api/stock/:ticker/ai-summary', requireDeviceAuth, async (req, res) => {
   const { ticker } = req.params;
   try {
     const cached = getCachedAISummary(ticker);
-    return res.json({ summary: cached });
+    return res.json({ summary: await withStaleness(ticker, cached) });
   } catch (err) {
     console.error(`Error retrieving AI summary for ${ticker}:`, err);
     return res.status(500).json({ error: 'Failed to retrieve AI summary' });
@@ -241,7 +266,11 @@ app.post('/api/stock/:ticker/ai-summary', requireDeviceAuth, async (req, res) =>
     if (!forceRefresh) {
       const cached = getCachedAISummary(ticker);
       if (cached) {
-        return res.json({ success: true, summary: cached, fromCache: true });
+        return res.json({
+          success: true,
+          summary: await withStaleness(ticker, cached),
+          fromCache: true
+        });
       }
     }
 
