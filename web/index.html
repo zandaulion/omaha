@@ -697,13 +697,22 @@
 
       </section>
 
-      <!-- ==================== VIEW 3: FUNDAMENTAL SCREENER ==================== -->
-      <section id="viewScreener" class="view-panel hidden">
-        
+      <!-- ==================== VIEW 3: FILTER ====================
+           Filters the companies this install already knows about — the
+           watchlists plus anything looked up before. Deliberately not called a
+           screener: a screener implies discovery across a market, and there is
+           no universe endpoint behind this. See docs/15 §2.5. -->
+      <section id="viewFilter" class="view-panel hidden">
+
         <div class="section-header">
-          <div class="section-title">🔍 Fundamental Moat Screener</div>
-          <span id="screenerCountBadge" class="score-badge pristine">6 Matches</span>
+          <div class="section-title">🔍 Filter Your Watchlist</div>
+          <span id="filterCountBadge" class="score-badge pristine">6 Matches</span>
         </div>
+
+        <p class="view-subtitle">
+          Narrows the companies you already follow. This does not search the wider
+          market — nothing appears here that you have not looked up before.
+        </p>
 
         <!-- Quick Preset Pills -->
         <div style="display: flex; gap: 6px; overflow-x: auto; margin-bottom: 14px; scrollbar-width: none;">
@@ -714,7 +723,7 @@
         </div>
 
         <!-- Filter Controls Grid -->
-        <div class="card screener-filters">
+        <div class="card filter-controls">
           <div class="form-group">
             <label class="form-label">Min Health Score: <span id="filterHealthVal" class="text-cyan mono">70</span></label>
             <input type="range" class="range-slider" id="filterHealthSlider" min="0" max="95" value="70" step="5">
@@ -754,7 +763,7 @@
           </div>
         </div>
 
-        <!-- Screener Results Table -->
+        <!-- Filter results table -->
         <div class="stock-table-container">
           <table class="stock-table">
             <thead>
@@ -767,7 +776,7 @@
                 <th>Net Cash</th>
               </tr>
             </thead>
-            <tbody id="screenerTableBody">
+            <tbody id="filterTableBody">
               <!-- Rendered by JS -->
             </tbody>
           </table>
@@ -815,9 +824,9 @@
           <span>Scorecard</span>
         </button>
 
-        <button class="nav-tab" data-view="viewScreener" id="tabScreener">
+        <button class="nav-tab" data-view="viewFilter" id="tabFilter">
           <svg viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-          <span>Screener</span>
+          <span>Filter</span>
         </button>
 
         <button class="nav-tab" data-view="viewCompare" id="tabCompare">

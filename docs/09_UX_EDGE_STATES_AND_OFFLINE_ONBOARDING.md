@@ -48,7 +48,7 @@ When opening the app for the first time, a zero-friction onboarding modal guides
   * Icon: 🏰
   * Headline: *"No Stocks in this Watchlist"*
   * Subtext: *"Add companies with strong financial health and durable moats to calculate your composite score."*
-  * CTAs: `[ 🔍 Search Tickers ]` and `[ ⚡ Open Screener ]`.
+  * CTAs: `[ 🔍 Search Tickers ]` and `[ ⚡ Open Filter ]`.
 
 ### B. No Search Results State
 * **Trigger**: Search query returns 0 matches.

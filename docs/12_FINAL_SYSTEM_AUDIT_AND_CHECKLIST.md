@@ -62,7 +62,7 @@ records how each row was verified.
 | Radar comparison chart | ● | Five pillar spokes across up to four companies |
 | Onboarding bundles, empty states | ● | Bundle cards state their size rather than a composite score that was never computed |
 | Export theses & watchlists | ● | |
-| Screener | ◐ | Filters health, Piotroski, ROIC, debt/equity, net cash, positive FCF, sector — over the stocks this install holds data for. There is no free market-wide universe endpoint behind it |
+| Filter (was "Screener") | ◐ | Filters health, Piotroski, ROIC, debt/equity, net cash, positive FCF, sector — over the stocks this install holds data for. There is no free market-wide universe endpoint behind it |
 
 ### Auth
 

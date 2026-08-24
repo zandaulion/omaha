@@ -334,13 +334,16 @@ app.get('/api/stock/:ticker/peers', requireDeviceAuth, async (req, res) => {
   }
 });
 
-// Screener Endpoint
+// Filter Endpoint
 //
-// Screens the stocks this install has data for — the watchlists plus anything
+// Filters the stocks this install has data for — the watchlists plus anything
 // looked up before. It is deliberately not presented as a market-wide screen:
 // there is no free universe endpoint behind it, and implying otherwise would
 // suggest the absence of a match means something it does not.
-app.get('/api/screener', requireDeviceAuth, async (req, res) => {
+//
+// Renamed from /api/screener for that reason (docs/15 §2.5). The comment below
+// had always said what this does; the name was the part that disagreed.
+app.get('/api/filter', requireDeviceAuth, async (req, res) => {
   const minHealth = parseInt(req.query.minHealth || '0', 10);
   const minPiotroski = parseInt(req.query.minPiotroski || '0', 10);
   const minRoic = parseFloat(req.query.minRoic || '0');
@@ -351,7 +354,7 @@ app.get('/api/screener', requireDeviceAuth, async (req, res) => {
     ? parseFloat(req.query.maxDebtToEquity)
     : null;
 
-  // Make sure everything on a watchlist is present, so the screen covers the
+  // Make sure everything on a watchlist is present, so the filter covers the
   // portfolio rather than an arbitrary subset of it.
   try {
     const lists = db.prepare('SELECT tickers_json FROM watchlists').all();
@@ -367,7 +370,7 @@ app.get('/api/screener', requireDeviceAuth, async (req, res) => {
       await getStockData(t).catch(() => {});
     }
   } catch (err) {
-    console.warn('Screener warm-up warning:', err.message);
+    console.warn('Filter warm-up warning:', err.message);
   }
 
   let query = `SELECT * FROM stock_cache
