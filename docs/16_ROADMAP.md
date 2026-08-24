@@ -116,10 +116,31 @@ so it cannot be made cheaper by sequencing, and it is correctly last.
 Phase 0 blocks scope. Phases 1–3 are deliberately front-loaded with work that is
 small *now* and doubles in cost after phase 4. Phase 4 is the bulk.
 
-### Phase 0 — Decide what this is
+### Phase 0 — Decide what this is — **decided 2026-08-24**
 
-**One decision, and it is not a detail.** Doc 15 §4 and §6.1, and the backlog
-entry. Is Pocket Omaha a business, or a household tool shipped publicly?
+> **Decision: a household tool shipped publicly, with hybrid statement coverage
+> and the widget in scope.**
+>
+> The commercial frame is doc 13 §7's, unchanged: cost recovery, not revenue
+> protection. No free-tier cap, no pricing pressure, no distribution, ASO or
+> retention work. Portfolio accounting and dividend planning stay closed.
+>
+> **Two departures from the pure household answer**, both deliberate:
+>
+> * **EDGAR *and* Yahoo, not EDGAR alone.** Statements go to EDGAR with Yahoo
+>   retained as the fallback for listings EDGAR does not cover. This is doc 15
+>   §5's "global hybrid" technically, but not commercially — it is not chosen to
+>   win a spec-sheet comparison, it is chosen so a non-US holding in the owner's
+>   own watchlist still scores. Doc 14's open decision 3 resolves to *hybrid*.
+> * **The widget is in scope**, not optional. It was the cheapest visible gap
+>   before and it stays in phase 7.
+>
+> What this rules out is planning work, not features: nothing downstream needs a
+> price point, a free-tier allowance or an acquisition funnel.
+
+The reasoning below is retained because it is what the decision was made
+against. Doc 15 §4 and §6.1, and the backlog entry. Is Pocket Omaha a business,
+or a household tool shipped publicly?
 
 The audit found a cost-recovery design and no commercial strategy: no price
 point, no free-tier allowance, no target market beyond doc 01's "Primary
@@ -129,12 +150,12 @@ implied by commissioning a market survey.
 
 It resolves four things this roadmap otherwise has to guess:
 
-| Depends on it | Household answer | Business answer |
-|---|---|---|
-| EDGAR scope (doc 15 §5) | US-only, stated as scope | global hybrid, two statement paths |
-| Widget (phase 7) | skip | build |
-| Portfolio accounting (§2.1) | stays closed | revisit via CSV import |
-| Free-tier cap | none needed | must be defined |
+| Depends on it | Household answer | Business answer | **Resolved to** |
+|---|---|---|---|
+| EDGAR scope (doc 15 §5) | US-only, stated as scope | global hybrid, two statement paths | **hybrid** — EDGAR primary, Yahoo fallback |
+| Widget (phase 7) | skip | build | **build** |
+| Portfolio accounting (§2.1) | stays closed | revisit via CSV import | **stays closed** |
+| Free-tier cap | none needed | must be defined | **none** |
 
 **Nothing in phases 1–6 is invalidated by either answer.** Both clients need a
 UI, alerts and the privacy toggle regardless. So phase 0 blocks *scope*, not
@@ -183,7 +204,11 @@ doing before phase 4 rather than after.
      of JSON in QuickJS is the part that could disappoint.
    - Foreign private issuers file under `ifrs-full`; capex is the tag that needs
      hunting.
-   - Scope — US-only or global hybrid — is the phase 0 decision.
+   - **Scope is hybrid** (phase 0): EDGAR is the primary statement source, Yahoo
+     stays as the fallback for listings EDGAR does not cover. So this is a new
+     implementation *behind* the seam, not a replacement of it, and
+     `statementSource` needs a per-ticker fallback rather than a swap. Quotes,
+     prices, search and peers were always staying on Yahoo.
 2. **Flag AI summaries as stale** (backlog). `fiscalPeriodEnd` and
    `priceAtGeneration` are already stored. Comparison logic belongs in `core/`;
    the PWA renders it now and Android renders it in phase 4 for free. Do not
@@ -276,9 +301,9 @@ The only phase requiring infrastructure. Phases 1–5 ship without any.
    the Gemini analysis. Neither attracts a licensing requirement; an inaccurate
    declaration is a documented cause of rejection. There is no credential gate on
    investment apps.
-2. **Android home-screen widget** (doc 15 §2.3, backlog). Gated on phase 0.
-   Glance keeps it contained, and a health-score-plus-delta widget would have no
-   direct equivalent — every widget in that market shows prices.
+2. **Android home-screen widget** (doc 15 §2.3, backlog). **In scope** per phase
+   0. Glance keeps it contained, and a health-score-plus-delta widget would have
+   no direct equivalent — every widget in that market shows prices.
 
 **The widget is the one deliberate parity exception**, and it is worth stating
 plainly rather than letting it look like drift. A home-screen widget has no
@@ -322,8 +347,9 @@ counterpart. Everything else should converge.
 
 ## 5. What this roadmap does not decide
 
-- **Phase 0.** It is stated, not answered. It needs a person, not an analysis.
-- **Credit pack pricing** — blocked on a measured cost-per-analysis.
+- ~~**Phase 0.**~~ **Answered 2026-08-24** — see the phase 0 note above.
+- **Credit pack pricing** — blocked on a measured cost-per-analysis. The
+  household frame lowers the stakes: the number only has to cover cost.
 - **Sunday digest email** — needs a provider decision (Resend or Postmark). The
   digest content function is already separated from delivery, so it stays in the
   backlog rather than entering a phase.
