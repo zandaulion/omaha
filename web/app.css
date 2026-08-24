@@ -3,106 +3,25 @@
    Apple Stocks × Linear × Copilot Aesthetic
    ========================================================================== */
 
+/* ==========================================================================
+   Design tokens
+   --------------------------------------------------------------------------
+   The palette, radii, layout constants and type scale now live in
+   design/tokens.json and are emitted into web/tokens.css by
+   tools/gen-tokens.mjs, which also emits the Kotlin half. index.html links
+   that file ahead of this one.
+
+   They were moved rather than copied: two definitions of --bg-canvas is
+   exactly the drift doc 13 §10 exists to prevent, and the one that is easier
+   to edit always wins. Add a colour there, not here.
+
+   Only the safe-area insets stay, because env() is a browser capability
+   rather than a design decision and has no Android counterpart.
+   ========================================================================== */
+
 :root {
-  /* Dark Theme (Default) */
-  --bg-canvas: #0B0E14;
-  --bg-surface: #121824;
-  --bg-surface-elevated: #1A2234;
-  --bg-surface-subtle: #161F2E;
-  --bg-surface-glass: rgba(18, 24, 36, 0.85);
-
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-prominent: rgba(255, 255, 255, 0.16);
-  --border-glass: rgba(255, 255, 255, 0.12);
-
-  /* Typography */
-  --text-primary: #F3F5F9;
-  --text-secondary: #94A3B8;
-  --text-tertiary: #64748B;
-  --text-accent: #38BDF8;
-
-  /* Health & Financial Semantics */
-  --health-pristine: #10B981;
-  --health-pristine-bg: rgba(16, 185, 129, 0.12);
-  --health-pristine-border: rgba(16, 185, 129, 0.3);
-
-  --health-good: #34D399;
-  --health-good-bg: rgba(52, 211, 153, 0.12);
-  --health-good-border: rgba(52, 211, 153, 0.3);
-
-  --health-moderate: #FBBF24;
-  --health-moderate-bg: rgba(251, 191, 36, 0.12);
-  --health-moderate-border: rgba(251, 191, 36, 0.3);
-
-  --health-risk: #F87171;
-  --health-risk-bg: rgba(248, 113, 113, 0.12);
-  --health-risk-border: rgba(248, 113, 113, 0.3);
-
-  /* Brand Accents */
-  --brand-cyan: #06B6D4;
-  --brand-violet: #8B5CF6;
-  --brand-blue: #3B82F6;
-  --brand-gold: #F59E0B;
-  --brand-gradient: linear-gradient(135deg, #06B6D4 0%, #3B82F6 100%);
-  --brand-glow: rgba(6, 182, 212, 0.25);
-
-  /* Elevation Shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.4), 0 2px 6px -1px rgba(0, 0, 0, 0.2);
-  --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
-
-  /* Layout Constants */
-  --max-app-width: 960px;
-  --bottom-nav-height: 64px;
-  --header-height: 56px;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
-  --radius-pill: 9999px;
-  
-  /* Safe area insets for iOS standalone */
   --sat: env(safe-area-inset-top, 0px);
   --sab: env(safe-area-inset-bottom, 0px);
-}
-
-/* Light Theme Variables */
-[data-theme="light"] {
-  /* A touch darker on white, so the recall card's tint stays legible. */
-  --brand-violet: #7C3AED;
-  --bg-canvas: #F8FAFC;
-  --bg-surface: #FFFFFF;
-  --bg-surface-elevated: #FFFFFF;
-  --bg-surface-subtle: #F1F5F9;
-  --bg-surface-glass: rgba(255, 255, 255, 0.9);
-
-  --border-subtle: #E2E8F0;
-  --border-prominent: #CBD5E1;
-  --border-glass: rgba(0, 0, 0, 0.08);
-
-  --text-primary: #0F172A;
-  --text-secondary: #475569;
-  --text-tertiary: #94A3B8;
-  --text-accent: #0284C7;
-
-  --health-pristine: #059669;
-  --health-pristine-bg: #ECFDF5;
-  --health-pristine-border: rgba(5, 150, 105, 0.25);
-
-  --health-good: #10B981;
-  --health-good-bg: #F0FDF4;
-  --health-good-border: rgba(16, 185, 129, 0.25);
-
-  --health-moderate: #D97706;
-  --health-moderate-bg: #FFFBEB;
-  --health-moderate-border: rgba(217, 119, 6, 0.25);
-
-  --health-risk: #DC2626;
-  --health-risk-bg: #FEF2F2;
-  --health-risk-border: rgba(220, 38, 38, 0.25);
-
-  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
 }
 
 /* ==========================================================================

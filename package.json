@@ -9,7 +9,8 @@
     "dev": "node --watch server/index.js",
     "test": "node --test \"core/**/*.test.js\" \"test/**/*.test.js\"",
     "prompt": "node scripts/dump-prompt.mjs",
-    "bundle:core": "node tools/bundle-core.mjs"
+    "bundle:core": "node tools/bundle-core.mjs",
+    "tokens": "node tools/gen-tokens.mjs"
   },
   "license": "GPL-3.0-or-later",
   "repository": {
