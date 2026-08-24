@@ -1,7 +1,16 @@
 # Pocket Omaha 🎩
 
-> **A Mobile-First Progressive Web App (PWA) for Stock Health, Economic Moats, and Fundamental Rigor.**  
-> Built for modern value investors who demand deep balance-sheet clarity, durable free cash flows, and zero noise.
+> **Scores a company from its filed statements — then holds you to the exit rules
+> you wrote while you were calm.**  
+> A mobile-first PWA for stock health, economic moats and fundamental rigor, built
+> for value investors who want balance-sheet clarity, durable free cash flows and
+> zero noise.
+>
+> Every competitor optimises the *buy* decision. This one is built around the
+> exit: a written thesis, pre-committed sell triggers, and a journal that
+> remembers what you thought before the price moved. It is an accountability
+> instrument, not an oracle — and **not a portfolio tracker**; see
+> `docs/01_PRODUCT_SPEC.md` §4 for what it deliberately does not do.
 
 ---
 

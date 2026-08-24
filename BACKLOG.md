@@ -129,10 +129,20 @@ of rejection.
 
 ---
 
-## Decide whether Pocket Omaha is a business or a household tool
+## ~~Decide whether Pocket Omaha is a business or a household tool~~ — decided 2026-08-24
 
-**Raised 2026-08-22.** Blocks the launch scope. Full reasoning in
-`docs/15_COMPETITIVE_POSITION.md` §4 and §6.
+**Raised 2026-08-22, decided 2026-08-24.** Full reasoning in
+`docs/15_COMPETITIVE_POSITION.md` §4 and §6; the decision and what falls out of
+it are recorded in `docs/16_ROADMAP.md` phase 0.
+
+**A household tool shipped publicly, with two deliberate departures:** statements
+go to EDGAR *with Yahoo retained as fallback* rather than US-only, and the widget
+is in scope rather than skipped. Portfolio accounting and dividend planning stay
+closed — now written down as `docs/01_PRODUCT_SPEC.md` §4 rather than left as
+apparent omissions. No free-tier cap, no price point pressure, no distribution or
+retention work.
+
+The original text is kept below because it is what the decision was made against.
 
 An audit of every doc found a **cost-recovery design but no commercial
 strategy**. Doc 13 §7 is explicit and self-consistent — the paywall exists for
