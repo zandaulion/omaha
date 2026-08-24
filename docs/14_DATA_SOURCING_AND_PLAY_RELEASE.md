@@ -326,12 +326,66 @@ which is the correctness win §"An unexpected correctness win" describes. NESN.S
 is not an SEC registrant, returns `not_found`, and falls through to Yahoo, which
 is decision 3 below working as resolved.
 
-### Still to measure
+### Measured on a handset — the size worry does not survive it
 
-**Parsing on a handset.** §3's caution stands and is the one open risk: 7.5 MB
-of JSON through QuickJS on a phone is unmeasured, and doc 13 §20 records that
-handset and emulator figures move in opposite directions from intuition. Test it
-on the device, as §3 says, not on a laptop.
+§3 asked for this to be tested on a device rather than a laptop, and it was
+right to: the answer is not the one the sizes imply.
+
+**Xiaomi 24117RK2CG, Android 16 (API 36), arm64-v8a, 4 KB pages**, via the
+sideloadable harness in `android/selftest`. Cold fetch, parse and score, both
+cache tiers bypassed, a fresh interpreter per ticker:
+
+| Ticker | `companyfacts` | Cold | Health |
+|---|---|---|---|
+| NOK | 0.9 MB | **2040 ms** | 52/100 |
+| AAPL | 3.6 MB | **1533 ms** | 66/100 |
+| JPM | 7.5 MB | **1984 ms** | 52/100 |
+
+**The largest blob was faster than the smallest.** Across an eightfold size
+range the times span 1533–2040 ms with no ordering by size whatsoever.
+
+The control makes it conclusive rather than merely suggestive. NOK is measured
+twice in the same run — 2577 ms in the live-pipeline section and 2040 ms here,
+the identical operation minutes apart. That **537 ms within-ticker spread
+exceeds the 507 ms spread across the whole size range**, so blob size is not
+merely a small term in this data, it is smaller than the noise.
+
+Stated precisely, because the distinction matters: this does not show that
+parsing 7.5 MB is free. It shows that parsing is small enough, relative to a
+mobile network round trip, that it cannot be measured through one. Since the
+network round trip is unavoidable and the parse only happens behind it, that is
+the same thing for every practical purpose.
+
+**No size guard is needed, and `companyconcept` stays rejected.** The mitigation
+sketched for a bad result — falling back to Yahoo above some blob size, or
+resolving tags once and switching endpoints — would trade a real complication
+for an immeasurable gain. The 24-hour statement tier means this cost is paid
+rarely in any case.
+
+### Two other things the run settles
+
+**A second handset, and the engine got slower.** Doc 13 §20 measured a Galaxy Z
+Fold 4 at 7.1 ms first score and 6.0 ms mean. This device: **11.2 ms and
+8.4 ms** — roughly 40% slower, on a newer API level. Still far below anything a
+person notices, and it is a useful reminder that §20's figures are one phone
+rather than a floor.
+
+**The cached read is 21 ms, exactly as on the Fold 4.** That number is dominated
+by starting a fresh QuickJS interpreter and re-parsing the bundle, which is the
+alpha13 workaround cost doc 13 §24 describes — so it tracks the workaround
+rather than the hardware, and reproducing across two very different phones is
+what that predicts.
+
+### A wording imprecision in the harness
+
+The line reads `health 52/100 across 12 checks`, and 12 is the **length of the
+checklist**, not the number measured. JPM in particular has several checks it
+cannot answer — it gets `null` for free cash flow and total debt, as §"What
+EDGAR does not carry" describes. The server-side equivalent of this check counts
+non-`NOT_REPORTED` entries; the harness does not. Worth correcting before the
+number is quoted as coverage.
+
+### Bundle cost
 
 The Android engine bundle grew from 85 KB to 96 KB, and the ingest bundle from
 20 KB to 32 KB, which is the cost of carrying both providers.

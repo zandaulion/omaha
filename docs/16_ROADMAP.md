@@ -240,8 +240,14 @@ Items 3–6 are prose. Items 1 and 2 are the ones with real code behind them.
 > split. NESN.SW is not a registrant, returns `not_found`, and falls through to
 > Yahoo — the hybrid working as decided.
 >
-> **One thing remains open**, and it is doc 14's own caution: parsing up to
-> 7.5 MB of JSON through QuickJS on a handset is unmeasured. It needs the phone.
+> **Measured on a handset 2026-08-24, and the size worry does not survive it.**
+> Doc 14's one open caution was parsing up to 7.5 MB of JSON through QuickJS on
+> a phone. Cold fetch-parse-score on a Xiaomi 24117RK2CG: NOK (0.9 MB) 2040 ms,
+> AAPL (3.6 MB) 1533 ms, JPM (7.5 MB) 1984 ms. **The largest blob was faster
+> than the smallest**, and the same ticker measured twice in one run varied by
+> more than the entire spread across an eightfold size range. Size is smaller
+> than the noise. No size guard, and `companyconcept` stays rejected. Doc 14 §3a
+> has the numbers.
 
 Work landing in `core/` reaches both clients by construction. That makes it the
 cheapest place to add value while the Android UI does not exist, and it is worth
