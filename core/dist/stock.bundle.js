@@ -1749,7 +1749,7 @@ async function fetchPeers(ticker) {
 // core/providers/edgar.js
 var TICKER_MAP_URL = "https://www.sec.gov/files/company_tickers.json";
 var COMPANYFACTS_BASE = "https://data.sec.gov/api/xbrl/companyfacts/CIK";
-var EDGAR_USER_AGENT = "PocketOmaha/1.0 (zandaulion/omaha; contact-not-set@example.com)";
+var EDGAR_USER_AGENT = "PocketOmaha/1.0 (zandaulion/omaha; zandaulion@gmail.com)";
 var DURATION = "duration";
 var INSTANT = "instant";
 var US_GAAP = {

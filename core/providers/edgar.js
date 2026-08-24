@@ -70,13 +70,12 @@ const COMPANYFACTS_BASE = 'https://data.sec.gov/api/xbrl/companyfacts/CIK';
  * `data.sec.gov`, which serves `companyfacts`, is more permissive. The ticker
  * map lives on `www.sec.gov`, so the strict host is on the critical path.
  *
- * TODO(release): replace the placeholder address before the app is
- * distributed. A fabricated contact is worse than none — the SEC uses it to
- * reach an operator whose client is misbehaving, and it is the one thing here
- * another party relies on being true.
+ * The address is real, which is the point: the SEC uses it to reach an operator
+ * whose client is misbehaving, and it is the one thing in this header another
+ * party relies on being true.
  */
 export const EDGAR_USER_AGENT =
-  'PocketOmaha/1.0 (zandaulion/omaha; contact-not-set@example.com)';
+  'PocketOmaha/1.0 (zandaulion/omaha; zandaulion@gmail.com)';
 
 /**
  * Which side of the statements a field comes from.
