@@ -36,6 +36,24 @@ The AI feature therefore transmits **the most personal data in the app**. This
 requires an explicit, default-off toggle — "include my notes in the analysis" —
 not a line in a privacy policy.
 
+> **Corrected 2026-08-24, and narrower than recorded.** "Thesis and journal
+> entries" is right about the *argument* and wrong about the *payload*. The
+> `theses` row does carry `journal_entries_json`, but
+> `buildComprehensivePayload` reads exactly four fields off it — `conviction`,
+> `target_buy_price`, `core_rationale` and `sell_triggers_json`. **The journal
+> has never been transmitted.**
+>
+> The requirement stands unchanged: what does travel includes the pre-committed
+> sell guardrails, which are a record of what would make someone abandon a
+> position, and that is worth an opt-in on its own.
+>
+> **The toggle now exists**, PWA and `core/` side, off by default —
+> `server/app-settings.js`, surfaced in Settings and disclosed at the point an
+> analysis is started. `test/app-settings.test.js` pins both halves: nothing
+> from the thesis reaches the payload when it is off, and the journal reaches it
+> in neither state. Android inherits the shape when its UI is built; the
+> preference itself will need mirroring into `app_settings` on that side.
+
 ---
 
 ## 2. Decisions

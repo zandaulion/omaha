@@ -107,6 +107,10 @@ const state = {
     journalEntries: []
   },
   aiSummaries: {},
+  // Mirrors the server's app_settings. The server is the authority — it is the
+  // side that actually decides what gets sent — and this copy exists so the
+  // interface can describe the current behaviour before a request is made.
+  appSettings: { ai_include_notes: 0 },
   offlineDataAt: null,
   servingFromCache: false
 };
@@ -128,6 +132,9 @@ async function initApp() {
   const isAuthed = await checkAuthSession();
   if (isAuthed) {
     try {
+      // Loaded up front rather than with the settings modal: the deep dive
+      // describes what an analysis will send before the modal is ever opened.
+      loadAppSettings();
       await loadWatchlists();
       if (state.activeWatchlistId) {
         await loadWatchlistData(state.activeWatchlistId);
@@ -710,6 +717,7 @@ function initEventListeners() {
   document.getElementById('settingsTriggerBtn')?.addEventListener('click', () => {
     haptic();
     loadNotificationCentre();
+    loadAppSettings();
     openModal('settingsModal');
     checkPushStatus();
   });
@@ -872,6 +880,14 @@ function initEventListeners() {
     box.addEventListener('change', () => {
       haptic();
       saveNotificationPrefs();
+    });
+  });
+
+  // Application preferences
+  document.querySelectorAll('[data-app-setting]').forEach((box) => {
+    box.addEventListener('change', () => {
+      haptic();
+      saveAppSettings();
     });
   });
 }
@@ -1329,6 +1345,18 @@ function ensureGeminiSubtabRendered(ticker) {
   }
 }
 
+/**
+ * One sentence describing whether the next analysis will carry the user's own
+ * writing. Rendered wherever an analysis can be started, so the disclosure sits
+ * at the point of the decision rather than only in Settings.
+ */
+function aiNotesDisclosure() {
+  return state.appSettings.ai_include_notes
+    ? `<span class="ai-notes-note is-on">Your notes for this company — conviction, target price,
+       rationale and sell guardrails — are included. Change this in Settings.</span>`
+    : `<span class="ai-notes-note">Your own notes are not included. You can turn that on in Settings.</span>`;
+}
+
 function resetOverviewAICard(ticker) {
   const body = document.getElementById('overviewAiBody');
   if (!body) return;
@@ -1336,6 +1364,7 @@ function resetOverviewAICard(ticker) {
     <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">
       Sends all financial statements, computed ratios (Altman Z, Piotroski, ROIC, DCF), and 12-point checklist to Gemini for an executive summary, moat breakdown, and conclusion with explanations.
     </p>
+    <p style="font-size: 11.5px; margin-bottom: 12px;">${aiNotesDisclosure()}</p>
     <button class="btn-ai-sparkle" id="overviewGeminiActionBtn" style="width: 100%;">
       ✨ Analyze with Gemini AI
     </button>
@@ -1361,6 +1390,7 @@ function renderGeminiCTA(ticker) {
       <p style="font-size: 13px; color: var(--text-secondary); max-width: 480px; margin: 0 auto 18px auto; line-height: 1.5;">
         Send <strong>${ticker}</strong>'s complete financial statements, computed quantitative KPIs (Altman Z, Piotroski, ROIC, DCF), and 12-point checklist to Google Gemini for a rigorous, Buffett-style value investing synthesis.
       </p>
+      <p style="font-size: 11.5px; max-width: 480px; margin: -8px auto 18px auto;">${aiNotesDisclosure()}</p>
       <div style="display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-bottom: 20px;">
         <span class="score-badge ai-badge-pill">🏰 Moat & Pricing Power</span>
         <span class="score-badge ai-badge-pill">🛡️ Balance Sheet Fortress</span>
@@ -1508,6 +1538,16 @@ function renderGeminiDashboard(data) {
   const dateFormatted = data.generatedAt
     ? `${new Date(data.generatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}, ${new Date(data.generatedAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}`
     : 'Recently';
+
+  // What this particular analysis was built from, which is not necessarily what
+  // the setting says today — the preference can be changed after the fact, and
+  // a saved analysis has to keep describing itself accurately. Summaries cached
+  // before the setting existed carry no flag, and say nothing rather than guess.
+  const notesProvenance = typeof data.includedNotes === 'boolean'
+    ? (data.includedNotes
+        ? ' · <span class="ai-notes-note is-on">included your notes</span>'
+        : ' · <span class="ai-notes-note">financial data only</span>')
+    : '';
 
   container.innerHTML = `
     <!-- 1. AI Verdict Hero Card -->
@@ -1662,7 +1702,7 @@ function renderGeminiDashboard(data) {
 
     <!-- 7. Meta Bar -->
     <div class="ai-meta-bar">
-      <span>🤖 Model: <strong class="mono">${data.model || 'Gemini'}</strong> · Generated: ${dateFormatted}</span>
+      <span>🤖 Model: <strong class="mono">${data.model || 'Gemini'}</strong> · Generated: ${dateFormatted}${notesProvenance}</span>
       <button class="btn-secondary" id="reAnalyzeGeminiBtn" style="padding: 4px 10px; font-size: 11px;">🔄 Re-Analyze</button>
     </div>
   `;
@@ -3013,6 +3053,49 @@ async function loadNotificationCentre() {
     apiFetch('/api/notifications/read', { method: 'POST' }).catch(() => {});
   } catch {
     // The alert centre is secondary; failing to load it must not break settings.
+  }
+}
+
+async function loadAppSettings() {
+  try {
+    const res = await apiFetch('/api/settings');
+    if (!res.ok) return;
+    const { settings = {} } = await res.json();
+    state.appSettings = { ...state.appSettings, ...settings };
+
+    document.querySelectorAll('[data-app-setting]').forEach((box) => {
+      const key = box.dataset.appSetting;
+      if (key in settings) box.checked = Boolean(settings[key]);
+    });
+  } catch {
+    // Leave the checkboxes at their unchecked default. For a privacy opt-in
+    // that is the safe way to fail: the box reads "off" and the server, which
+    // is the one that actually decides, also defaults to off.
+  }
+}
+
+async function saveAppSettings() {
+  const patch = {};
+  document.querySelectorAll('[data-app-setting]').forEach((box) => {
+    patch[box.dataset.appSetting] = box.checked;
+  });
+
+  try {
+    const res = await apiFetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch)
+    });
+    if (!res.ok) throw new Error('save failed');
+    const { settings = {} } = await res.json();
+    state.appSettings = { ...state.appSettings, ...settings };
+    showToast('Settings saved', '✓');
+  } catch {
+    // Re-read rather than leaving the box showing a state the server rejected.
+    // Silently keeping a ticked box here would claim an opt-in that never
+    // happened, which is the one failure this setting cannot afford.
+    showToast('Could not save settings', '⚠️');
+    loadAppSettings();
   }
 }
 

@@ -89,14 +89,32 @@ explicit, default-off toggle, *"not a line in a privacy policy."*
 
 It was never built. `server/index.js:242` reads the thesis unconditionally and
 passes it to `generateStockAISummary`, and `core/analysis/prompt.js:366` packs
-`coreRationale`, `conviction`, `targetBuyPrice`, `sellGuardrails` and the
-journal into the payload. Grepping `web/`, `server/` and `core/` for any
-`includeNotes`-shaped flag returns nothing.
+`coreRationale`, `conviction`, `targetBuyPrice` and `sellGuardrails` into the
+payload. Grepping `web/`, `server/` and `core/` for any `includeNotes`-shaped
+flag returns nothing.
 
 So the PWA sends the user's private notes to Google on every analysis, with no
 control and no disclosure. This is a shipped privacy gap, not merely an Android
 prerequisite — and it sits directly under the product's central privacy claim.
 It is scheduled in phase 1 for that reason rather than with the billing work.
+
+> **Correction — the exposure is narrower than doc 13 §1 and the first draft of
+> this section both said.** Both described it as the thesis *and journal
+> entries*. The `theses` row does carry `journal_entries_json` and the whole row
+> is the argument, so the claim reads correctly from the call site — but
+> `buildComprehensivePayload` reads only four fields off it, and the journal is
+> not among them. **No journal entry has ever been transmitted.**
+>
+> What is transmitted is still personal, and the sell guardrails are arguably
+> the most personal thing in the app: a record of what would make someone
+> abandon a position. The gap is real. It is just not as wide as recorded, and
+> the difference matters to anyone deciding how urgently to act on it.
+>
+> Pinned by a test rather than left as a reading — `test/app-settings.test.js`
+> asserts the journal stays out of the payload with the opt-in both off *and*
+> on, so this stops being true the moment someone adds it.
+
+**Closed in phase 1.** See §3, phase 1 item 1.
 
 ### 2.4 Doc 15's small items are cheaper than doc 15 knew
 

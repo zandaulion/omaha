@@ -21,6 +21,7 @@ import {
 } from './auth.js';
 import { initVapid, getVapidPublicKey, saveSubscription, broadcastPush, sendToDevice } from './push.js';
 import { generateStockAISummary, getCachedAISummary } from './gemini.js';
+import { getAppSettings, updateAppSettings, shouldIncludeNotesInAI } from './app-settings.js';
 import { buildBackup, mergeBackup } from '../core/backup.js';
 import { readPersonalData, writePersonalData } from './backup-store.js';
 import {
@@ -152,6 +153,16 @@ app.post('/api/notifications/read', requireDeviceAuth, (req, res) => {
   res.json({ success: true });
 });
 
+// Application preferences. Separate from /api/notifications because these are
+// not alert settings and should not be loaded only when the alert centre is.
+app.get('/api/settings', requireDeviceAuth, (req, res) => {
+  res.json({ settings: getAppSettings() });
+});
+
+app.post('/api/settings', requireDeviceAuth, (req, res) => {
+  res.json({ success: true, settings: updateAppSettings(req.body || {}) });
+});
+
 // Manual trigger for the sweep and the digest, so both can be exercised
 // without waiting for the schedule.
 app.post('/api/admin/alerts/sweep', requireAdmin, async (req, res) => {
@@ -239,7 +250,11 @@ app.post('/api/stock/:ticker/ai-summary', requireDeviceAuth, async (req, res) =>
       return res.status(404).json({ error: `Ticker ${ticker} not found` });
     }
 
-    const thesis = db.prepare('SELECT * FROM theses WHERE ticker = ?').get(ticker.toUpperCase());
+    // The user's thesis is the most personal data in the app, so it travels
+    // only on an explicit opt-in. Off by default; see server/app-settings.js.
+    const thesis = shouldIncludeNotesInAI()
+      ? db.prepare('SELECT * FROM theses WHERE ticker = ?').get(ticker.toUpperCase())
+      : null;
     const result = await generateStockAISummary(stock, thesis);
 
     return res.json({ success: true, summary: result, fromCache: false });
