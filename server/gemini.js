@@ -147,6 +147,13 @@ export async function generateStockAISummary(stock, thesis = null) {
     // cached summary can be spotted as stale once new fundamentals land.
     fiscalPeriodEnd: stock.summary?.metrics?.fiscalPeriodEnd || null,
     priceAtGeneration: stock.price ?? null,
+    // Whether this analysis was written with the user's own notes in front of
+    // it. Recorded rather than inferred: the preference can be changed after
+    // the fact, and a cached summary must still be able to say what it was
+    // actually built from. `thesis` is null both when the preference is off
+    // and when nothing has been written, and in both cases nothing personal
+    // left the device — which is exactly what this flag claims.
+    includedNotes: Boolean(thesis),
     currency: stock.currency || 'USD',
     ...parsed
   };

@@ -2016,6 +2016,22 @@ body {
   gap: 8px;
 }
 
+/*
+ * Whether an analysis carried the user's own writing.
+ *
+ * Deliberately not colour-coded as good or bad — neither state is a warning,
+ * and the amber the checklist uses would read as one. The "on" state is simply
+ * given more weight, because sending personal data is the state worth noticing.
+ */
+.ai-notes-note {
+  color: var(--text-tertiary);
+}
+
+.ai-notes-note.is-on {
+  color: var(--text-accent);
+  font-weight: 600;
+}
+
 /* AI Loading State Animation */
 .ai-loader-card {
   text-align: center;
