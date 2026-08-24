@@ -218,6 +218,126 @@ are lost.
 
 ---
 
+## 3a. Implementation notes — built 2026-08-24
+
+`core/providers/edgar.js`, with `providers/index.js` making the choice per
+ticker. Three things measured or found here contradict what §2–3 predicted, and
+each changed the implementation.
+
+### The endpoint numbers were both wrong
+
+§3 left the endpoint choice open and asked for it to be measured. Measured:
+
+| | doc 14 estimate | measured 2026-08-24 |
+|---|---|---|
+| `companyfacts` per company | ~3.8 MB | 0.91 MB (NOK), 3.61 (AAPL), **7.53 (JPM)** |
+| `companyconcept` per tag | ~2 KB | **~18 KB** |
+
+`companyfacts` is still right, by a wider margin than the estimates implied. The
+engine reads ~30 fields with several candidate tags each, and **which tag a
+filer uses is not known in advance** — that is the problem this module exists to
+solve. Resolving it through `companyconcept` means a request per candidate, most
+of them 404, at 18 KB each against a 10/sec budget.
+
+The open risk is parsing, not fetching: `JSON.parse` of the JPM blob costs
+129 ms under Node on a laptop, and JPM is twice the size §3 planned for.
+
+### `github.com` in the User-Agent is a 403
+
+Same second, same client, against `www.sec.gov`:
+
+```
+403  PocketOmaha/1.0 (https://github.com/zandaulion/omaha; …)
+403  PocketOmaha/1.0 (github.com/zandaulion/omaha; …)
+200  PocketOmaha/1.0 (zandaulion/omaha; …)
+200  PocketOmaha/1.0 (https://example.com; …)
+```
+
+Not URLs in general, and not the contact address — the literal substring.
+Citing the project repository is exactly what §2's "identify honestly" advice
+leads a developer to write, so the most conscientious version of the header is
+the one that fails. It fails only against the live host; every fixture-backed
+test passes.
+
+`data.sec.gov`, which serves `companyfacts`, is more permissive. The ticker map
+is on `www.sec.gov`, so the strict host is on the critical path.
+
+### EDGAR throttles with 403, not 429
+
+The same User-Agent that had just been served 200 returned 403 during a burst,
+then 200 again seconds later. The shared `kindForStatus` maps 403 to
+`unauthorized`, which is correct for Yahoo — an invalidated crumb, recoverable
+by re-establishing the session — and wrong here, where there is no session and
+`unauthorized` is not transient. Unmapped, a throttled request surfaces as a
+permanent failure and no caller ever backs off. `edgar.js` maps it explicitly.
+
+### The tag map needed a rule §2 did not anticipate
+
+§2 predicted the work was "a second tag dictionary" and that capex is the tag
+needing hunting. Both true. What it missed is that **choosing between candidate
+tags cannot be done by taking the first one present.**
+
+Nokia files `Revenue` — three facts, all from a 2018 filing, covering 2015–17 —
+and `RevenueFromContractsWithCustomers`, with 24 and current, having switched at
+IFRS 15. First-non-empty returns a revenue series that stops in 2017 and nulls
+every modern period. The same transition exists in us-gaap between `Revenues`
+and the ASC 606 tags, so this is a property of the data rather than a Nokia
+quirk.
+
+Candidates are ranked by how recent their newest fact is, then by count, then by
+declared order. One tag is still chosen rather than several merged: the two
+sides of a revenue-recognition change are different definitions, and a series
+spanning both yields a CAGR over neither.
+
+### Periods are defined by income statements, not balance sheets
+
+XBRL facts are either durations (`start` and `end`) or instants (`end` only).
+Balance sheets are filed every quarter regardless of the period being reported,
+so letting instants create periods produced **70 annual periods for AAPL**
+against the 19 it has. Durations establish the period set; instants attach to
+dates already claimed.
+
+Annual is judged on reported duration, 340–400 days, rather than on `fp: 'FY'`.
+Annual figures appear inside 10-Q filings and some filers stamp `FY` on a
+nine-month cumulative — the number of days between two dates is a fact about the
+period, `fp` is a label about the form.
+
+### What EDGAR does not carry
+
+Yahoo synthesises `freeCashFlow`, `ebit`, `ebitda` and `totalDebt`; XBRL has no
+such concepts because companies do not file them. They are derived, and only
+where the derivation is standard and every input is present — otherwise `null`,
+per the rule the README opens with. A bank is the visible case: JPM gets revenue
+and net income from EDGAR and `null` for free cash flow and total debt.
+
+### Verified end to end
+
+Against live EDGAR through the whole pipeline, not only the parser:
+
+| Ticker | Source | Reporting | Health | Checklist |
+|---|---|---|---|---|
+| AAPL | EDGAR (us-gaap) | USD | 66 | 12/12 measured |
+| NOK | EDGAR (ifrs-full) | EUR | 52 | 12/12 |
+| SAP | EDGAR (ifrs-full) | EUR | 72 | 12/12 |
+| NESN.SW | **Yahoo fallback** | CHF | 47 | 12/12 |
+
+NOK exercises the reporting-versus-traded split — EUR statements, USD listing —
+which is the correctness win §"An unexpected correctness win" describes. NESN.SW
+is not an SEC registrant, returns `not_found`, and falls through to Yahoo, which
+is decision 3 below working as resolved.
+
+### Still to measure
+
+**Parsing on a handset.** §3's caution stands and is the one open risk: 7.5 MB
+of JSON through QuickJS on a phone is unmeasured, and doc 13 §20 records that
+handset and emulator figures move in opposite directions from intuition. Test it
+on the device, as §3 says, not on a laptop.
+
+The Android engine bundle grew from 85 KB to 96 KB, and the ingest bundle from
+20 KB to 32 KB, which is the cost of carrying both providers.
+
+---
+
 ## 4. Open decisions
 
 1. **Does the release wait for EDGAR?** The recommendation here is yes.
@@ -225,9 +345,12 @@ are lost.
    project and answers instantly when given one. Worth testing whether Yahoo's
    endpoints still respond without a spoofed desktop agent — if they do, the
    ingestion path becomes uniformly above-board and doc 13 §8 can be rewritten.
-3. **Non-US-listed tickers** — unsupported, or Yahoo fallback? This is a
-   positioning question rather than a technical one; see
-   `15_COMPETITIVE_POSITION.md` §5, which sets it against the coverage the
-   comparators advertise.
+3. ~~**Non-US-listed tickers** — unsupported, or Yahoo fallback?~~
+   **Resolved 2026-08-24 to Yahoo fallback**, by the phase 0 decision in
+   `docs/16_ROADMAP.md`. Chosen for coverage rather than competition: a holding
+   listed only outside the US has to keep scoring. EDGAR is primary, Yahoo sits
+   behind it, and the fallback triggers on any EDGAR failure rather than only on
+   a missing registrant — an outage should degrade to the older source rather
+   than to no statements. See §3a.
 4. **Monetisation** — free app with paid Gemini analysis is a sound model and
    raises no policy problem. It is not, however, a substitute for item 1.

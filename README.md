@@ -85,7 +85,9 @@ reported as inapplicable and a measure that does fit is used instead.
    - Per-alert-type preferences and a delivered-alert history in Settings.
 
 8. **Zero-Recurring-Cost Architecture & Offline-First PWA**:
-   - Statements from Yahoo's `fundamentals-timeseries` service; no API keys.
+   - Statements from **SEC EDGAR** — official, keyless, and the number as filed
+     rather than a re-derivation — with Yahoo retained as the fallback for
+     companies EDGAR does not cover. Quotes and prices stay on Yahoo. No API keys.
    - 15-minute quote caching and 24-hour statement caching in SQLite.
    - Last good API response held in IndexedDB, with an age-stamped banner when
      serving it.
@@ -120,7 +122,7 @@ regenerate rather than committing a snapshot that will drift.
 npm test
 ```
 
-132 assertions. The 48 in `core/scoring.test.js` each correspond to a defect that
+163 assertions. The 48 in `core/scoring.test.js` each correspond to a defect that
 shipped in an earlier build of the scoring engine, and they are the reason the
 engine can be changed with any confidence — every one of them produced a
 plausible, wrong number that looked correct on screen. The rest cover ingestion
@@ -129,6 +131,8 @@ failure handling (`core/providers/yahoo.test.js`), portable decimal formatting
 merge rules (`core/backup.test.js`), the alert rules, the Gemini payload, and
 the AI notes opt-in (`test/app-settings.test.js`) — which asserts the payload
 itself, so a leak of personal data fails the build rather than a flag flipping.
+`core/providers/edgar.test.js` parses recorded SEC filings for a us-gaap filer,
+an IFRS filer reporting in euros, and a bank.
 
 `test/golden.test.js` runs the whole pipeline — raw upstream bytes to scored
 model — against recorded responses in `core/__fixtures__/`, for a bank, a
@@ -136,7 +140,8 @@ depositary receipt with a currency split, and an industrial on a September year
 end. Re-record with:
 
 ```bash
-node scripts/record-fixture.mjs NOK AAPL JPM
+node scripts/record-fixture.mjs NOK AAPL JPM        # Yahoo
+node scripts/record-edgar-fixture.mjs NOK AAPL JPM  # SEC EDGAR
 ```
 
 Those fixtures are real captured responses, not hand-written. A hand-made
