@@ -126,6 +126,7 @@ class SelfTestActivity : Activity() {
             scoringChecks()
             backupChecks()
             livePipeline()
+            edgarSizeCurve()
         } catch (err: Throwable) {
             failures++
             line("  FAIL  unexpected: " + err.javaClass.simpleName + ": " + err.message, BAD)
@@ -287,6 +288,86 @@ class SelfTestActivity : Activity() {
         } finally {
             db.close()
         }
+    }
+
+    /**
+     * What EDGAR costs on this phone, against blob size.
+     *
+     * This is the one question doc 14 §3a leaves open, and it cannot be
+     * answered anywhere but here. `companyfacts` is a single request whose body
+     * ranges from about 0.9 MB to 7.5 MB — measured on a laptop, where
+     * `JSON.parse` of the largest costs 129 ms under V8. QuickJS on an ARM
+     * handset is a different proposition, and doc 13 §20 records that handset
+     * and emulator figures moved in the opposite direction from intuition, so
+     * an estimate is worth nothing here.
+     *
+     * Three tickers spanning the range, smallest first. Each is forced past
+     * both cache tiers so the number is a genuine cold fetch-parse-score.
+     *
+     * There are two ways this can be informative. A time is the expected
+     * outcome. A failure on JPM alone would be at least as useful: it would
+     * mean the 7.5 MB body does not survive the bridge, and that is a design
+     * constraint rather than a bug — the JS side escapes every non-ASCII code
+     * unit before it crosses, so a large body arrives larger still.
+     */
+    private suspend fun edgarSizeCurve() {
+        heading("EDGAR on device  (cold fetch, parse and score by blob size)")
+        line("  companyfacts sizes measured 2026-08-24 on a laptop:", MUTED)
+        line("  NOK 0.9 MB · AAPL 3.6 MB · JPM 7.5 MB", MUTED)
+
+        val db = Room.inMemoryDatabaseBuilder(applicationContext, OmahaDatabase::class.java).build()
+        try {
+            for ((ticker, blob) in listOf("NOK" to "0.9 MB", "AAPL" to "3.6 MB", "JPM" to "7.5 MB")) {
+                // A fresh engine per ticker, so one interpreter never carries
+                // another ticker's heap into the next measurement.
+                val engine = StockEngine.fromSource(
+                    asset("core/" + StockEngine.BUNDLE_PATH),
+                    OkHttpBridge(),
+                    RoomStockStore(db.stockCache())
+                )
+
+                try {
+                    val started = System.nanoTime()
+                    val raw = withContext(Dispatchers.IO) { engine.stock(ticker, forceRefresh = true) }
+                    val ms = (System.nanoTime() - started) / 1_000_000.0
+
+                    val result = Json.parseToJsonElement(raw) as JsonObject
+                    if ((result["ok"] as? JsonPrimitive)?.content != "true") {
+                        val error = result["error"] as? JsonObject
+                        val kind = (error?.get("kind") as? JsonPrimitive)?.content ?: "unknown"
+                        line("  " + ticker.padEnd(5) + blob.padEnd(8) + "SKIP  (" + kind + ")", MUTED)
+                        continue
+                    }
+
+                    val data = result["data"] as JsonObject
+                    val score = (data["health_score"] as? JsonPrimitive)?.content ?: "null"
+                    val checks = (data["checklist"] as? JsonArray)?.size ?: 0
+                    line(
+                        String.format(
+                            "  %-5s %-8s %6.0f ms   health %s/100 across %d checks",
+                            ticker, blob, ms, score, checks
+                        )
+                    )
+                } catch (err: Throwable) {
+                    // Recorded rather than thrown. A failure here is a
+                    // measurement, and the run should continue to the next size.
+                    line(
+                        "  " + ticker.padEnd(5) + blob.padEnd(8) +
+                            "FAILED  " + err.javaClass.simpleName + ": " +
+                            (err.message ?: "").take(80),
+                        BAD
+                    )
+                }
+            }
+        } finally {
+            db.close()
+        }
+
+        line(
+            NEWLINE + "  These numbers decide whether EDGAR needs a smaller endpoint" +
+                NEWLINE + "  on mobile. Report them into docs/14 §3a.",
+            MUTED
+        )
     }
 
     // ------------------------------------------------------------ helpers
