@@ -8,6 +8,22 @@
 
 ## 1. Executive Summary & Vision
 
+> **Positioning — added 2026-08-24, per `docs/15_COMPETITIVE_POSITION.md` §6.5.**
+>
+> **Pocket Omaha scores a company from its filed statements, and then holds you
+> to the exit rules you wrote while you were calm.**
+>
+> Lead with that. Doc 15 checked the pre-committed sell triggers against all ten
+> platforms in the market survey and found nothing comparable: every competitor
+> optimises the *buy* decision, and none addresses the exit, which is where
+> undisciplined selling does its damage. Together with the thesis and journal
+> that makes this an **accountability instrument rather than an oracle** — a
+> position no incumbent occupies.
+>
+> **Never describe it as a tracker.** The word sets an expectation of portfolio
+> accounting that §4 deliberately does not meet, and it gives away the one thing
+> nothing else in the market does. *Research and conviction*, not *tracking*.
+
 The goal of this PWA is to empower the user to rapidly assess, track, and monitor individual stock health without having to jump between complex financial spreadsheets, 10-K filings, and noisy social feeds. 
 
 It unifies **macro health scoring**, **rule-based fundamental checklists**, **automated pros/cons risk detection**, and **deep ratio breakdowns** into an elegant, tactile mobile app.
@@ -65,3 +81,60 @@ Evaluates companies across 5 distinct pillars (20 points each):
 * Installable to iOS / Android Home Screen with standalone display mode.
 * Instant cached data load with background syncing.
 * Haptic feedback on mobile interactions.
+
+---
+
+## 4. Scope Boundaries — what this deliberately is not
+
+> **Added 2026-08-24.** `docs/15_COMPETITIVE_POSITION.md` §2.1 and §2.6 asked for
+> these to be confirmed as decisions rather than left as apparent omissions, so
+> that they stop being re-litigated one feature at a time. Reaffirmed by the
+> phase 0 decision in `docs/16_ROADMAP.md`.
+>
+> Each of these is closed. Re-opening one is a product decision, not a backlog
+> item.
+
+### A. No portfolio accounting
+
+No share counts, cost basis, lot tracking, realised/unrealised split, XIRR, TWR
+or MWRR. The portfolio aggregator sums **scores, not money**.
+
+The app answers *is this company sound?* It does not answer *how am I doing?*
+
+This is what keeps the app free of broker credentials, and the privacy claim is
+downstream of it: no account, no aggregator, nothing to link. Every platform in
+the market survey has some form of this, and every one of them pays for it with
+either a per-institution aggregator fee or a credential prompt.
+
+**If this is ever revisited, the entry point is CSV import, not an aggregator.**
+Aggregator fees (Plaid, SnapTrade, Yodlee) are precisely what forces the 10–15
+holding caps on the independent tier and are structurally incompatible with
+zero recurring cost. CSV carries no such cost.
+
+### B. No dividend or cash-flow planning
+
+Pillar 5 scores dividend *safety*, and that is the extent of it. No ex-date
+calendar, no forward payout projection, no yield-on-cost.
+
+Income and FIRE investors are a real segment and a well-served one — Stock
+Events, Snowball Analytics and DivTracker own it. That persona is not the one in
+§2, and serving it properly would mean becoming a different product.
+
+### C. No discovery screening
+
+The Filter view narrows the companies already under consideration. It is not a
+market screener and is no longer named like one (see doc 03, screen 3).
+
+Real discovery needs a universe this app does not ingest, and cannot ingest for
+free.
+
+### D. No forward-looking consensus data
+
+No analyst estimates, no EPS revisions, no consensus price targets. The app is
+backward-looking by construction: filed statements, plus whatever assumptions
+the user supplies to the DCF sandbox.
+
+**This is a position, not a gap.** Consensus estimates are a survey of opinion;
+filed statements are fact. The DCF sandbox exists so the user supplies the
+forward view themselves — *we do not tell you the future, we give you the
+instrument to model it*.
