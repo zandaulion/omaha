@@ -356,6 +356,26 @@ generated output differs from what is committed, so neither side can be
 hand-edited. Bundle **Inter** and **JetBrains Mono** in the APK — Roboto will
 not reproduce the type scale in doc 04.
 
+> **Built 2026-08-24**, ahead of the Compose UI as §11 step 4 requires.
+> `test/tokens.test.js` runs the generator's own `--check`, so a hand-edit to
+> either output fails the suite. The palette was *moved* out of `web/app.css`
+> rather than copied — two definitions of `--bg-canvas` is precisely the drift
+> this exists to prevent, and the one that is easier to edit always wins. Only
+> the safe-area insets stay behind, since `env()` is a browser capability rather
+> than a design decision.
+>
+> **`android/design` is a real module now, and that is the point.** A generator
+> whose output is never compiled is not a gate. Compiling it caught three errors
+> invisible in both the JSON and the CSS half: a `title-1` identifier that a
+> hyphen makes illegal in Kotlin, a missing `em` import used only by the
+> tracking values, and the Compose *compiler* plugin failing outright because it
+> demands the Compose runtime — which a file declaring no `@Composable` has no
+> reason to carry. Tokens use Compose's value types only, so the plugin belongs
+> with the first module that actually declares composables, in step 4.
+>
+> Gradle regenerates before compiling, so Android cannot build against a stale
+> `Tokens.kt`.
+
 Charts are lower risk than they appear: the revenue/FCF and liquidity charts are
 CSS-styled div columns, and only the margin trajectory uses inline SVG. Compose
 equivalents are weighted `Column`s and one `Canvas` path — not a charting

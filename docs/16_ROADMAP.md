@@ -275,7 +275,21 @@ doing before phase 4 rather than after.
 Both raise the value of the app before either client's UI work begins, and
 neither can drift, because there is one implementation.
 
-### Phase 3 — Build the parity gate
+### Phase 3 — Build the parity gate — **done 2026-08-24**
+
+> Built, and it closes: `design/tokens.json` → `web/tokens.css` +
+> `android/design/.../Tokens.kt`, with `test/tokens.test.js` failing on any
+> hand-edit to either output.
+>
+> The palette was **moved** out of `web/app.css`, not copied. Two definitions of
+> `--bg-canvas` is the exact drift this exists to prevent.
+>
+> **`android/design` compiles.** That was the decision worth making: a generator
+> whose output is never compiled is not a gate, and compiling caught three
+> errors invisible in the JSON and in the CSS half — a `title-1` identifier a
+> hyphen makes illegal in Kotlin, an `em` import used only by the tracking
+> values, and the Compose compiler plugin demanding a runtime that a file with
+> no `@Composable` has no reason to carry.
 
 Before any Compose UI. Doc 13 §10.
 

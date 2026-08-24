@@ -1,0 +1,115 @@
+/*
+ * Generated from design/tokens.json by tools/gen-tokens.mjs.
+ *
+ * Do not edit. Edit the source and run `npm run tokens`.
+ * test/tokens.test.js fails if this file has drifted from its source, which is
+ * what stops the two clients diverging one hand-edit at a time.
+ */
+
+/* Dark is the base palette; see design/tokens.json. */
+:root {
+  --bg-canvas: #0B0E14;
+  --bg-surface: #121824;
+  --bg-surface-elevated: #1A2234;
+  --bg-surface-subtle: #161F2E;
+  --bg-surface-glass: rgba(18, 24, 36, 0.85);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-prominent: rgba(255, 255, 255, 0.16);
+  --border-glass: rgba(255, 255, 255, 0.12);
+  --text-primary: #F3F5F9;
+  --text-secondary: #94A3B8;
+  --text-tertiary: #64748B;
+  --text-accent: #38BDF8;
+  --health-pristine: #10B981;
+  --health-pristine-bg: rgba(16, 185, 129, 0.12);
+  --health-pristine-border: rgba(16, 185, 129, 0.3);
+  --health-good: #34D399;
+  --health-good-bg: rgba(52, 211, 153, 0.12);
+  --health-good-border: rgba(52, 211, 153, 0.3);
+  --health-moderate: #FBBF24;
+  --health-moderate-bg: rgba(251, 191, 36, 0.12);
+  --health-moderate-border: rgba(251, 191, 36, 0.3);
+  --health-risk: #F87171;
+  --health-risk-bg: rgba(248, 113, 113, 0.12);
+  --health-risk-border: rgba(248, 113, 113, 0.3);
+  --brand-cyan: #06B6D4;
+  --brand-violet: #8B5CF6;
+  --brand-blue: #3B82F6;
+  --brand-gold: #F59E0B;
+  --brand-glow: rgba(6, 182, 212, 0.25);
+  --brand-gradient: linear-gradient(135deg, #06B6D4 0%, #3B82F6 100%);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.4), 0 2px 6px -1px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-pill: 9999px;
+  --max-app-width: 960px;
+  --bottom-nav-height: 64px;
+  --header-height: 56px;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", Roboto, sans-serif;
+  --font-mono: "SF Mono", "JetBrains Mono", "Roboto Mono", monospace;
+
+  --type-display-lg-size: 32px;
+  --type-display-lg-line: 38px;
+  --type-display-lg-weight: 700;
+  --type-display-lg-tracking: -0.03em;
+  --type-title-1-size: 24px;
+  --type-title-1-line: 30px;
+  --type-title-1-weight: 600;
+  --type-title-1-tracking: -0.02em;
+  --type-title-2-size: 18px;
+  --type-title-2-line: 24px;
+  --type-title-2-weight: 600;
+  --type-title-2-tracking: -0.01em;
+  --type-body-md-size: 15px;
+  --type-body-md-line: 22px;
+  --type-body-md-weight: 400;
+  --type-body-md-tracking: 0em;
+  --type-body-sm-size: 13px;
+  --type-body-sm-line: 18px;
+  --type-body-sm-weight: 400;
+  --type-body-sm-tracking: 0.01em;
+  --type-caption-size: 11px;
+  --type-caption-line: 15px;
+  --type-caption-weight: 500;
+  --type-caption-tracking: 0.03em;
+}
+
+[data-theme="light"] {
+  --bg-canvas: #F8FAFC;
+  --bg-surface: #FFFFFF;
+  --bg-surface-elevated: #FFFFFF;
+  --bg-surface-subtle: #F1F5F9;
+  --bg-surface-glass: rgba(255, 255, 255, 0.9);
+  --border-subtle: #E2E8F0;
+  --border-prominent: #CBD5E1;
+  --border-glass: rgba(0, 0, 0, 0.08);
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-tertiary: #94A3B8;
+  --text-accent: #0284C7;
+  --health-pristine: #059669;
+  --health-pristine-bg: #ECFDF5;
+  --health-pristine-border: rgba(5, 150, 105, 0.25);
+  --health-good: #10B981;
+  --health-good-bg: #F0FDF4;
+  --health-good-border: rgba(16, 185, 129, 0.25);
+  --health-moderate: #D97706;
+  --health-moderate-bg: #FFFBEB;
+  --health-moderate-border: rgba(217, 119, 6, 0.25);
+  --health-risk: #DC2626;
+  --health-risk-bg: #FEF2F2;
+  --health-risk-border: rgba(220, 38, 38, 0.25);
+  --brand-cyan: #06B6D4;
+  --brand-violet: #7C3AED;
+  --brand-blue: #3B82F6;
+  --brand-gold: #F59E0B;
+  --brand-glow: rgba(6, 182, 212, 0.25);
+  --brand-gradient: linear-gradient(135deg, #06B6D4 0%, #3B82F6 100%);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+}
