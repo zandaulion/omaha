@@ -5,9 +5,25 @@ Deferred work, with enough context to pick up cold. Known limitations that are
 
 ---
 
-## Flag AI summaries as stale when the fundamentals move
+## ~~Flag AI summaries as stale when the fundamentals move~~ — done 2026-08-24
 
-**Deferred 2026-08-20.** The groundwork is already in place, so this is small.
+**Deferred 2026-08-20, done 2026-08-24** as `docs/16_ROADMAP.md` phase 2.
+
+The comparison is `core/analysis/staleness.js`, so Android reaches the same
+verdict through its own bridge rather than through a second opinion written in
+Kotlin. The server attaches it to both AI-summary responses; the deep dive shows
+it above the verdict, and the overview teaser carries a one-line version.
+
+Both signals are separated as specified: superseded filings undermine every
+section, price drift undermines the valuation paragraphs and leaves the moat and
+solvency reasoning standing. Nothing auto-regenerates.
+
+One thing worth recording. The 15% threshold could not be compared exactly: a
+price precisely 15% above the recorded one yields 0.14999999999999991 in binary,
+so the boundary is compared with one part in a billion of slack. Pinned by a
+test.
+
+The original entry follows, since it is the specification this was built to.
 
 Cached analyses in `ai_summaries` already store the two fields needed to detect
 staleness — added when the Gemini payload was rebuilt:

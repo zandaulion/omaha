@@ -2065,6 +2065,60 @@ body {
 
 .about-card strong { color: var(--text-primary); }
 
+/*
+ * A cached analysis that no longer matches the company.
+ *
+ * Borrows the freshness-banner palette rather than inventing a third staleness
+ * idiom: amber already means "this is real, and it is old" everywhere else in
+ * the app, and a second vocabulary for the same idea would have to be learned.
+ *
+ * The severe variant is for superseded filings, which undermine every section.
+ * Price drift gets the softer one because it invalidates the valuation
+ * paragraphs and leaves the moat reasoning standing.
+ */
+.staleness-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: color-mix(in srgb, #F59E0B 12%, transparent);
+  border: 1px solid color-mix(in srgb, #F59E0B 28%, transparent);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-bottom: 14px;
+}
+
+.staleness-notice.is-superseded {
+  background: color-mix(in srgb, #F87171 12%, transparent);
+  border-color: color-mix(in srgb, #F87171 30%, transparent);
+}
+
+.staleness-icon { font-size: 15px; line-height: 1.3; flex: none; }
+
+.staleness-text { flex: 1; min-width: 0; }
+
+.staleness-headline {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #FBBF24;
+  line-height: 1.4;
+}
+
+.staleness-notice.is-superseded .staleness-headline { color: #F87171; }
+
+.staleness-detail {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin-top: 3px;
+}
+
+.staleness-notice .btn-secondary {
+  flex: none;
+  align-self: center;
+  font-size: 11px;
+  padding: 5px 10px;
+}
+
 /* An AI-generated surface says so where it starts, not only in a footer. */
 .ai-origin-tag {
   display: inline-flex;
