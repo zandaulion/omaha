@@ -737,12 +737,23 @@ Measured on a **Samsung SM-F936B (Galaxy Z Fold 4), Android 16 (API 36),
 arm64-v8a** via the sideloadable harness in `android/selftest`, and on the
 Pixel 9a emulator via the instrumented suite.
 
-| | Handset (arm64) | Emulator (x86_64) |
-|---|---|---|
-| Scoring parity, all three fixtures | byte-identical to Node | byte-identical |
-| First score | **7.1 ms** | 22.5 ms |
-| Per score, mean of 10 | **6.0 ms** | 43.1 ms |
-| Page size | 4 KB | 16 KB |
+| | Fold 4 (arm64) | Xiaomi (arm64) | Emulator (x86_64) |
+|---|---|---|---|
+| Scoring parity, all three fixtures | byte-identical to Node | byte-identical | byte-identical |
+| First score | **7.1 ms** | **11.2 ms** | 22.5 ms |
+| Per score, mean of 10 | **6.0 ms** | **8.4 ms** | 43.1 ms |
+| Page size | 4 KB | 4 KB | 16 KB |
+
+> **Second handset added 2026-08-24**: Xiaomi 24117RK2CG, Android 16 (API 36),
+> arm64-v8a. Roughly 40% slower than the Fold 4 on a newer API level, which is
+> worth recording for the reason the emulator column is: these are one phone
+> each, not a floor. Both remain far below anything a person notices.
+>
+> Its cached read came in at **21 ms — the same figure as the Fold 4**, which is
+> what §24 predicts. That number is dominated by starting a fresh interpreter and
+> re-parsing the bundle, so it tracks the alpha13 workaround rather than the
+> hardware, and reproducing across two very different phones is the evidence for
+> that reading.
 
 | Artifact | Size |
 |---|---|

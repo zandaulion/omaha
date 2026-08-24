@@ -270,7 +270,7 @@ class SelfTestActivity : Activity() {
 
             line("  fetched    " + name)
             line("  price      " + price + " " + currency)
-            line("  health     " + score + "/100 across " + checks + " checks")
+            line("  health     " + score + "/100, " + coverage(data) + " checks measured")
             line(String.format("  cold       %.0f ms", coldMs))
 
             // The tier that had never worked in the PWA, exercised for real.
@@ -341,11 +341,10 @@ class SelfTestActivity : Activity() {
 
                     val data = result["data"] as JsonObject
                     val score = (data["health_score"] as? JsonPrimitive)?.content ?: "null"
-                    val checks = (data["checklist"] as? JsonArray)?.size ?: 0
                     line(
                         String.format(
-                            "  %-5s %-8s %6.0f ms   health %s/100 across %d checks",
-                            ticker, blob, ms, score, checks
+                            "  %-5s %-8s %6.0f ms   health %s/100, %s measured",
+                            ticker, blob, ms, score, coverage(data)
                         )
                     )
                 } catch (err: Throwable) {
@@ -368,6 +367,24 @@ class SelfTestActivity : Activity() {
                 NEWLINE + "  on mobile. Report them into docs/14 §3a.",
             MUTED
         )
+    }
+
+    /**
+     * How many checklist items were actually answered, and how many exist.
+     *
+     * The length of the checklist is not coverage. JPM is the case that makes
+     * the difference visible: EDGAR carries no free cash flow or total debt for
+     * a bank, so several checks are genuinely unmeasurable and report
+     * NOT_REPORTED rather than a number. Printing only the total read as
+     * full coverage, which is the one claim this app exists not to make.
+     */
+    private fun coverage(data: JsonObject): String {
+        val list = data["checklist"] as? JsonArray ?: return "0/0"
+        val measured = list.count {
+            val status = ((it as? JsonObject)?.get("status") as? JsonPrimitive)?.content
+            status != null && status != "NOT_REPORTED"
+        }
+        return measured.toString() + "/" + list.size
     }
 
     // ------------------------------------------------------------ helpers
