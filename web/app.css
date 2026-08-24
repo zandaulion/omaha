@@ -2031,6 +2031,57 @@ body {
 }
 
 /*
+ * Disclosure notes: what a number here is, and what it is not.
+ *
+ * Deliberately quiet rather than alarming. These sit next to figures the app
+ * is confident about, and a warning-coloured box next to every score would
+ * either frighten or, far more likely, be tuned out within a day. Legibility
+ * is what the policy actually asks for, not volume.
+ */
+.disclaimer-note {
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--text-tertiary);
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 10px;
+  margin-top: 14px;
+  max-width: 68ch;
+}
+
+.disclaimer-note strong {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+/* The canonical statement in Settings, which the short notes point at. */
+.about-card p {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+.about-card p:last-child { margin-bottom: 0; }
+
+.about-card strong { color: var(--text-primary); }
+
+/* An AI-generated surface says so where it starts, not only in a footer. */
+.ai-origin-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #C084FC;
+  background: rgba(192, 132, 252, 0.12);
+  border: 1px solid rgba(192, 132, 252, 0.3);
+  border-radius: 999px;
+  padding: 3px 9px;
+}
+
+/*
  * Whether an analysis carried the user's own writing.
  *
  * Deliberately not colour-coded as good or bad — neither state is a warning,

@@ -92,10 +92,18 @@ defect class that contaminated 7 of 20 tickers in the earlier audit.
 
 ---
 
-## Play release prerequisites: disclaimer and AI labelling
+## Play release prerequisites: ~~disclaimer and AI labelling~~ → declaration only
 
-**Raised 2026-08-22.** Two small gaps that block submission. Context in
-`docs/14_DATA_SOURCING_AND_PLAY_RELEASE.md` §1.
+**Raised 2026-08-22. Both in-app items done 2026-08-24**, as `docs/16_ROADMAP.md`
+phase 1 — see `docs/14_DATA_SOURCING_AND_PLAY_RELEASE.md` §1 for what landed
+where.
+
+**What is left is the Financial features declaration in Play Console**, which is
+a form rather than code, and cannot be done from this repository. The two items
+described below are closed; the text is kept because it is the reasoning the
+declaration itself should follow.
+
+Context in `docs/14_DATA_SOURCING_AND_PLAY_RELEASE.md` §1.
 
 There is **no credential gate** on investment apps — Google requires licensing
 documentation only for personal-loan apps, and nothing demands broker-dealer or
