@@ -1746,10 +1746,318 @@ async function fetchPeers(ticker) {
   }
 }
 
+// core/providers/edgar.js
+var TICKER_MAP_URL = "https://www.sec.gov/files/company_tickers.json";
+var COMPANYFACTS_BASE = "https://data.sec.gov/api/xbrl/companyfacts/CIK";
+var EDGAR_USER_AGENT = "PocketOmaha/1.0 (zandaulion/omaha; contact-not-set@example.com)";
+var DURATION = "duration";
+var INSTANT = "instant";
+var US_GAAP = {
+  revenue: [DURATION, [
+    "RevenueFromContractWithCustomerExcludingAssessedTax",
+    "RevenueFromContractWithCustomerIncludingAssessedTax",
+    "Revenues",
+    "SalesRevenueNet",
+    "SalesRevenueGoodsNet"
+  ]],
+  costOfRevenue: [DURATION, ["CostOfRevenue", "CostOfGoodsAndServicesSold", "CostOfServices"]],
+  grossProfit: [DURATION, ["GrossProfit"]],
+  operatingIncome: [DURATION, ["OperatingIncomeLoss"]],
+  netIncome: [DURATION, ["NetIncomeLoss", "ProfitLoss"]],
+  pretaxIncome: [DURATION, [
+    "IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest",
+    "IncomeLossFromContinuingOperationsBeforeIncomeTaxesMinorityInterestAndIncomeLossFromEquityMethodInvestments"
+  ]],
+  taxProvision: [DURATION, ["IncomeTaxExpenseBenefit"]],
+  interestExpense: [DURATION, ["InterestExpense", "InterestExpenseDebt", "InterestIncomeExpenseNet"]],
+  dilutedEPS: [DURATION, ["EarningsPerShareDiluted", "EarningsPerShareBasicAndDiluted"]],
+  dilutedShares: [DURATION, [
+    "WeightedAverageNumberOfDilutedSharesOutstanding",
+    "WeightedAverageNumberOfSharesOutstandingBasic"
+  ]],
+  depreciationAmortisation: [DURATION, [
+    "DepreciationDepletionAndAmortization",
+    "DepreciationAmortizationAndAccretionNet",
+    "DepreciationAndAmortization"
+  ]],
+  totalAssets: [INSTANT, ["Assets"]],
+  totalLiabilities: [INSTANT, ["Liabilities"]],
+  equity: [INSTANT, [
+    "StockholdersEquity",
+    "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"
+  ]],
+  currentAssets: [INSTANT, ["AssetsCurrent"]],
+  currentLiabilities: [INSTANT, ["LiabilitiesCurrent"]],
+  inventory: [INSTANT, ["InventoryNet"]],
+  retainedEarnings: [INSTANT, ["RetainedEarningsAccumulatedDeficit"]],
+  cash: [INSTANT, [
+    "CashAndCashEquivalentsAtCarryingValue",
+    "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents"
+  ]],
+  shortTermInvestments: [INSTANT, [
+    "ShortTermInvestments",
+    "AvailableForSaleSecuritiesDebtSecuritiesCurrent",
+    "MarketableSecuritiesCurrent"
+  ]],
+  longTermDebt: [INSTANT, ["LongTermDebtNoncurrent", "LongTermDebt"]],
+  currentDebt: [INSTANT, ["LongTermDebtCurrent", "DebtCurrent"]],
+  operatingCashFlow: [DURATION, [
+    "NetCashProvidedByUsedInOperatingActivities",
+    "NetCashProvidedByUsedInOperatingActivitiesContinuingOperations"
+  ]],
+  capitalExpenditure: [DURATION, [
+    "PaymentsToAcquirePropertyPlantAndEquipment",
+    "PaymentsToAcquireProductiveAssets"
+  ]],
+  dividendsPaid: [DURATION, ["PaymentsOfDividendsCommonStock", "PaymentsOfDividends"]],
+  buybacks: [DURATION, ["PaymentsForRepurchaseOfCommonStock"]]
+};
+var IFRS = {
+  revenue: [DURATION, ["Revenue", "RevenueFromContractsWithCustomers"]],
+  costOfRevenue: [DURATION, ["CostOfSales"]],
+  grossProfit: [DURATION, ["GrossProfit"]],
+  operatingIncome: [DURATION, ["ProfitLossFromOperatingActivities"]],
+  netIncome: [DURATION, ["ProfitLoss", "ProfitLossAttributableToOwnersOfParent"]],
+  pretaxIncome: [DURATION, ["ProfitLossBeforeTax"]],
+  taxProvision: [DURATION, ["IncomeTaxExpenseContinuingOperations"]],
+  interestExpense: [DURATION, ["InterestExpense", "FinanceCosts"]],
+  dilutedEPS: [DURATION, ["DilutedEarningsLossPerShare"]],
+  dilutedShares: [DURATION, [
+    "WeightedAverageNumberOfDilutedSharesOutstanding",
+    "WeightedAverageShares"
+  ]],
+  depreciationAmortisation: [DURATION, [
+    "DepreciationAndAmortisationExpense",
+    "DepreciationAmortisationAndImpairmentLossReversalOfImpairmentLossRecognisedInProfitOrLoss"
+  ]],
+  totalAssets: [INSTANT, ["Assets"]],
+  totalLiabilities: [INSTANT, ["Liabilities"]],
+  equity: [INSTANT, ["Equity", "EquityAttributableToOwnersOfParent"]],
+  currentAssets: [INSTANT, ["CurrentAssets"]],
+  currentLiabilities: [INSTANT, ["CurrentLiabilities"]],
+  inventory: [INSTANT, ["Inventories"]],
+  retainedEarnings: [INSTANT, ["RetainedEarnings"]],
+  cash: [INSTANT, ["CashAndCashEquivalents"]],
+  shortTermInvestments: [INSTANT, ["OtherCurrentFinancialAssets"]],
+  longTermDebt: [INSTANT, ["NoncurrentPortionOfNoncurrentBorrowings", "LongtermBorrowings"]],
+  currentDebt: [INSTANT, ["ShorttermBorrowings", "CurrentPortionOfLongtermBorrowings"]],
+  operatingCashFlow: [DURATION, ["CashFlowsFromUsedInOperatingActivities"]],
+  capitalExpenditure: [DURATION, [
+    "PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities",
+    "PurchaseOfPropertyPlantAndEquipmentIntangibleAssetsOtherThanGoodwillInvestmentPropertyAndOtherNoncurrentAssets",
+    "PurchaseOfInterestsInJointVenturesClassifiedAsInvestingActivities"
+  ]],
+  dividendsPaid: [DURATION, ["DividendsPaidClassifiedAsFinancingActivities", "DividendsPaid"]],
+  buybacks: [DURATION, ["PaymentsToAcquireOrRedeemEntitysShares"]]
+};
+var ALL_FIELDS = [
+  .../* @__PURE__ */ new Set([...Object.keys(US_GAAP), ...Object.keys(IFRS)]),
+  // Derived below rather than filed. Listed so they are nulled like the rest.
+  "ebit",
+  "ebitda",
+  "freeCashFlow",
+  "totalDebt"
+];
+var DAY_MS = 864e5;
+var tickerMapCache = null;
+async function edgarFetch(url, { timeoutMs = 15e3, label } = {}) {
+  let res;
+  try {
+    res = await fetch(url, {
+      headers: { "User-Agent": EDGAR_USER_AGENT, Accept: "application/json" },
+      signal: AbortSignal.timeout(timeoutMs)
+    });
+  } catch (err) {
+    throw new IngestError("network", `EDGAR ${label} request failed: ${err.message}`, {
+      cause: err
+    });
+  }
+  if (!res.ok) {
+    const kind = res.status === 403 ? "rate_limited" : kindForStatus(res.status);
+    throw new IngestError(kind, `EDGAR ${label} returned ${res.status}`, {
+      status: res.status,
+      retryAfterMs: parseRetryAfter(res.headers.get("retry-after"))
+    });
+  }
+  return res.json();
+}
+async function resolveCik(ticker) {
+  const symbol = String(ticker || "").trim().toUpperCase();
+  if (!symbol) {
+    throw new IngestError("not_found", "No ticker supplied");
+  }
+  if (!tickerMapCache) {
+    const json = await edgarFetch(TICKER_MAP_URL, { label: "ticker map", timeoutMs: 12e3 });
+    const map = /* @__PURE__ */ new Map();
+    for (const row of Object.values(json || {})) {
+      if (row?.ticker && row?.cik_str !== void 0) {
+        map.set(String(row.ticker).toUpperCase(), String(row.cik_str));
+      }
+    }
+    if (map.size === 0) {
+      throw new IngestError("upstream", "EDGAR ticker map was empty");
+    }
+    tickerMapCache = map;
+  }
+  const cik = tickerMapCache.get(symbol);
+  if (!cik) {
+    throw new IngestError("not_found", `${symbol} is not an SEC registrant`);
+  }
+  return cik.padStart(10, "0");
+}
+function selectTaxonomy(facts) {
+  const hasUs = Boolean(facts?.["us-gaap"]);
+  const hasIfrs = Boolean(facts?.["ifrs-full"]);
+  if (hasUs && !hasIfrs) return { name: "us-gaap", map: US_GAAP };
+  if (hasIfrs && !hasUs) return { name: "ifrs-full", map: IFRS };
+  if (!hasUs && !hasIfrs) return null;
+  const score = (name, map) => Object.values(map).filter(([, tags]) => tags.some((t) => facts[name]?.[t])).length;
+  return score("us-gaap", US_GAAP) >= score("ifrs-full", IFRS) ? { name: "us-gaap", map: US_GAAP } : { name: "ifrs-full", map: IFRS };
+}
+function daysBetween(start, end) {
+  return (Date.parse(end) - Date.parse(start)) / DAY_MS;
+}
+function isAnnualDuration(fact) {
+  if (!fact.start || !fact.end) return false;
+  const d = daysBetween(fact.start, fact.end);
+  return d >= 340 && d <= 400;
+}
+function isQuarterDuration(fact) {
+  if (!fact.start || !fact.end) return false;
+  const d = daysBetween(fact.start, fact.end);
+  return d >= 80 && d <= 100;
+}
+function pickByPeriod(facts, accept) {
+  const best = /* @__PURE__ */ new Map();
+  for (const fact of facts) {
+    if (typeof fact?.val !== "number" || !fact.end) continue;
+    if (!accept(fact)) continue;
+    const existing = best.get(fact.end);
+    if (!existing || String(fact.filed) > String(existing.filed)) {
+      best.set(fact.end, fact);
+    }
+  }
+  return best;
+}
+function factsForField(facts, taxonomyName, tags, currencyHint) {
+  let best = null;
+  tags.forEach((tag, rank) => {
+    const entry = facts?.[taxonomyName]?.[tag];
+    if (!entry?.units) return;
+    const unitKeys = Object.keys(entry.units);
+    const preferred = unitKeys.find((u) => u === currencyHint) || unitKeys.find((u) => u === "shares") || unitKeys.find((u) => u.startsWith(`${currencyHint}/`)) || unitKeys[0];
+    const rows = entry.units[preferred];
+    if (!Array.isArray(rows) || rows.length === 0) return;
+    let latest = "";
+    for (const row of rows) {
+      if (row?.end && row.end > latest) latest = row.end;
+    }
+    const candidate = { rows, unit: preferred, tag, latest, count: rows.length, rank };
+    if (!best || candidate.latest > best.latest || candidate.latest === best.latest && candidate.count > best.count) {
+      best = candidate;
+    }
+  });
+  return best;
+}
+function detectReportingCurrency(facts, taxonomyName, map) {
+  for (const field of ["revenue", "totalAssets", "netIncome", "equity"]) {
+    const spec = map[field];
+    if (!spec) continue;
+    for (const tag of spec[1]) {
+      const units = facts?.[taxonomyName]?.[tag]?.units;
+      if (!units) continue;
+      const monetary = Object.keys(units).find((u) => /^[A-Z]{3}$/.test(u));
+      if (monetary) return monetary;
+    }
+  }
+  return "USD";
+}
+function derive(period) {
+  const has = (k) => typeof period[k] === "number";
+  period.freeCashFlow = has("operatingCashFlow") && has("capitalExpenditure") ? period.operatingCashFlow - period.capitalExpenditure : null;
+  period.totalDebt = has("longTermDebt") || has("currentDebt") ? (period.longTermDebt || 0) + (period.currentDebt || 0) : null;
+  period.ebit = has("operatingIncome") ? period.operatingIncome : has("pretaxIncome") && has("interestExpense") ? period.pretaxIncome + period.interestExpense : null;
+  period.ebitda = typeof period.ebit === "number" && has("depreciationAmortisation") ? period.ebit + period.depreciationAmortisation : null;
+  return period;
+}
+function parseCompanyFacts(json) {
+  const facts = json?.facts;
+  const taxonomy = selectTaxonomy(facts);
+  if (!taxonomy) {
+    throw new IngestError("upstream", "EDGAR returned no recognised taxonomy");
+  }
+  const { name, map } = taxonomy;
+  const currency = detectReportingCurrency(facts, name, map);
+  const build = (accept) => {
+    const byDate = /* @__PURE__ */ new Map();
+    for (const [field, [kind, tags]] of Object.entries(map)) {
+      if (kind !== DURATION) continue;
+      const found = factsForField(facts, name, tags, currency);
+      if (!found) continue;
+      for (const [end, fact] of pickByPeriod(found.rows, accept)) {
+        if (!byDate.has(end)) byDate.set(end, { asOfDate: end });
+        byDate.get(end)[field] = fact.val;
+      }
+    }
+    for (const [field, [kind, tags]] of Object.entries(map)) {
+      if (kind !== INSTANT) continue;
+      const found = factsForField(facts, name, tags, currency);
+      if (!found) continue;
+      for (const [end, fact] of pickByPeriod(found.rows, (f) => !f.start)) {
+        if (byDate.has(end)) byDate.get(end)[field] = fact.val;
+      }
+    }
+    const periods = [...byDate.values()].filter((p) => p.revenue !== void 0 || p.netIncome !== void 0).sort((a, b) => a.asOfDate < b.asOfDate ? -1 : 1);
+    for (const p of periods) {
+      for (const k of ["capitalExpenditure", "interestExpense", "dividendsPaid", "buybacks"]) {
+        if (typeof p[k] === "number") p[k] = Math.abs(p[k]);
+      }
+      derive(p);
+      for (const field of ALL_FIELDS) {
+        if (p[field] === void 0) p[field] = null;
+      }
+    }
+    return periods;
+  };
+  const annual = build(isAnnualDuration);
+  const quarterly = build(isQuarterDuration);
+  const latestReported = {};
+  for (const p of annual) {
+    for (const field of ALL_FIELDS) {
+      const v = p[field];
+      if (v === null || v === void 0) continue;
+      latestReported[field] = { value: v, asOfDate: p.asOfDate };
+    }
+  }
+  return { annual, quarterly, latestReported, reportingCurrency: currency };
+}
+async function fetchFundamentals2(ticker) {
+  const cik = await resolveCik(ticker);
+  const json = await edgarFetch(`${COMPANYFACTS_BASE}${cik}.json`, {
+    label: "companyfacts",
+    timeoutMs: 2e4
+  });
+  return parseCompanyFacts(json);
+}
+
 // core/providers/index.js
-var statementSource = yahoo_exports;
 var quoteSource = yahoo_exports;
-var getStatements = (ticker) => statementSource.fetchFundamentals(ticker);
+async function fetchStatementsHybrid(ticker) {
+  let reason;
+  try {
+    const result = await fetchFundamentals2(ticker);
+    if (result?.annual?.length) return result;
+    reason = "no usable annual periods";
+  } catch (err) {
+    reason = err?.kind || err?.message || "error";
+    if (err?.kind !== "not_found") {
+      console.warn(`[Providers] EDGAR statements failed for ${ticker}: ${reason}`);
+    }
+  }
+  console.warn(`[Providers] statements for ${ticker} fall back to Yahoo (${reason})`);
+  return fetchFundamentals(ticker);
+}
+var getStatements = (ticker) => fetchStatementsHybrid(ticker);
 var getQuote = (ticker) => quoteSource.fetchQuote(ticker);
 var getPriceHistory = (ticker) => quoteSource.fetchPriceHistory(ticker);
 var getFxRate = (from, to) => quoteSource.fetchFxRate(from, to);

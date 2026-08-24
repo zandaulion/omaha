@@ -220,7 +220,28 @@ Items 3–6 are prose. Items 1 and 2 are the ones with real code behind them.
   found exactly two rendering surfaces, and both now carry the tag at the top.
 * **Item 1 narrowed a recorded claim** — see the correction in §2.3.
 
-### Phase 2 — Spend effort where both clients inherit it
+### Phase 2 — Spend effort where both clients inherit it — **done 2026-08-24**
+
+> Both landed. EDGAR is `core/providers/edgar.js`, chosen per ticker with Yahoo
+> behind it; the staleness verdict is `core/analysis/staleness.js`. Neither
+> client can drift from the other, because neither owns the logic.
+>
+> **Doc 14's research was right about the shape and wrong about five details**,
+> each found by running rather than reading, and each recorded in doc 14 §3a.
+> The two that would have shipped as defects: `github.com` in the User-Agent is
+> a hard 403 from `www.sec.gov` — so the most conscientious version of that
+> header is the one that fails, and it fails only against the live host — and
+> candidate tags cannot be resolved by taking the first one present, because
+> Nokia's abandoned `Revenue` tag otherwise beats the one it has used since
+> IFRS 15 and stops its revenue series in 2017.
+>
+> Verified end to end against live EDGAR: AAPL 66/100 and NOK 52/100, both
+> 12/12 checks measured, NOK exercising the EUR-reporting against USD-trading
+> split. NESN.SW is not a registrant, returns `not_found`, and falls through to
+> Yahoo — the hybrid working as decided.
+>
+> **One thing remains open**, and it is doc 14's own caution: parsing up to
+> 7.5 MB of JSON through QuickJS on a handset is unmeasured. It needs the phone.
 
 Work landing in `core/` reaches both clients by construction. That makes it the
 cheapest place to add value while the Android UI does not exist, and it is worth

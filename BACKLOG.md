@@ -70,7 +70,24 @@ email path is a renderer plus a send call, not new logic.
 
 ---
 
-## Move statements to SEC EDGAR before the Play release
+## ~~Move statements to SEC EDGAR before the Play release~~ — done 2026-08-24
+
+**Raised 2026-08-22, built 2026-08-24** as `docs/16_ROADMAP.md` phase 2.
+`core/providers/edgar.js`, chosen per ticker in `providers/index.js`, with
+**Yahoo retained as fallback** per the phase 0 decision — EDGAR covers SEC
+registrants, and a holding listed only outside the US still has to score.
+
+What the research below got wrong is recorded in
+`docs/14_DATA_SOURCING_AND_PLAY_RELEASE.md` §3a, and it is worth reading before
+touching the tag maps: both endpoint size estimates were off, `github.com` in the
+User-Agent is a hard 403 from `www.sec.gov`, EDGAR throttles with 403 rather than
+429, and candidate tags cannot be resolved by taking the first one present.
+
+**The one thing still open is the handset measurement** this entry asks for:
+parsing up to 7.5 MB of JSON in QuickJS on a real phone. Everything else is
+verified end to end against live EDGAR.
+
+The original entry follows.
 
 **Raised 2026-08-22.** Full research and the verified numbers are in
 `docs/14_DATA_SOURCING_AND_PLAY_RELEASE.md` §2–3. Summary for triage:
