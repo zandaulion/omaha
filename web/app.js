@@ -91,7 +91,7 @@ const state = {
   currentStock: null,
   watchlists: [],
   currentWatchlistData: null,
-  allScreenerStocks: [],
+  allFilterStocks: [],
   theme: localStorage.getItem('omaha_theme') || 'system',
   dcf: {
     growth: 18,
@@ -153,9 +153,12 @@ async function initApp() {
 
         if (savedView === 'viewDeepDive' && savedTicker) {
           await openStockDeepDive(savedTicker, savedSubtab);
-        } else if (savedView === 'viewScreener') {
-          loadScreenerData();
-          switchView('viewScreener');
+        // 'viewScreener' is what existing installs have in localStorage. Left
+        // out, everyone whose last screen was this one would silently land on
+        // the watchlist after the rename.
+        } else if (savedView === 'viewFilter' || savedView === 'viewScreener') {
+          loadFilterData();
+          switchView('viewFilter');
         } else if (savedView === 'viewCompare') {
           runComparison();
           switchView('viewCompare');
@@ -490,8 +493,8 @@ async function refreshActiveView() {
   try {
     if (state.activeView === 'viewDeepDive' && state.currentTicker) {
       await openStockDeepDive(state.currentTicker, null, { forceRefresh: true });
-    } else if (state.activeView === 'viewScreener') {
-      await loadScreenerData();
+    } else if (state.activeView === 'viewFilter') {
+      await loadFilterData();
     } else if (state.activeView === 'viewCompare') {
       await runComparison();
     } else {
@@ -577,8 +580,8 @@ function initEventListeners() {
   document.querySelectorAll('.nav-tab').forEach((tab) => {
     tab.addEventListener('click', () => {
       const view = tab.getAttribute('data-view');
-      if (view === 'viewScreener') {
-        loadScreenerData();
+      if (view === 'viewFilter') {
+        loadFilterData();
       } else if (view === 'viewCompare') {
         runComparison();
       }
@@ -841,36 +844,36 @@ function initEventListeners() {
   // Bookmark / Add to Watchlist Button
   document.getElementById('bookmarkBtn')?.addEventListener('click', handleToggleBookmark);
 
-  // Screener Controls
+  // Filter controls
   document.getElementById('filterHealthSlider')?.addEventListener('input', (e) => {
     document.getElementById('filterHealthVal').textContent = e.target.value;
-    filterScreenerStocks();
+    applyFilters();
   });
   document.getElementById('filterPiotroskiSlider')?.addEventListener('input', (e) => {
     document.getElementById('filterPiotroskiVal').textContent = e.target.value;
-    filterScreenerStocks();
+    applyFilters();
   });
   document.getElementById('filterRoicSlider')?.addEventListener('input', (e) => {
     document.getElementById('filterRoicVal').textContent = `${e.target.value}%`;
-    filterScreenerStocks();
+    applyFilters();
   });
-  document.getElementById('filterSectorSelect')?.addEventListener('change', filterScreenerStocks);
+  document.getElementById('filterSectorSelect')?.addEventListener('change', applyFilters);
   document.getElementById('filterDebtEquitySlider')?.addEventListener('input', (e) => {
     const v = parseFloat(e.target.value);
     document.getElementById('filterDebtEquityVal').textContent = v >= 5 ? 'any' : `${v.toFixed(2)}x`;
-    filterScreenerStocks();
+    applyFilters();
   });
-  document.getElementById('filterNetCash')?.addEventListener('change', () => { haptic(); filterScreenerStocks(); });
-  document.getElementById('filterFcfPositive')?.addEventListener('change', () => { haptic(); filterScreenerStocks(); });
+  document.getElementById('filterNetCash')?.addEventListener('change', () => { haptic(); applyFilters(); });
+  document.getElementById('filterFcfPositive')?.addEventListener('change', () => { haptic(); applyFilters(); });
 
-  // Screener Presets
-  document.getElementById('presetAllBtn')?.addEventListener('click', () => setScreenerPreset({}));
+  // Filter presets
+  document.getElementById('presetAllBtn')?.addEventListener('click', () => setFilterPreset({}));
   document.getElementById('presetFortressBtn')?.addEventListener('click', () =>
-    setScreenerPreset({ health: 85, piotroski: 7, roic: 15, fcfPositive: true }));
+    setFilterPreset({ health: 85, piotroski: 7, roic: 15, fcfPositive: true }));
   document.getElementById('presetRoicBtn')?.addEventListener('click', () =>
-    setScreenerPreset({ health: 70, piotroski: 6, roic: 20 }));
+    setFilterPreset({ health: 70, piotroski: 6, roic: 20 }));
   document.getElementById('presetCashBtn')?.addEventListener('click', () =>
-    setScreenerPreset({ health: 0, netCash: true }));
+    setFilterPreset({ health: 0, netCash: true }));
 
   // Compare Runner
   document.getElementById('compareRunBtn')?.addEventListener('click', () => { haptic(); runComparison(); });
@@ -2268,19 +2271,19 @@ async function handleSaveThesisSilent() {
   }).catch(() => {});
 }
 
-// ----------------- SCREENER LOGIC -----------------
-async function loadScreenerData() {
+// ----------------- WATCHLIST FILTER LOGIC -----------------
+async function loadFilterData() {
   try {
-    const res = await apiFetch('/api/screener');
+    const res = await apiFetch('/api/filter');
     const data = await res.json();
-    state.allScreenerStocks = data.stocks || [];
-    filterScreenerStocks();
+    state.allFilterStocks = data.stocks || [];
+    applyFilters();
   } catch (err) {
-    console.error('Screener fetch error:', err);
+    console.error('Filter fetch error:', err);
   }
 }
 
-function filterScreenerStocks() {
+function applyFilters() {
   const minHealth = parseInt(document.getElementById('filterHealthSlider')?.value || '0', 10);
   const minPiotroski = parseInt(document.getElementById('filterPiotroskiSlider')?.value || '0', 10);
   const minRoic = parseFloat(document.getElementById('filterRoicSlider')?.value || '0');
@@ -2290,7 +2293,7 @@ function filterScreenerStocks() {
   const fcfPositive = document.getElementById('filterFcfPositive')?.checked;
   const maxDe = parseFloat(document.getElementById('filterDebtEquitySlider')?.value || '5');
 
-  const filtered = state.allScreenerStocks.filter(s => {
+  const filtered = state.allFilterStocks.filter(s => {
     // A null metric cannot satisfy a minimum. Treating it as passing would
     // surface exactly the companies we know least about.
     if (!isNum(s.health_score) || s.health_score < minHealth) return false;
@@ -2306,10 +2309,10 @@ function filterScreenerStocks() {
     return true;
   });
 
-  document.getElementById('screenerCountBadge').textContent =
-    `${filtered.length} of ${state.allScreenerStocks.length}`;
+  document.getElementById('filterCountBadge').textContent =
+    `${filtered.length} of ${state.allFilterStocks.length}`;
 
-  const tbody = document.getElementById('screenerTableBody');
+  const tbody = document.getElementById('filterTableBody');
   if (tbody) {
     tbody.innerHTML = filtered.map(s => `
       <tr data-ticker="${s.ticker}">
@@ -2336,7 +2339,7 @@ function filterScreenerStocks() {
   }
 }
 
-function setScreenerPreset({
+function setFilterPreset({
   health = 0, piotroski = 0, roic = 0, debtToEquity = 5,
   netCash = false, fcfPositive = false, sector = 'all'
 } = {}) {
@@ -2356,7 +2359,7 @@ function setScreenerPreset({
   const fcfBox = document.getElementById('filterFcfPositive');
   if (fcfBox) fcfBox.checked = fcfPositive;
 
-  filterScreenerStocks();
+  applyFilters();
 }
 
 // ----------------- PEER COMPARE MATRIX -----------------
@@ -2959,9 +2962,12 @@ function handleUrlParams() {
   }
 
   if (view) {
-    if (view === 'screener' || view === 'viewScreener') {
-      loadScreenerData();
-      switchView('viewScreener');
+    // 'screener' is the name this view shipped under. Nothing generates such a
+    // link today, but a person may have bookmarked one, and silently landing
+    // them on the watchlist would be a worse answer than honouring it.
+    if (view === 'filter' || view === 'viewFilter' || view === 'screener') {
+      loadFilterData();
+      switchView('viewFilter');
       return true;
     } else if (view === 'compare' || view === 'viewCompare') {
       runComparison();

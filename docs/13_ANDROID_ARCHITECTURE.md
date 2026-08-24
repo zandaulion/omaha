@@ -394,7 +394,7 @@ without waiting for `finance.js`.
 | 1b | `finance.js` split | Store contract defined; assembly in `core/`; golden snapshots unchanged — **done**, see §19 |
 | 2 | QuickJS spike | Reproduces the golden snapshots for `NOK`, `AAPL` and `JPM` — **done on JVM (§18) and on device (§20)** |
 | 3 | Room + import/export | A PWA backup imports into Android and back out, losslessly — **done, see §21 and §22**. SAF file picker outstanding |
-| 4 | Compose UI | Watchlist → Deep Dive → Screener → Compare, tokens generated, screenshot diffs passing |
+| 4 | Compose UI | Watchlist → Deep Dive → Filter → Compare, tokens generated, screenshot diffs passing |
 | 5 | WorkManager sweep + local notifications | Alerts fire on-device with no network beyond market data |
 | 6 | Billing + relay + Firebase AI Logic | Paid analysis end-to-end |
 

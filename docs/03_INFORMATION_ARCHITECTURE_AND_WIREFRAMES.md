@@ -10,7 +10,7 @@ This document details the navigation hierarchy, screen wireframes, and interacti
 ┌────────────────────────────────────────────────────────────────────────┐
 │                        BOTTOM NAVIGATION TABS                          │
 ├───────────────┬────────────────┬────────────────┬──────────────────────┤
-│ 1. Watchlist  │ 2. Deep Dive   │ 3. Screener    │ 4. Compare           │ 
+│ 1. Watchlist  │ 2. Deep Dive   │ 3. Filter      │ 4. Compare           │ 
 │ (Portfolio &  │ (Ticker Health │ (Filter Stocks │ (Side-by-side        │
 │  Watchlists)  │  Scorecard)    │  by Health)    │  Peer Matrix)        │
 └───────────────┴────────────────┴────────────────┴──────────────────────┘
@@ -56,7 +56,7 @@ This document details the navigation hierarchy, screen wireframes, and interacti
 │  │  ⚡ Clean Balance Sheet       ⚠️ Auto Gross Margin Pressure  │ │
 │  └────────────────────────────────────────────────────────────┘ │
 │                                                                 │
-│  [ Watchlist ]   [ Deep Dive ]   [ Screener ]   [ Compare ]     │
+│  [ Watchlist ]   [ Deep Dive ]   [ Filter ]     [ Compare ]     │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -111,7 +111,17 @@ This document details the navigation hierarchy, screen wireframes, and interacti
 
 ---
 
-### Screen 3: Fundamental Health Screener (`/screener`)
+### Screen 3: Filter (`/filter`)
+
+> **Renamed 2026-08-24, from "Fundamental Health Screener".** It filters the
+> companies this install already knows about — the watchlists plus anything
+> looked up before — not a market universe. "Screener" set an expectation of
+> discovery that nothing behind it can meet; see doc 15 §2.5. Doc 15 offered
+> *Filter* or *Compare across watchlist*, and the latter was rejected because
+> screen 4 is already called Compare.
+>
+> **The Compose port should build it under this name**, and carry the
+> subtitle the PWA now shows: it narrows what you already follow.
 
 * Filters stocks by:
   * Minimum Health Score (e.g. $\ge 80$)

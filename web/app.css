@@ -321,6 +321,20 @@ body {
   margin: 20px 0 12px 0;
 }
 
+/*
+ * A line of orientation under a view heading, for a view whose name cannot
+ * carry its own scope. The filter view is the case this exists for: it acts on
+ * companies already followed, not the wider market, and saying so once here is
+ * cheaper than a person discovering it by finding nothing.
+ */
+.view-subtitle {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin: -4px 0 14px 0;
+  max-width: 62ch;
+}
+
 .section-title {
   font-size: 17px;
   font-weight: 600;
@@ -1247,10 +1261,10 @@ body {
 }
 
 /* ==========================================================================
-   Screener & Table Views
+   Watchlist Filter & Table Views
    ========================================================================== */
 
-.screener-filters {
+.filter-controls {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;

@@ -163,15 +163,24 @@ equivalent, which fits the positioning in §3.
 
 ---
 
-## Rename the screener
+## ~~Rename the screener~~ — done 2026-08-24
 
-**Raised 2026-08-22.** Small. `docs/15_COMPETITIVE_POSITION.md` §2.5.
+**Raised 2026-08-22, closed 2026-08-24.** `docs/15_COMPETITIVE_POSITION.md` §2.5,
+scheduled as `docs/16_ROADMAP.md` phase 1.
 
-`/api/screener` filters the watchlist universe — `server/index.js:340` says so
-in its own comment. Competitors screening 120,000 stocks across 90 markets have
-set the expectation that "screener" means discovery. Ours is a filter over
-things already under consideration, which is useful and honest but differently
-named. *Filter* or *Compare across watchlist* both fit.
+It is **Filter** — view, tab, route and identifiers. Doc 15's other suggestion,
+*Compare across watchlist*, was rejected on contact with the interface: screen 4
+is already called Compare, so it would have replaced an overselling name with an
+ambiguous one.
 
-Building real discovery screening is out of scope: it needs a universe we do not
-ingest.
+The name was only half of it. The view now carries a subtitle saying it narrows
+what you already follow and does not search the wider market, because the
+expectation doc 15 identified came from the concept as much as the word.
+
+Two legacy aliases are kept deliberately: `?view=screener` still resolves, and a
+`viewScreener` left in `localStorage` still restores. Nothing generates the
+former, but a bookmark might exist, and every install that last used this view
+has the latter stored.
+
+Building real discovery screening remains out of scope: it needs a universe we
+do not ingest.
