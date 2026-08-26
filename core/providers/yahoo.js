@@ -488,6 +488,9 @@ export async function search(query) {
   const clean = (query || '').trim();
   if (!clean) return [];
 
+  /** @type {IngestError|null} Why the last host could not answer. */
+  let lastFailure = null;
+
   const urls = [
     `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(clean)}&quotesCount=14&newsCount=0`,
     `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(clean)}&quotesCount=14&newsCount=0`
@@ -499,7 +502,13 @@ export async function search(query) {
         headers: { 'User-Agent': UA },
         signal: AbortSignal.timeout(4000)
       });
-      if (!res.ok) continue;
+      if (!res.ok) {
+        lastFailure = new IngestError(
+          kindForStatus(res.status), `search failed: HTTP ${res.status}`,
+          { status: res.status,
+            retryAfterMs: parseRetryAfter(res.headers?.get?.('retry-after')) });
+        continue;
+      }
       const data = await res.json();
       return (data.quotes || [])
         .filter((q) => ['EQUITY', 'ETF', 'MUTUALFUND'].includes(q.quoteType))
@@ -511,12 +520,21 @@ export async function search(query) {
           exchange: q.exchDisp || q.exchange || '',
           quoteType: q.quoteType || 'EQUITY'
         }));
-    } catch {
+    } catch (err) {
+      lastFailure = err instanceof IngestError
+        ? err
+        : new IngestError('network', `search unreachable: ${err.message}`,
+                          { cause: err });
       // fall through to the next host
     }
   }
 
-  return [];
+  // Reaching here means no host answered. Returning [] would be a lie the
+  // client cannot see through: an empty list is also what a genuine no-match
+  // looks like, and the search view renders that as "No matching companies
+  // found for X" over a perfectly real ticker, offering to add it as though
+  // it were unlisted. A failure has to fail.
+  throw lastFailure ?? new IngestError('network', 'search unreachable');
 }
 
 /**

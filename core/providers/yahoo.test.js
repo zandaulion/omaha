@@ -12,7 +12,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { IngestError, kindForStatus, parseRetryAfter } from '../errors.js';
-import { fetchQuote, fetchPeers, __resetSession } from './yahoo.js';
+import { fetchQuote, fetchPeers, search, __resetSession } from './yahoo.js';
 
 // ---------------------------------------------------------------- harness
 
@@ -215,4 +215,68 @@ test('Retry-After is read in both of its wire forms', () => {
     0,
     'a past date means retry now, never a negative delay'
   );
+});
+
+// ------------------------------------------------- search: no-match vs down
+
+/**
+ * search() used to `return []` once both hosts had failed. An empty list is
+ * also what a genuine no-match looks like, so the search view rendered
+ * "No matching companies found for AAPL" over a live ticker and offered to
+ * add it as though it were unlisted -- a confident false statement produced by
+ * a rate limit. The two cases have to be distinguishable at the boundary,
+ * because no caller above it can tell them apart afterwards.
+ */
+test('search: an empty upstream result is still an empty result', async () => {
+  stubFetch({ data: [reply(200, { quotes: [] })] });
+  try {
+    assert.deepEqual(await search('zzzznotarealticker'), []);
+  } finally {
+    restore();
+  }
+});
+
+test('search: a rate limit throws instead of reporting no matches', async () => {
+  stubFetch({ data: [reply(429, '', { 'retry-after': '30' })] });
+  try {
+    await assert.rejects(() => search('AAPL'), (err) => {
+      assert.ok(err instanceof IngestError, 'expected an IngestError');
+      assert.equal(err.kind, 'rate_limited');
+      assert.equal(err.retryAfterMs, 30000);
+      assert.ok(err.retryable);
+      return true;
+    });
+  } finally {
+    restore();
+  }
+});
+
+test('search: an unreachable host throws rather than returning []', async () => {
+  stubFetch({
+    data: [() => { throw new Error('ECONNREFUSED'); }]
+  });
+  try {
+    await assert.rejects(() => search('AAPL'), (err) => {
+      assert.ok(err instanceof IngestError);
+      assert.equal(err.kind, 'network');
+      return true;
+    });
+  } finally {
+    restore();
+  }
+});
+
+test('search: the second host still rescues the first', async () => {
+  stubFetch({
+    data: [reply(500, ''), reply(200, {
+      quotes: [{ symbol: 'AAPL', shortname: 'Apple Inc.', quoteType: 'EQUITY' }]
+    })]
+  });
+  try {
+    const out = await search('AAPL');
+    assert.equal(out.length, 1);
+    assert.equal(out[0].ticker, 'AAPL');
+  } finally {
+    restore();
+  }
 });
