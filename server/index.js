@@ -304,8 +304,27 @@ app.get('/api/search', requireDeviceAuth, async (req, res) => {
     const results = await searchStocks(query);
     return res.json(results);
   } catch (err) {
+    // Same shape as the /api/stock handler above: a blocked upstream is not a
+    // missing company. Search is the one place where flattening it does real
+    // damage, because an empty list is also a valid answer -- the client would
+    // otherwise report a live ticker as nonexistent.
+    if (err?.kind === 'rate_limited' || err?.kind === 'network') {
+      if (err.retryAfterMs) {
+        res.set('Retry-After', String(Math.ceil(err.retryAfterMs / 1000)));
+      }
+      return res.status(503).json({
+        error:
+          err.kind === 'rate_limited'
+            ? 'Search is rate-limited upstream. Try again shortly.'
+            : 'Search is unreachable. Try again shortly.',
+        kind: err.kind
+      });
+    }
     console.error('Search endpoint error:', err);
-    return res.status(500).json({ error: 'Failed to execute stock search' });
+    return res.status(503).json({
+      error: 'Search is unavailable right now.',
+      kind: err?.kind || 'upstream'
+    });
   }
 });
 

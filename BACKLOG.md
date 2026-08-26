@@ -1,5 +1,15 @@
 # Backlog
 
+## ~~Search reported an outage as "no such company"~~ — done 2026-08-26
+
+`search()` returned `[]` once both Yahoo hosts had failed, which is also what
+a genuine no-match returns. The view rendered "No matching companies found for
+AAPL" over a live ticker and offered to add it as unlisted. Fixed at the
+boundary: it now throws a typed `IngestError`, `/api/search` maps that to 503
+the same way `/api/stock` already did, and the client shows the upstream's
+reason instead of a verdict about the company. Four regression tests in
+`core/providers/yahoo.test.js`.
+
 Deferred work, with enough context to pick up cold. Known limitations that are
 *not* planned work live in `docs/12_FINAL_SYSTEM_AUDIT_AND_CHECKLIST.md` §3.
 

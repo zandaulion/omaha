@@ -2642,6 +2642,29 @@ async function handleSearchInput() {
 
   try {
     const res = await apiFetch(`/api/search?q=${encodeURIComponent(query)}`);
+
+    // An upstream that could not be asked is not a company that does not
+    // exist. Without this branch the 503 body falls through to .map() below,
+    // reaches the catch as a TypeError, and blames the user's network for a
+    // rate limit -- after telling them a real ticker was not found.
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      // Built rather than interpolated: this app has no HTML-escaping helper,
+      // and textContent cannot be tricked by whatever a future upstream puts
+      // in an error string.
+      list.innerHTML = `
+        <div class="search-unavailable" style="font-size: 13px; color: var(--text-secondary); padding: 16px; text-align: center;">
+          <span data-msg></span><br>
+          <span style="color: var(--text-tertiary); font-size: 12px;">
+            Your watchlist is unaffected.
+          </span>
+        </div>
+      `;
+      list.querySelector('[data-msg]').textContent =
+        body.error || 'Search is unavailable right now.';
+      return;
+    }
+
     const results = await res.json();
 
     if (results.length === 0) {
