@@ -394,11 +394,11 @@ The state to hold each client against. "Inherits" means the work lands in
 |---|---|---|---|
 | Ingest, score, cache | ✅ | ✅ | done |
 | Backup export/import + merge | ✅ | ✅ engine; ❌ picker | 4f |
-| Notes opt-in toggle | ❌ | ❌ | 1 |
-| Screener → Filter rename | ❌ | n/a | 1 |
-| Disclaimer, AI labelling | ❌ | n/a | 1 |
-| EDGAR statements | ❌ | inherits | 2 |
-| AI staleness flag | ❌ | inherits | 2 |
+| Notes opt-in toggle | ✅ | ❌ | 1 |
+| Screener → Filter rename | ✅ | n/a | 1 |
+| Disclaimer, AI labelling | ✅ | n/a | 1 |
+| EDGAR statements | ✅ | inherits | 2 |
+| AI staleness flag | ✅ | inherits | 2 |
 | Watchlist view | ✅ | ❌ | 4c |
 | Deep Dive: pillars, checklist, charts | ✅ | ❌ | 4d |
 | DCF sandbox | ✅ | ❌ | 4d |
@@ -410,6 +410,26 @@ The state to hold each client against. "Inherits" means the work lands in
 | AI analysis | ✅ free | ❌ | 6 |
 | Home-screen widget | n/a | ❌ | 7 — **named exception** |
 | Invites, devices, push subs | ✅ | n/a by design | — |
+
+**PWA column verified against the deployment, 2026-08-26.** The five rows
+above were still marked ❌ after phases 1 and 2 closed; the ledger had not been
+updated with them. Each was checked against the running instance rather than
+against its commit message:
+
+* *Notes opt-in* — `shouldIncludeNotesInAI()` in `server/app-settings.js`,
+  off by default, with the client checkboxes left unticked on load.
+* *Filter rename* — `/api/filter` serves; `/api/screener` returns 404. The
+  seven remaining `screener` strings are deliberate: a `localStorage`
+  migration for installs that saved the old view name, plus the comments
+  explaining it.
+* *Disclaimer and AI labelling* — both render; a disclaimer note is visible on
+  the deep dive, and `.ai-origin-tag` marks model output where it starts.
+* *EDGAR* — serving live. AAPL 19 annual periods (USD), NOK 11 (**EUR**),
+  NU 6 (USD), and **zero fallback-to-Yahoo events in three days** of logs. The
+  EUR on NOK is the currency correctness doc 14 §2 predicted, arriving as
+  designed.
+* *AI staleness* — `fiscalPeriodEnd` and the stale-analysis branch are both in
+  `web/app.js`.
 
 Two rows are permanent asymmetries rather than gaps: the multi-device apparatus
 exists only because the PWA is served over a network, and the widget has no web
