@@ -20,6 +20,7 @@ rootProject.name = "omaha-android"
 // seconds, without an emulator. :engine-android runs the same source against
 // the Android build of QuickJS, on a device. :probe exists only to produce an
 // APK whose size can be measured.
+include(":app")
 include(":design")
 include(":engine")
 include(":engine-android")

@@ -1,6 +1,7 @@
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 /**
@@ -23,6 +24,10 @@ android {
 
     defaultConfig {
         minSdk = 26
+    }
+
+    buildFeatures {
+        compose = true
     }
 
     compileOptions {
@@ -56,20 +61,21 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
 }
 
 /**
- * No Compose compiler plugin, deliberately.
+ * Compose runtime, but still no Material.
  *
- * Tokens.kt declares no @Composable — it is colours, dimensions and a type
- * scale. It uses Compose's value types (Color, TextUnit, FontWeight), which
- * live in ui-graphics, ui-text and ui-unit and need no compiler support.
+ * Tokens.kt declares no @Composable and needed no compiler support. Theme.kt
+ * does — it provides the palette through a CompositionLocal — so the plugin and
+ * the runtime arrive here together, which is the point at which they are
+ * actually earned rather than assumed.
  *
- * Enabling the plugin here fails outright: it requires the Compose *runtime*
- * on the classpath, which this module has no reason to carry. The plugin
- * belongs with the first module that actually declares composables, in step 4.
+ * Material3 is deliberately absent, and should stay absent. It carries its own
+ * colour scheme and type scale, and a component reading MaterialTheme.colorScheme
+ * would be off-parity while looking entirely correct. Everything visual in this
+ * app comes from OmahaColors or it does not come at all.
  */
 dependencies {
-    // The token types only. No material, no foundation: this module defines a
-    // palette and a type scale, and should not decide which widget set uses it.
     implementation(platform("androidx.compose:compose-bom:2025.09.00"))
+    implementation("androidx.compose.runtime:runtime")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-text")
     implementation("androidx.compose.ui:ui-unit")
