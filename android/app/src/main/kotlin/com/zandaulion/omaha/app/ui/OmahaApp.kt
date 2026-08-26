@@ -37,6 +37,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.Image
+import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.zandaulion.omaha.design.Omaha
 import com.zandaulion.omaha.design.OmahaLayout
 import com.zandaulion.omaha.design.OmahaRadius
@@ -85,10 +87,18 @@ fun OmahaApp() {
                 .windowInsetsPadding(WindowInsets.statusBars)
         ) {
             when (tab) {
-                OmahaTab.Watchlist -> PlaceholderScreen(
-                    "Watchlist",
-                    "Holdings and the aggregate portfolio health score. Phase 4c."
-                )
+                OmahaTab.Watchlist -> {
+                    val vm: WatchlistViewModel = viewModel()
+                    val ui by vm.state.collectAsState()
+                    WatchlistScreen(
+                        state = ui,
+                        onRetry = { vm.load() },
+                        // The deep dive is phase 4d. Until it exists a tap
+                        // moves to that tab rather than doing nothing, so the
+                        // card reads as leading somewhere.
+                        onSelect = { tab = OmahaTab.Scorecard }
+                    )
+                }
                 OmahaTab.Scorecard -> PlaceholderScreen(
                     "Scorecard",
                     "Five pillars, the 12-point checklist, charts, the DCF sandbox, " +
