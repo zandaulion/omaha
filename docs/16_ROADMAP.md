@@ -313,8 +313,8 @@ counterpart.
 | # | Slice | Notes |
 |---|---|---|
 | 4a | ~~`:app` module, navigation shell, theme from generated tokens~~ **done 2026-08-26** | four tabs, matching the PWA's `nav-tab` structure |
-| 4b | Room: `app_settings` (§2.2) | the rest arrive with their features in 5 and 6 |
-| 4c | **Watchlist** view | plus the aggregate portfolio health score |
+| 4b | ~~Room: `app_settings`~~ **done 2026-08-26** | the rest arrive with their features in 5 and 6 |
+| 4c | ~~**Watchlist** view~~ **done 2026-08-26** | plus the aggregate portfolio health score |
 | 4d | **Deep Dive** view | the large one — see below |
 | 4e | **Filter** and **Compare** views | under phase 1's new name |
 | 4f | **Settings**, and SAF import/export | closes doc 13 step 3's outstanding item |
@@ -340,6 +340,28 @@ counterpart.
 > that Compose is present. Doc 13 §20's "~0.9 MB real cost" figure predates the
 > UI toolkit and should not be quoted for this build; R8 keep rules for the JNI
 > surface remain open there, and this is the build that makes them worth doing.
+
+> **4b and 4c landed 2026-08-26.** The watchlist scores real tickers on device
+> through the same `core/host/stock.js` the PWA server calls.
+>
+> Two decisions worth carrying into 4d. **A holding that fails to load stays on
+> screen carrying its error** rather than vanishing — a missing row would make
+> the composite an average over a different set than the one being read. And
+> **the composite excludes unscored holdings rather than counting them as
+> zero**, then says what it averaged over: the engine reports `null` where too
+> few line items were filed, and averaging that in turns "not measured" into
+> "bad", which is the exact inversion the README's governing rule exists to
+> prevent.
+>
+> Room went to version 2 with a hand-written migration. There is deliberately no
+> `fallbackToDestructiveMigration`: two of these tables hold things a person
+> wrote, with no server copy to restore from, so a failed migration must crash
+> loudly rather than quietly discard the material the app exists to protect.
+>
+> `:data` now returns an `OmahaStore` rather than the `OmahaDatabase` itself.
+> Returning the database put `RoomDatabase` on every consumer's compile
+> classpath, which contradicts that module's own statement that what it exposes
+> is a store and not a particular way of storing.
 
 **4d is not one view.** The PWA's Deep Dive carries the five pillars, the
 12-point checklist with its explanation drawers, four chart types, the DCF
