@@ -312,12 +312,34 @@ counterpart.
 
 | # | Slice | Notes |
 |---|---|---|
-| 4a | `:app` module, navigation shell, theme from generated tokens | four tabs, matching the PWA's `nav-tab` structure |
+| 4a | ~~`:app` module, navigation shell, theme from generated tokens~~ **done 2026-08-26** | four tabs, matching the PWA's `nav-tab` structure |
 | 4b | Room: `app_settings` (§2.2) | the rest arrive with their features in 5 and 6 |
 | 4c | **Watchlist** view | plus the aggregate portfolio health score |
 | 4d | **Deep Dive** view | the large one — see below |
 | 4e | **Filter** and **Compare** views | under phase 1's new name |
 | 4f | **Settings**, and SAF import/export | closes doc 13 step 3's outstanding item |
+
+> **4a landed 2026-08-26.** `:app` builds and runs on foundation only — no
+> Material. That was the load-bearing decision: Material3 carries its own colour
+> scheme and type scale, and a component reading `MaterialTheme.colorScheme`
+> would be off-parity while looking entirely correct. `NavigationBar` would also
+> not match the PWA's nav, so the component that saves the most work is the one
+> that matches least.
+>
+> `OmahaTheme` bridges the generated tokens into Compose, and the nav icons are
+> the PWA's own SVG path data transcribed rather than Material icons of roughly
+> the same meaning.
+>
+> **Fonts are bundled and subset.** Inter and JetBrains Mono whole are 1,064 KB
+> — larger than the entire engine, which doc 13 §20 puts at about 900 KB. Subset
+> to Latin plus the punctuation, currency and maths signs the app actually
+> renders, they are 411 KB. Both keep their `wght` axis, so one file covers 400
+> through 700. See `android/design/FONTS.md`.
+>
+> **APK: 9.6 MB, four ABIs, unminified.** `classes.dex` is the whole story now
+> that Compose is present. Doc 13 §20's "~0.9 MB real cost" figure predates the
+> UI toolkit and should not be quoted for this build; R8 keep rules for the JNI
+> surface remain open there, and this is the build that makes them worth doing.
 
 **4d is not one view.** The PWA's Deep Dive carries the five pillars, the
 12-point checklist with its explanation drawers, four chart types, the DCF

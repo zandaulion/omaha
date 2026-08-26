@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        A bare platform theme. The app's actual colours come from Compose via
+        OmahaTheme; this exists only so the window has a background before the
+        first frame, and so the splash is not white on a dark palette.
+
+        bg-canvas dark, from design/tokens.json. It is duplicated here because
+        an Android theme attribute cannot read a Compose value, and a flash of
+        the wrong colour at launch is the one place the generated tokens cannot
+        reach. If the canvas colour changes, change it here too.
+    -->
+    <style name="Theme.Omaha" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#0B0E14</item>
+        <item name="android:statusBarColor">#0B0E14</item>
+        <item name="android:navigationBarColor">#0B0E14</item>
+    </style>
+</resources>
