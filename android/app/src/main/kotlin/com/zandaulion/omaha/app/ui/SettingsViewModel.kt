@@ -37,7 +37,15 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             _includeNotes.value = settings.aiIncludeNotes()
             _theme.value = settings.themeChoice().toThemeChoice()
-            loadAlerts()
+        }
+        // Its own launch, and its own guard. This ViewModel is now built
+        // eagerly at app launch rather than only when Settings is opened, and
+        // the alert path is the newest, least-exercised code in the app — a
+        // defect in it must not block the notes toggle or the theme from
+        // loading, and must not crash a cold start.
+        viewModelScope.launch {
+            runCatching { loadAlerts() }
+                .onFailure { android.util.Log.e("OmahaSettings", "could not load alerts", it) }
         }
     }
 
@@ -50,7 +58,10 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
      * running, and the card would otherwise keep claiming they are on.
      */
     fun refreshAlerts() {
-        viewModelScope.launch { loadAlerts() }
+        viewModelScope.launch {
+            runCatching { loadAlerts() }
+                .onFailure { android.util.Log.e("OmahaSettings", "could not reload alerts", it) }
+        }
     }
 
     private suspend fun loadAlerts() {
@@ -81,35 +92,43 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun sendTestNotification() {
         viewModelScope.launch {
-            val notifier = AlertNotifier(getApplication())
-            notifier.ensureChannels()
-            if (!notifier.permitted()) {
-                refreshAlerts()
-                return@launch
-            }
-            notifier.show(
-                Alert(
-                    type = "EARNINGS_HEALTH_SHIFT",
-                    ticker = "",
-                    title = "Notifications are working",
-                    body = "Real alerts look like this: health changes, distress signals " +
-                        "and entry points. This one is a test and is not recorded.",
-                    severity = "info",
-                    url = ""
+            runCatching {
+                val notifier = AlertNotifier(getApplication())
+                notifier.ensureChannels()
+                if (!notifier.permitted()) {
+                    refreshAlerts()
+                    return@launch
+                }
+                notifier.show(
+                    Alert(
+                        type = "EARNINGS_HEALTH_SHIFT",
+                        ticker = "",
+                        title = "Notifications are working",
+                        body = "Real alerts look like this: health changes, distress signals " +
+                            "and entry points. This one is a test and is not recorded.",
+                        severity = "info",
+                        url = ""
+                    )
                 )
-            )
-            _status.value = "Test notification sent."
+                _status.value = "Test notification sent."
+            }.onFailure {
+                android.util.Log.e("OmahaSettings", "could not send test notification", it)
+                _status.value = "Could not send a test notification."
+            }
         }
     }
 
     fun setAlertPreferences(next: AlertSettings) {
         _alerts.value = _alerts.value?.copy(settings = next)
         viewModelScope.launch {
-            // Re-read rather than trusting the optimistic value, for the same
-            // reason the notes opt-in does: a switch showing a state that was
-            // never stored is a switch that lies about what will happen.
-            val stored = alertRepo.updateSettings(next)
-            _alerts.value = _alerts.value?.copy(settings = stored)
+            runCatching {
+                // Re-read rather than trusting the optimistic value, for the
+                // same reason the notes opt-in does: a switch showing a state
+                // that was never stored is a switch that lies about what will
+                // happen.
+                val stored = alertRepo.updateSettings(next)
+                _alerts.value = _alerts.value?.copy(settings = stored)
+            }.onFailure { android.util.Log.e("OmahaSettings", "could not save alert preferences", it) }
         }
     }
 
