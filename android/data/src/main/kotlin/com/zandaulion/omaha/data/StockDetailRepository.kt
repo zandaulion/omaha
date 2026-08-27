@@ -99,6 +99,23 @@ class StockDetailRepository(private val engine: StockEngine) {
                     explanation = c.text("explanation") ?: ""
                 )
             },
+            dcf = (summary?.get("dcf")?.jsonObject).let { dcfSummary ->
+                val a = dcfSummary?.get("assumptions")?.jsonObject
+                DcfInputs(
+                    applicable = dcfSummary?.bool("applicable") ?: true,
+                    reason = dcfSummary?.text("reason"),
+                    cashFlowBase = a?.dbl("cashFlowBase") ?: metrics?.dbl("freeCashFlow"),
+                    cashFlowBasis = a?.text("cashFlowBasis"),
+                    latestFiledCashFlow = a?.dbl("latestFiledCashFlow"),
+                    shares = metrics?.dbl("sharesOutstanding"),
+                    modelPrice = metrics?.dbl("price") ?: d.dbl("price"),
+                    netCash = (metrics?.dbl("cash") ?: 0.0) - (metrics?.dbl("totalDebt") ?: 0.0),
+                    growthRate = a?.dbl("growthRate"),
+                    terminalMultiple = a?.dbl("terminalMultiple"),
+                    discountRate = a?.dbl("discountRate"),
+                    impliedGrowthRate = dcfSummary?.dbl("impliedGrowthRate")
+                )
+            },
             history = (d["financials"]?.jsonObject?.get("historical")?.jsonObject).let { h ->
                 History(
                     years = h.ints("years"),

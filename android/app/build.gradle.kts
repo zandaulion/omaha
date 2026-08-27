@@ -66,6 +66,11 @@ dependencies {
 
     implementation(platform("androidx.compose:compose-bom:2025.09.00"))
     implementation("androidx.compose.foundation:foundation")
+    // Material3 for exactly one component: the DCF sandbox's Slider. See
+    // DcfSandbox.AssumptionSlider for why that exception is worth making —
+    // every colour it draws is passed in from the tokens, and nothing in this
+    // app reads MaterialTheme.
+    implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.activity:activity-compose:1.10.1")

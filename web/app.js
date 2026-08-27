@@ -1,3 +1,12 @@
+import {
+  dcfBaselines,
+  presetAssumptions,
+  dcfBlockedReason,
+  explainBlocked,
+  projectDcf,
+  dcfVerdict
+} from './dcf.js';
+
 /**
  * Pocket Omaha — Core PWA Client Application Logic
  * Mobile-First, Offline-Ready Fundamental Analysis PWA
@@ -1973,16 +1982,11 @@ function renderTrendsSubtab(stock) {
 
 // ----------------- DCF INTRINSIC VALUE SANDBOX -----------------
 function getStockDCFBaselines(stock) {
-  const target = stock || state.currentStock;
-  const assumptions = target?.summary?.dcf?.assumptions;
-
-  // Start from exactly what the server modelled, so the sandbox opens on the
-  // same numbers the scorecard was built from.
-  return {
-    baseGrowth: Math.round((assumptions?.growthRate ?? 0.06) * 100),
-    baseMultiple: Math.round(assumptions?.terminalMultiple ?? 15),
-    baseDiscount: Number(((assumptions?.discountRate ?? 0.095) * 100).toFixed(1))
-  };
+  // core/analysis/dcf.js is the definition, shipped to the browser by
+  // tools/bundle-core.mjs. This arithmetic used to live here as the only copy,
+  // which was fine with one client; with an Android client running the same
+  // sandbox it would be two sets of fair values.
+  return dcfBaselines((stock || state.currentStock)?.summary?.dcf);
 }
 
 function initDCFSandbox(stock) {
@@ -1991,30 +1995,16 @@ function initDCFSandbox(stock) {
 
 function setDCFPreset(preset, stockOverride) {
   document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
-  const { baseGrowth, baseMultiple, baseDiscount } = getStockDCFBaselines(stockOverride || state.currentStock);
+  const baselines = getStockDCFBaselines(stockOverride || state.currentStock);
 
-  if (preset === 'bear') {
-    document.getElementById('dcfBearPreset')?.classList.add('active');
-    // 35% worse than base, and able to go negative — a bear case for a
-    // shrinking business is a faster decline, not a slower expansion.
-    state.dcf.growth = Math.max(-25, Math.round(
-      baseGrowth >= 0 ? baseGrowth * 0.65 : baseGrowth * 1.35
-    ));
-    state.dcf.multiple = 16;
-    state.dcf.discount = 11.0;
-  } else if (preset === 'bull') {
-    document.getElementById('dcfBullPreset')?.classList.add('active');
-    state.dcf.growth = Math.min(45, Math.round(
-      baseGrowth >= 0 ? baseGrowth * 1.30 : baseGrowth * 0.70
-    ));
-    state.dcf.multiple = 32;
-    state.dcf.discount = 9.0;
-  } else {
-    document.getElementById('dcfBasePreset')?.classList.add('active');
-    state.dcf.growth = baseGrowth;
-    state.dcf.multiple = baseMultiple;
-    state.dcf.discount = baseDiscount;
-  }
+  const buttonId =
+    preset === 'bear' ? 'dcfBearPreset' : preset === 'bull' ? 'dcfBullPreset' : 'dcfBasePreset';
+  document.getElementById(buttonId)?.classList.add('active');
+
+  const a = presetAssumptions(preset, baselines);
+  state.dcf.growth = a.growthPct;
+  state.dcf.multiple = a.multiple;
+  state.dcf.discount = a.discountPct;
 
   const growthSlider = document.getElementById('dcfGrowthSlider');
   if (growthSlider) growthSlider.value = state.dcf.growth;
@@ -2060,24 +2050,10 @@ function calculateClientDCF() {
   const fcf0 = serverDcf.assumptions?.cashFlowBase ?? m.freeCashFlow;
   const shares = m.sharesOutstanding;
   const price = modelPrice;
-  const blocked =
-    serverDcf.applicable === false
-      ? serverDcf.reason
-      : !isNum(fcf0) || fcf0 <= 0
-        ? 'negative-fcf'
-        : !isNum(shares) || shares <= 0
-          ? 'no-share-count'
-          : null;
+  const blocked = dcfBlockedReason({ dcfSummary: serverDcf, cashFlowBase: fcf0, shares });
 
   if (blocked) {
-    const explain = {
-      'negative-fcf':
-        'This company is not generating positive free cash flow, so a discounted cash flow model has nothing to discount. Judge it on the balance sheet and the path back to cash generation instead.',
-      'no-share-count':
-        'The diluted share count is not in the filings for this listing, so a per-share value cannot be derived.',
-      'not-meaningful-for-financials':
-        'Free cash flow is not owner earnings for a bank or insurer — deposit and loan flows dominate it. Book value and return on equity are the measures that apply here.'
-    }[blocked] || 'This model cannot be run on the available filings.';
+    const explain = explainBlocked(blocked);
 
     fairValueEl.textContent = EM_DASH;
     badge.className = 'margin-of-safety-meter is-unavailable';
@@ -2089,57 +2065,39 @@ function calculateClientDCF() {
 
   if (controls) controls.hidden = false;
 
-  const g = state.dcf.growth / 100;
   const mult = state.dcf.multiple;
-  const r = state.dcf.discount / 100;
-
-  let fcf = fcf0;
-  let cumulativePV = 0;
-  const rows = [];
-  for (let t = 1; t <= 5; t++) {
-    fcf = fcf * (1 + g);
-    const pv = fcf / Math.pow(1 + r, t);
-    cumulativePV += pv;
-    rows.push({ year: t, fcf, pv });
-  }
-
-  const terminalValue = fcf * mult;
-  const pvTerminal = terminalValue / Math.pow(1 + r, 5);
-  const enterpriseValue = cumulativePV + pvTerminal;
   const netCash = (m.cash ?? 0) - (m.totalDebt ?? 0);
-  const equityValue = enterpriseValue + netCash;
-  const fairValue = equityValue / shares;
+
+  const { rows, cumulativePV, pvTerminal, equityValue, fairValue } = projectDcf({
+    cashFlowBase: fcf0,
+    shares,
+    netCash,
+    growthPct: state.dcf.growth,
+    multiple: mult,
+    discountPct: state.dcf.discount
+  });
 
   fairValueEl.textContent = fmtPrice(fairValue, cur);
 
-  const factor = fairValue > 0 ? fairValue / price : null;
-  const wideDivergence = factor !== null && (factor >= 3 || factor <= 0.33);
-
-  if (fairValue <= 0) {
+  const verdict = dcfVerdict(fairValue, price);
+  if (verdict.kind === 'no-equity-value') {
     badge.className = 'margin-of-safety-meter overvalued';
     badge.textContent =
       'No equity value at these assumptions — the discounted cash flows do not cover the debt.';
-  } else if (wideDivergence) {
-    // A fair value several multiples from the traded price almost always means
-    // the assumptions are wrong, or the market is pricing something the
-    // filings do not show. Presenting that as a large margin of safety invites
-    // exactly the wrong conclusion.
+  } else if (verdict.kind === 'divergent') {
     badge.className = 'margin-of-safety-meter is-divergent';
     badge.textContent =
-      `This model lands ${factor >= 3 ? factor.toFixed(1) + '× above' : (1 / factor).toFixed(1) + '× below'}` +
+      `This model lands ${verdict.factor >= 3
+        ? verdict.factor.toFixed(1) + '× above'
+        : (1 / verdict.factor).toFixed(1) + '× below'}` +
       ' the traded price. A gap this wide usually means the assumptions need revisiting,' +
       ' or the market is pricing in something the filings do not show.';
-  } else if (fairValue > price) {
-    const marginPct = ((fairValue - price) / fairValue) * 100;
+  } else if (verdict.kind === 'undervalued') {
     badge.className = 'margin-of-safety-meter undervalued';
-    badge.textContent = `Margin of safety ${fmtPct(marginPct, 1, { alreadyPercent: true, sign: true })} — trading below fair value`;
+    badge.textContent = `Margin of safety ${fmtPct(verdict.pct, 1, { alreadyPercent: true, sign: true })} — trading below fair value`;
   } else {
-    // Stated as a premium rather than a negative margin of safety: the
-    // margin-of-safety form reaches −188% on an expensive stock and stops
-    // carrying any meaning.
-    const premiumPct = ((price - fairValue) / fairValue) * 100;
     badge.className = 'margin-of-safety-meter overvalued';
-    badge.textContent = `${fmtPct(premiumPct, 1, { alreadyPercent: true })} above fair value at these assumptions`;
+    badge.textContent = `${fmtPct(verdict.pct, 1, { alreadyPercent: true })} above fair value at these assumptions`;
   }
 
   const line = (label, value, cls = '') =>

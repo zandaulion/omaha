@@ -53,6 +53,11 @@ dependencies {
     androidTestImplementation("androidx.room:room-testing:2.7.1")
     androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
     androidTestImplementation(kotlin("test"))
+
+    // JVM unit tests. DcfParityTest needs no device: it compares Kotlin
+    // arithmetic against vectors recorded from the JS module.
+    testImplementation(kotlin("test"))
+    testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
 }
 
 // The engine bundle has to exist before the instrumented tests can read it.

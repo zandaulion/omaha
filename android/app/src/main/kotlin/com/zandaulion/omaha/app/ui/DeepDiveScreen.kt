@@ -131,8 +131,7 @@ private fun Loaded(stock: StockDetail) {
                 }
             }
             DeepDiveTab.Dcf -> item {
-                Slice("DCF Sandbox", "Two-stage discounted cash flow with live sliders " +
-                    "and bear/base/bull presets. Phase 4d.")
+                Card { DcfSandbox(stock) }
             }
             DeepDiveTab.Thesis -> item {
                 Slice("My Thesis & Log", "Conviction, target buy price, pre-committed " +
