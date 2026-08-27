@@ -1,0 +1,764 @@
+{
+  "vectors": [
+    {
+      "name": "apple-ish",
+      "input": {
+        "name": "apple-ish",
+        "assumptions": {
+          "growthRate": 0.0731,
+          "terminalMultiple": 22.4,
+          "discountRate": 0.0925
+        },
+        "cashFlowBase": 98767000000,
+        "shares": 15000000000,
+        "netCash": -43960000000,
+        "price": 309.35
+      },
+      "baselines": {
+        "growthPct": 7,
+        "multiple": 22,
+        "discountPct": 9.3
+      },
+      "blocked": null,
+      "presets": {
+        "bear": {
+          "assumptions": {
+            "growthPct": 5,
+            "multiple": 16,
+            "discountPct": 11
+          },
+          "rows": [
+            {
+              "year": 1,
+              "fcf": 103705350000,
+              "pv": 93428243243.24324
+            },
+            {
+              "year": 2,
+              "fcf": 108890617500,
+              "pv": 88378067932.79765
+            },
+            {
+              "year": 3,
+              "fcf": 114335148375,
+              "pv": 83600875071.56534
+            },
+            {
+              "year": 4,
+              "fcf": 120051905793.75,
+              "pv": 79081908851.48071
+            },
+            {
+              "year": 5,
+              "fcf": 126054501083.4375,
+              "pv": 74807211075.72499
+            }
+          ],
+          "cumulativePV": 419296306174.8119,
+          "pvTerminal": 1196915377211.5999,
+          "equityValue": 1572251683386.4116,
+          "fairValue": 104.81677889242744,
+          "verdict": {
+            "kind": "overvalued",
+            "pct": 195.13404558776156,
+            "factor": 0.33882908967973957
+          }
+        },
+        "base": {
+          "assumptions": {
+            "growthPct": 7,
+            "multiple": 22,
+            "discountPct": 9.3
+          },
+          "rows": [
+            {
+              "year": 1,
+              "fcf": 105680690000,
+              "pv": 96688645928.63678
+            },
+            {
+              "year": 2,
+              "fcf": 113078338300,
+              "pv": 94654026663.89877
+            },
+            {
+              "year": 3,
+              "fcf": 120993821981,
+              "pv": 92662221894.21014
+            },
+            {
+              "year": 4,
+              "fcf": 129463389519.67001,
+              "pv": 90712330674.11243
+            },
+            {
+              "year": 5,
+              "fcf": 138525826786.04694,
+              "pv": 88803471016.74318
+            }
+          ],
+          "cumulativePV": 463520696177.6013,
+          "pvTerminal": 1953676362368.35,
+          "equityValue": 2373237058545.951,
+          "fairValue": 158.2158039030634,
+          "verdict": {
+            "kind": "overvalued",
+            "pct": 95.52408316272528,
+            "factor": 0.5114459476420345
+          }
+        },
+        "bull": {
+          "assumptions": {
+            "growthPct": 9,
+            "multiple": 32,
+            "discountPct": 9
+          },
+          "rows": [
+            {
+              "year": 1,
+              "fcf": 107656030000.00002,
+              "pv": 98767000000
+            },
+            {
+              "year": 2,
+              "fcf": 117345072700.00003,
+              "pv": 98767000000.00002
+            },
+            {
+              "year": 3,
+              "fcf": 127906129243.00005,
+              "pv": 98767000000
+            },
+            {
+              "year": 4,
+              "fcf": 139417680874.87006,
+              "pv": 98767000000
+            },
+            {
+              "year": 5,
+              "fcf": 151965272153.60837,
+              "pv": 98767000000
+            }
+          ],
+          "cumulativePV": 493835000000,
+          "pvTerminal": 3160544000000,
+          "equityValue": 3610419000000,
+          "fairValue": 240.6946,
+          "verdict": {
+            "kind": "overvalued",
+            "pct": 28.52386385070542,
+            "factor": 0.7780656214643608
+          }
+        }
+      }
+    },
+    {
+      "name": "shrinking",
+      "input": {
+        "name": "shrinking",
+        "assumptions": {
+          "growthRate": -0.1,
+          "terminalMultiple": 12,
+          "discountRate": 0.11
+        },
+        "cashFlowBase": 5000000000,
+        "shares": 2000000000,
+        "netCash": -1000000000,
+        "price": 40
+      },
+      "baselines": {
+        "growthPct": -10,
+        "multiple": 12,
+        "discountPct": 11
+      },
+      "blocked": null,
+      "presets": {
+        "bear": {
+          "assumptions": {
+            "growthPct": -13,
+            "multiple": 16,
+            "discountPct": 11
+          },
+          "rows": [
+            {
+              "year": 1,
+              "fcf": 4350000000,
+              "pv": 3918918918.9189186
+            },
+            {
+              "year": 2,
+              "fcf": 3784500000,
+              "pv": 3071585098.612125
+            },
+            {
+              "year": 3,
+              "fcf": 3292515000,
+              "pv": 2407458590.804098
+            },
+            {
+              "year": 4,
+              "fcf": 2864488050,
+              "pv": 1886927003.6032119
+            },
+            {
+              "year": 5,
+              "fcf": 2492104603.5,
+              "pv": 1478942786.6079226
+            }
+          ],
+          "cumulativePV": 12763832398.546276,
+          "pvTerminal": 23663084585.72676,
+          "equityValue": 35426916984.27304,
+          "fairValue": 17.71345849213652,
+          "verdict": {
+            "kind": "overvalued",
+            "pct": 125.81699682056484,
+            "factor": 0.442836462303413
+          }
+        },
+        "base": {
+          "assumptions": {
+            "growthPct": -10,
+            "multiple": 12,
+            "discountPct": 11
+          },
+          "rows": [
+            {
+              "year": 1,
+              "fcf": 4500000000,
+              "pv": 4054054054.054054
+            },
+            {
+              "year": 2,
+              "fcf": 4050000000,
+              "pv": 3287070854.6384215
+            },
+            {
+              "year": 3,
+              "fcf": 3645000000,
+              "pv": 2665192584.8419633
+            },
+            {
+              "year": 4,
+              "fcf": 3280500000,
+              "pv": 2160966960.682673
+            },
+            {
+              "year": 5,
+              "fcf": 2952450000,
+              "pv": 1752135373.5264912
+            }
+          ],
+          "cumulativePV": 13919419827.743603,
+          "pvTerminal": 21025624482.317894,
+          "equityValue": 33945044310.061493,
+          "fairValue": 16.972522155030745,
+          "verdict": {
+            "kind": "overvalued",
+            "pct": 135.6750495573446,
+            "factor": 0.4243130538757686
+          }
+        },
+        "bull": {
+          "assumptions": {
+            "growthPct": -7,
+            "multiple": 32,
+            "discountPct": 9
+          },
+          "rows": [
+            {
+              "year": 1,
+              "fcf": 4650000000,
+              "pv": 4266055045.871559
+            },
+            {
+              "year": 2,
+              "fcf": 4324500000,
+              "pv": 3639845130.8812385
+            },
+            {
+              "year": 3,
+              "fcf": 4021784999.9999995,
+              "pv": 3105555937.357386
+            },
+            {
+              "year": 4,
+              "fcf": 3740260049.9999995,
+              "pv": 2649694515.3599715
+            },
+            {
+              "year": 5,
+              "fcf": 3478441846.4999995,
+              "pv": 2260748531.4539204
+            }
+          ],
+          "cumulativePV": 15921899160.924076,
+          "pvTerminal": 72343953006.52545,
+          "equityValue": 87265852167.44952,
+          "fairValue": 43.63292608372476,
+          "verdict": {
+            "kind": "undervalued",
+            "pct": 8.326111516687524,
+            "factor": 1.090823152093119
+          }
+        }
+      }
+    },
+    {
+      "name": "baseline-out-of-range",
+      "input": {
+        "name": "baseline-out-of-range",
+        "assumptions": {
+          "growthRate": 0.9,
+          "terminalMultiple": 60,
+          "discountRate": 0.02
+        },
+        "cashFlowBase": 1000000000,
+        "shares": 500000000,
+        "netCash": 2000000000,
+        "price": 25
+      },
+      "baselines": {
+        "growthPct": 45,
+        "multiple": 45,
+        "discountPct": 6
+      },
+      "blocked": null,
+      "presets": {
+        "bear": {
+          "assumptions": {
+            "growthPct": 29,
+            "multiple": 16,
+            "discountPct": 11
+          },
+          "rows": [
+            {
+              "year": 1,
+              "fcf": 1290000000,
+              "pv": 1162162162.162162
+            },
+            {
+              "year": 2,
+              "fcf": 1664100000,
+              "pv": 1350620891.1614316
+            },
+            {
+              "year": 3,
+              "fcf": 2146689000,
+              "pv": 1569640495.1335554
+            },
+            {
+              "year": 4,
+              "fcf": 2769228810,
+              "pv": 1824176791.6416993
+            },
+            {
+              "year": 5,
+              "fcf": 3572305164.9,
+              "pv": 2119989244.340353
+            }
+          ],
+          "cumulativePV": 8026589584.439201,
+          "pvTerminal": 33919827909.44565,
+          "equityValue": 43946417493.88485,
+          "fairValue": 87.8928349877697,
+          "verdict": {
+            "kind": "divergent",
+            "pct": null,
+            "factor": 3.5157133995107883
+          }
+        },
+        "base": {
+          "assumptions": {
+            "growthPct": 45,
+            "multiple": 45,
+            "discountPct": 6
+          },
+          "rows": [
+            {
+              "year": 1,
+              "fcf": 1450000000,
+              "pv": 1367924528.3018868
+            },
+            {
+              "year": 2,
+              "fcf": 2102500000,
+              "pv": 1871217515.1299393
+            },
+            {
+              "year": 3,
+              "fcf": 3048625000,
+              "pv": 2559684336.7343507
+            },
+            {
+              "year": 4,
+              "fcf": 4420506250,
+              "pv": 3501454988.9290643
+            },
+            {
+              "year": 5,
+              "fcf": 6409734062.5,
+              "pv": 4789726164.101079
+            }
+          ],
+          "cumulativePV": 14090007533.19632,
+          "pvTerminal": 215537677384.54855,
+          "equityValue": 231627684917.74487,
+          "fairValue": 463.2553698354898,
+          "verdict": {
+            "kind": "divergent",
+            "pct": null,
+            "factor": 18.530214793419592
+          }
+        },
+        "bull": {
+          "assumptions": {
+            "growthPct": 45,
+            "multiple": 32,
+            "discountPct": 9
+          },
+          "rows": [
+            {
+              "year": 1,
+              "fcf": 1450000000,
+              "pv": 1330275229.357798
+            },
+            {
+              "year": 2,
+              "fcf": 2102500000,
+              "pv": 1769632185.8429422
+            },
+            {
+              "year": 3,
+              "fcf": 3048625000,
+              "pv": 2354097861.901161
+            },
+            {
+              "year": 4,
+              "fcf": 4420506250,
+              "pv": 3131598073.1712694
+            },
+            {
+              "year": 5,
+              "fcf": 6409734062.5,
+              "pv": 4165887345.0443487
+            }
+          ],
+          "cumulativePV": 12751490695.31752,
+          "pvTerminal": 133308395041.41916,
+          "equityValue": 148059885736.7367,
+          "fairValue": 296.1197714734734,
+          "verdict": {
+            "kind": "divergent",
+            "pct": null,
+            "factor": 11.844790858938936
+          }
+        }
+      }
+    },
+    {
+      "name": "debt-heavy",
+      "input": {
+        "name": "debt-heavy",
+        "assumptions": {
+          "growthRate": 0.02,
+          "terminalMultiple": 9,
+          "discountRate": 0.15
+        },
+        "cashFlowBase": 200000000,
+        "shares": 1000000000,
+        "netCash": -30000000000,
+        "price": 3
+      },
+      "baselines": {
+        "growthPct": 2,
+        "multiple": 9,
+        "discountPct": 15
+      },
+      "blocked": null,
+      "presets": {
+        "bear": {
+          "assumptions": {
+            "growthPct": 1,
+            "multiple": 16,
+            "discountPct": 11
+          },
+          "rows": [
+            {
+              "year": 1,
+              "fcf": 202000000,
+              "pv": 181981981.98198196
+            },
+            {
+              "year": 2,
+              "fcf": 204020000,
+              "pv": 165587208.83045205
+            },
+            {
+              "year": 3,
+              "fcf": 206060200,
+              "pv": 150669442.26915005
+            },
+            {
+              "year": 4,
+              "fcf": 208120802,
+              "pv": 137095618.64129868
+            },
+            {
+              "year": 5,
+              "fcf": 210202010.02,
+              "pv": 124744662.00694744
+            }
+          ],
+          "cumulativePV": 760078913.7298301,
+          "pvTerminal": 1995914592.111159,
+          "equityValue": -27244006494.15901,
+          "fairValue": -27.244006494159013,
+          "verdict": {
+            "kind": "no-equity-value",
+            "pct": null,
+            "factor": null
+          }
+        },
+        "base": {
+          "assumptions": {
+            "growthPct": 2,
+            "multiple": 9,
+            "discountPct": 15
+          },
+          "rows": [
+            {
+              "year": 1,
+              "fcf": 204000000,
+              "pv": 177391304.3478261
+            },
+            {
+              "year": 2,
+              "fcf": 208080000,
+              "pv": 157338374.29111534
+            },
+            {
+              "year": 3,
+              "fcf": 212241600,
+              "pv": 139552297.1973371
+            },
+            {
+              "year": 4,
+              "fcf": 216486432,
+              "pv": 123776820.12285551
+            },
+            {
+              "year": 5,
+              "fcf": 220816160.64000002,
+              "pv": 109784657.84809795
+            }
+          ],
+          "cumulativePV": 707843453.8072319,
+          "pvTerminal": 988061920.6328815,
+          "equityValue": -28304094625.559887,
+          "fairValue": -28.304094625559888,
+          "verdict": {
+            "kind": "no-equity-value",
+            "pct": null,
+            "factor": null
+          }
+        },
+        "bull": {
+          "assumptions": {
+            "growthPct": 3,
+            "multiple": 32,
+            "discountPct": 9
+          },
+          "rows": [
+            {
+              "year": 1,
+              "fcf": 206000000,
+              "pv": 188990825.68807337
+            },
+            {
+              "year": 2,
+              "fcf": 212180000,
+              "pv": 178587660.9712987
+            },
+            {
+              "year": 3,
+              "fcf": 218545400,
+              "pv": 168757147.52333724
+            },
+            {
+              "year": 4,
+              "fcf": 225101762,
+              "pv": 159467763.2559976
+            },
+            {
+              "year": 5,
+              "fcf": 231854814.86,
+              "pv": 150689721.241906
+            }
+          ],
+          "cumulativePV": 846493118.6806128,
+          "pvTerminal": 4822071079.740992,
+          "equityValue": -24331435801.578396,
+          "fairValue": -24.331435801578397,
+          "verdict": {
+            "kind": "no-equity-value",
+            "pct": null,
+            "factor": null
+          }
+        }
+      }
+    },
+    {
+      "name": "net-cash-divergent",
+      "input": {
+        "name": "net-cash-divergent",
+        "assumptions": {
+          "growthRate": 0.25,
+          "terminalMultiple": 35,
+          "discountRate": 0.07
+        },
+        "cashFlowBase": 4000000000,
+        "shares": 1000000000,
+        "netCash": 60000000000,
+        "price": 20
+      },
+      "baselines": {
+        "growthPct": 25,
+        "multiple": 35,
+        "discountPct": 7
+      },
+      "blocked": null,
+      "presets": {
+        "bear": {
+          "assumptions": {
+            "growthPct": 16,
+            "multiple": 16,
+            "discountPct": 11
+          },
+          "rows": [
+            {
+              "year": 1,
+              "fcf": 4640000000,
+              "pv": 4180180180.1801796
+            },
+            {
+              "year": 2,
+              "fcf": 5382400000,
+              "pv": 4368476584.6928005
+            },
+            {
+              "year": 3,
+              "fcf": 6243584000,
+              "pv": 4565254809.228512
+            },
+            {
+              "year": 4,
+              "fcf": 7242557439.999999,
+              "pv": 4770896917.752317
+            },
+            {
+              "year": 5,
+              "fcf": 8401366630.399999,
+              "pv": 4985802184.317737
+            }
+          ],
+          "cumulativePV": 22870610676.171547,
+          "pvTerminal": 79772834949.08379,
+          "equityValue": 162643445625.25534,
+          "fairValue": 162.64344562525534,
+          "verdict": {
+            "kind": "divergent",
+            "pct": null,
+            "factor": 8.132172281262767
+          }
+        },
+        "base": {
+          "assumptions": {
+            "growthPct": 25,
+            "multiple": 35,
+            "discountPct": 7
+          },
+          "rows": [
+            {
+              "year": 1,
+              "fcf": 5000000000,
+              "pv": 4672897196.261682
+            },
+            {
+              "year": 2,
+              "fcf": 6250000000,
+              "pv": 5458992051.707573
+            },
+            {
+              "year": 3,
+              "fcf": 7812500000,
+              "pv": 6377327163.20978
+            },
+            {
+              "year": 4,
+              "fcf": 9765625000,
+              "pv": 7450148555.151612
+            },
+            {
+              "year": 5,
+              "fcf": 12207031250,
+              "pv": 8703444573.775248
+            }
+          ],
+          "cumulativePV": 32662809540.105896,
+          "pvTerminal": 304620560082.13367,
+          "equityValue": 397283369622.23956,
+          "fairValue": 397.28336962223955,
+          "verdict": {
+            "kind": "divergent",
+            "pct": null,
+            "factor": 19.864168481111978
+          }
+        },
+        "bull": {
+          "assumptions": {
+            "growthPct": 33,
+            "multiple": 32,
+            "discountPct": 9
+          },
+          "rows": [
+            {
+              "year": 1,
+              "fcf": 5320000000,
+              "pv": 4880733944.954128
+            },
+            {
+              "year": 2,
+              "fcf": 7075600000,
+              "pv": 5955390960.356872
+            },
+            {
+              "year": 3,
+              "fcf": 9410548000,
+              "pv": 7266669703.921686
+            },
+            {
+              "year": 4,
+              "fcf": 12516028840,
+              "pv": 8866670372.675085
+            },
+            {
+              "year": 5,
+              "fcf": 16646318357.2,
+              "pv": 10818964766.658588
+            }
+          ],
+          "cumulativePV": 37788429748.56636,
+          "pvTerminal": 346206872533.0748,
+          "equityValue": 443995302281.6412,
+          "fairValue": 443.99530228164116,
+          "verdict": {
+            "kind": "divergent",
+            "pct": null,
+            "factor": 22.19976511408206
+          }
+        }
+      }
+    }
+  ]
+}

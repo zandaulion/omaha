@@ -1,9 +1,16 @@
-const CACHE_NAME = 'pocket-omaha-v2.3.0';
+const CACHE_NAME = 'pocket-omaha-v2.4.0';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/app.css',
+  // The palette, generated from design/tokens.json. app.css consumes these
+  // custom properties, so without it every themed colour resolves to nothing.
+  '/tokens.css',
   '/app.js',
+  // app.js imports this as an ES module. A module whose import fails does not
+  // run at all, so leaving it out of the precache would not degrade the app
+  // offline — it would stop it starting.
+  '/dcf.js',
   '/manifest.webmanifest',
   '/icons/icon.svg',
   '/icons/favicon.svg',

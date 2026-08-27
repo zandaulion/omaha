@@ -100,6 +100,30 @@ data class BalanceSheet(
     val reportingCurrency: String
 )
 
+/**
+ * What the sandbox needs to run, taken from the engine's own model.
+ *
+ * The baseline assumptions are the ones the scorecard was built from, so the
+ * sandbox opens agreeing with the screen behind it rather than on round
+ * defaults that would disagree immediately and silently.
+ */
+data class DcfInputs(
+    val applicable: Boolean,
+    val reason: String?,
+    val cashFlowBase: Double?,
+    val cashFlowBasis: String?,
+    val latestFiledCashFlow: Double?,
+    val shares: Double?,
+    /** The price the model works against — converted where the shares trade in
+     *  a different currency from the one the company reports in. */
+    val modelPrice: Double?,
+    val netCash: Double?,
+    val growthRate: Double?,
+    val terminalMultiple: Double?,
+    val discountRate: Double?,
+    val impliedGrowthRate: Double?
+)
+
 data class StockDetail(
     val ticker: String,
     val name: String,
@@ -118,5 +142,6 @@ data class StockDetail(
     val checklist: List<Check>,
     val checklistSummary: ChecklistSummary,
     val history: History,
-    val balanceSheet: BalanceSheet
+    val balanceSheet: BalanceSheet,
+    val dcf: DcfInputs
 )

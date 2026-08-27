@@ -40,7 +40,24 @@ export const ENTRIES = [
   { entry: 'core/scoring.js', out: 'scoring.bundle.js' },
   { entry: 'core/backup.js', out: 'backup.bundle.js' },
   { entry: 'core/host/ingest.js', out: 'ingest.bundle.js' },
-  { entry: 'core/host/stock.js', out: 'stock.bundle.js' }
+  { entry: 'core/host/stock.js', out: 'stock.bundle.js' },
+  // The DCF sandbox recomputes on every slider drag, so both clients run it
+  // locally rather than asking a host. That makes it the one module the
+  // *browser* also needs as a module, which is why it is emitted twice: once
+  // here for QuickJS, and once into web/ by the same build (see WEB_ENTRIES).
+  { entry: 'core/analysis/dcf.js', out: 'dcf.bundle.js' }
+];
+
+/**
+ * Emitted into `web/` so the PWA client can import it directly.
+ *
+ * `web/app.js` cannot reach `core/` — only `web/` is served — so before this
+ * the DCF arithmetic lived in `app.js` as the only copy. That was fine with one
+ * client and becomes a drift generator with two. Shipping the module to the
+ * browser keeps one definition rather than adding a third.
+ */
+export const WEB_ENTRIES = [
+  { entry: 'core/analysis/dcf.js', out: 'dcf.js' }
 ];
 
 /** Build one entry and return its contents, without writing. */
@@ -68,22 +85,30 @@ const check = process.argv.includes('--check');
 fs.mkdirSync(OUT_DIR, { recursive: true });
 
 let stale = [];
-for (const { entry, out } of ENTRIES) {
+
+async function emit(entry, target, label) {
   const text = await render(entry);
-  const target = path.join(OUT_DIR, out);
   const existing = fs.existsSync(target) ? fs.readFileSync(target, 'utf8') : null;
 
   if (check) {
-    if (existing !== text) stale.push(out);
-    continue;
+    if (existing !== text) stale.push(label);
+    return;
   }
 
   if (existing !== text) {
     fs.writeFileSync(target, text);
-    console.log(`${out}: written, ${Math.round(text.length / 1024)} KB`);
+    console.log(`${label}: written, ${Math.round(text.length / 1024)} KB`);
   } else {
-    console.log(`${out}: unchanged, ${Math.round(text.length / 1024)} KB`);
+    console.log(`${label}: unchanged, ${Math.round(text.length / 1024)} KB`);
   }
+}
+
+for (const { entry, out } of ENTRIES) {
+  await emit(entry, path.join(OUT_DIR, out), out);
+}
+
+for (const { entry, out } of WEB_ENTRIES) {
+  await emit(entry, path.join(ROOT, 'web', out), `web/${out}`);
 }
 
 if (check && stale.length) {
