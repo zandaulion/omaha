@@ -40,6 +40,49 @@ This document details the backend pipeline, trigger rules, payload structures, a
 
 ---
 
+## 1a. The Android path — added 2026-08-27
+
+The diagram above is the PWA's. Android runs the same triggers with none of the
+infrastructure: no ingestion service, no dispatch worker, no push service.
+
+```
+ WorkManager, every 6h, network-constrained
+        │
+        ▼
+ core/host/alerts.js in QuickJS, one ticker per call
+   ├── core/host/stock.js ──── the same fetch/score pipeline the watchlist uses
+   ├── core/alerts/triggers.js  the same four rules
+   └── core/alerts/sweep.js     the same snapshots, cooldowns and stop conditions
+        │
+        ▼
+ Room ── stock_snapshots · notification_settings · notification_history
+        │
+        ▼
+ NotificationManager, five channels, one per notify_* setting
+```
+
+**What is shared and what is not.** The rules, the snapshot projection, the
+cooldown table, the sweep's stop conditions and the digest's composition are all
+in `core/` and run byte-identically on both clients. What differs is storage,
+scheduling and delivery — which is the correct line: a phone and a Node server
+genuinely differ there, and nowhere else.
+
+**Three departures from this document, all deliberate:**
+
+1. **No `WEEKLY_DIGEST` email path on Android**, and none planned. A local
+   notification is the platform equivalent; see the backlog entry, which now
+   concerns the *server's* email only.
+2. **No VAPID, no APNs, no FCM.** Nothing is transmitted to deliver an alert.
+   This is the same privacy position as the rest of the Android client and is
+   why phase 5 required no server.
+3. **The digest's comparison point is not the previous snapshot.** §2's Trigger 4
+   implies comparing against the last stored reading. That is wrong on both
+   clients and was wrong in production: the sweep writes the cache row and the
+   snapshot from the same fetch, so the difference is zero by construction. See
+   `rollBaseline` in `core/alerts/sweep.js` and `docs/16_ROADMAP.md` phase 5.
+
+---
+
 ## 2. Notification Trigger Specifications
 
 ### Trigger 1: Post-Earnings 10-Q/10-K Health Score Shift

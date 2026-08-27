@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The status-bar icon.
+
+  Monochrome by requirement, not by choice: from API 21 the system tints the
+  small icon a flat white and discards everything but the alpha channel, so a
+  coloured mark would arrive as a white silhouette of itself. Drawn as a
+  silhouette from the start rather than discovering that on a device.
+
+  The motif is the score ring with a gap, which is the app's one recurring
+  shape — the same figure the watchlist hero and every scorecard draw.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="#FFFFFFFF">
+
+    <!-- The ring, open at the top right where a score arc would end. -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,2.6c-5.19,0 -9.4,4.21 -9.4,9.4s4.21,9.4 9.4,9.4s9.4,-4.21 9.4,-9.4h-2.6c0,3.76 -3.04,6.8 -6.8,6.8s-6.8,-3.04 -6.8,-6.8s3.04,-6.8 6.8,-6.8z" />
+
+    <!-- Three rising bars: the trend the ring is a verdict on. -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M8.4,13.2h1.9v3.4h-1.9zM11.05,10.6h1.9v6h-1.9zM13.7,8h1.9v8.6h-1.9z" />
+</vector>

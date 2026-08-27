@@ -435,7 +435,7 @@ ordinary screens:
 
 Screenshot diffs against the PWA gate each slice.
 
-### Phase 5 — Alerts on device (doc 13 step 5)
+### Phase 5 — Alerts on device (doc 13 step 5) — **done 2026-08-27**
 
 - Room: `stock_snapshots`, `notification_settings`, `notification_history`.
 - WorkManager sweep, local notifications, `evaluateTriggers` already pure in
@@ -446,6 +446,73 @@ Screenshot diffs against the PWA gate each slice.
   prompt for a battery-optimisation exemption is the open UX call.
 
 No server, and nothing transmitted beyond market data.
+
+> **Half of this phase turned out to belong in `core/`.** `triggers.js` was
+> already shared, but everything *around* it — which fields a snapshot must
+> carry, how long an alert may not repeat, when a sweep should stop rather than
+> keep asking — lived only in `server/alerts.js`. Those are policy, not
+> plumbing: a cooldown of 14 days in the browser and 3 on the phone is not a
+> difference either client can see. They moved to `core/alerts/sweep.js`, which
+> the server now imports and the phone runs through `core/host/alerts.js`.
+>
+> **The extraction found two defects, both of which had shipped.**
+>
+> `server/alerts.js:293` called `both(...)`, a helper private to `triggers.js`
+> and never imported there. Every Sunday digest with at least one scored holding
+> threw `ReferenceError`, and the hourly timer's `.catch()` logged and swallowed
+> it — so the feature reported healthy while having never once sent. Nothing
+> pointed at it because the composition had no seam to test at.
+>
+> Underneath that was a worse one. Both clients computed movers as
+> `current - previousSnapshot`, and the sweep writes the cache row and the
+> snapshot **from the same fetch** — so the difference is zero by construction.
+> Every digest either client could ever have produced would have said "no
+> material health changes this week", correctly according to its arithmetic and
+> wrongly about the world. Fixed with `rollBaseline`: a second, slower-moving
+> reading adopted from the snapshot being replaced and then left alone for six
+> days. `stock_snapshots` gains `week_ago_score` and `week_ago_at` on both
+> clients. Verified against a seeded database — *"🎩 The Compounders: 80/100.
+> 2 holdings scored. Movers: AAPL +8, NVDA -3."*
+>
+> **The sweep splits per ticker, not per sweep.** Every `JsBridge.call` builds a
+> fresh interpreter and the engine is serialised process-wide (phase 4's
+> handset bug), so one call per sweep would hold the lock for `tickers × ~2 s`
+> with the watchlist frozen behind it if the app were opened mid-sweep. Per
+> ticker, a foreground read waits for one company at worst. What the Kotlin loop
+> is left deciding is *which* holdings and *when to persist*; `evaluated`,
+> `skipped` and `abandon` all arrive as values from the engine.
+>
+> **The snapshot is one column, not ten.** `server/db.js` gives it a column per
+> compared field because SQL is how the server queries them; nothing on Android
+> queries them, so the engine's JSON is stored verbatim and handed back
+> unexamined. The failure mode of mapping it is what settles this:
+> `evaluateTriggers` guards every comparison with "are both of these numbers?",
+> so a field the host dropped or re-spelled reads as `undefined` and the rule
+> goes **quiet** rather than throwing. A trigger that silently stops firing is
+> the one defect nobody can notice, because the symptom is an absence. Two
+> fields are denormalised as a named exception, for the digest's cross-holding
+> query.
+>
+> **No battery-optimisation prompt.** It is a system dialog asking someone to
+> weaken a protection, for a feature whose worst failure is a filing noticed six
+> hours late — and asking before the app has shown a single useful alert is how
+> the request gets refused permanently. Settings shows *when the last sweep
+> actually ran* instead, so a schedule the OEM is not honouring is visible
+> rather than merely absent. Notification permission is offered the same way:
+> from the Alerts card, never on launch, and the sweep keeps running and
+> recording without it — refusing turns the feature into an in-app one rather
+> than turning it off, and the cooldowns stay in step.
+>
+> **Five notification channels, one per setting.** Android gives each channel
+> its own switch, importance and sound, so silencing "Buybacks and dividends"
+> in system settings means exactly what unticking it in ours means. One channel
+> would have made the OS control all-or-nothing. Only a distress signal is
+> `IMPORTANCE_HIGH`; a weekly summary at the same weight is how the distress
+> signal stops being noticed.
+>
+> **Fixed in passing: the theme picker did nothing.** `MainActivity` hard-coded
+> `ThemeChoice.System` while Settings stored the choice correctly, so picking
+> Light persisted and changed nothing. Phase 4 was marked done with that live.
 
 ### Phase 6 — Paid AI (doc 13 step 6)
 
@@ -500,8 +567,9 @@ The state to hold each client against. "Inherits" means the work lands in
 | Thesis, sell triggers, journal | ✅ | ✅ | done |
 | Filter, Compare | ✅ | ✅ | done |
 | Settings | ✅ | ✅ | done |
-| Alerts | ✅ push | ❌ | 5 |
-| Sunday digest | ⚠️ push only, no email | n/a — local notifications | backlog |
+| Alerts | ✅ push | ✅ local, WorkManager | done |
+| Alert centre / history | ✅ | ✅ in Settings | done |
+| Sunday digest | ✅ push — **fixed 2026-08-27**, had never sent | ✅ local | done; email in backlog |
 | AI analysis | ✅ free | ❌ | 6 |
 | Home-screen widget | n/a | ❌ | 7 — **named exception** |
 | Invites, devices, push subs | ✅ | n/a by design | — |

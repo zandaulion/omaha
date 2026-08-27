@@ -12,6 +12,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
@@ -21,6 +24,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import com.zandaulion.omaha.data.AlertSettings
+import com.zandaulion.omaha.data.NotificationRow
 import com.zandaulion.omaha.design.Omaha
 import com.zandaulion.omaha.design.OmahaRadius
 import com.zandaulion.omaha.design.OmahaType
@@ -39,8 +44,12 @@ fun SettingsScreen(
     includeNotes: Boolean,
     theme: ThemeChoice,
     backupStatus: String?,
+    alerts: AlertsUi?,
     onIncludeNotesChange: (Boolean) -> Unit,
     onThemeChange: (ThemeChoice) -> Unit,
+    onAlertsChange: (AlertSettings) -> Unit,
+    onRequestPermission: () -> Unit,
+    onTestNotification: () -> Unit,
     onExport: () -> Unit,
     onImport: () -> Unit
 ) {
@@ -72,6 +81,11 @@ fun SettingsScreen(
                     "of ignoring it. Off by default.",
                 style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary)
             )
+        }
+
+        if (alerts != null) {
+            AlertPreferencesCard(alerts, onAlertsChange, onRequestPermission, onTestNotification)
+            AlertHistoryCard(alerts.history)
         }
 
         SettingsCard("🎨 Appearance") {
@@ -176,6 +190,183 @@ fun SettingsScreen(
         }
     }
 }
+
+/**
+ * Which alerts to send, matching the PWA's card of the same name.
+ *
+ * Same five checkboxes, same order, same sentences. They are the same five
+ * `notify_*` flags underneath and are read by the same trigger rules, so
+ * wording them differently would be describing one behaviour two ways.
+ */
+@Composable
+private fun AlertPreferencesCard(
+    alerts: AlertsUi,
+    onChange: (AlertSettings) -> Unit,
+    onRequestPermission: () -> Unit,
+    onTest: () -> Unit
+) {
+    val s = alerts.settings
+
+    SettingsCard("🔔 Which alerts to send") {
+        BasicText(
+            "Watchlist holdings are re-checked four times a day, on this device. " +
+                "Nothing is sent anywhere to make an alert happen.",
+            style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary)
+        )
+        Box(Modifier.height(12.dp))
+
+        CheckRow(s.earningsAndFilings, "Health score moves 3 points or a check changes state") {
+            onChange(s.copy(earningsAndFilings = it))
+        }
+        Box(Modifier.height(8.dp))
+        CheckRow(s.redFlags, "Distress signals: Altman Z, liquidity, margin collapse") {
+            onChange(s.copy(redFlags = it))
+        }
+        Box(Modifier.height(8.dp))
+        CheckRow(s.marginOfSafety, "Strong company reaches an attractive price") {
+            onChange(s.copy(marginOfSafety = it))
+        }
+        Box(Modifier.height(8.dp))
+        CheckRow(s.capitalReturns, "Buyback and dividend changes") {
+            onChange(s.copy(capitalReturns = it))
+        }
+        Box(Modifier.height(8.dp))
+        CheckRow(s.sundayDigest, "Sunday morning portfolio summary") {
+            onChange(s.copy(sundayDigest = it))
+        }
+
+        if (!alerts.permitted) {
+            // Not a modal on first launch. Asking before the app has produced a
+            // single alert is asking someone to agree to something they have no
+            // way to judge, and a refusal here is remembered by the system.
+            // The checks above keep working either way — the sweep still runs
+            // and still records — so this offers the last step rather than
+            // gating the feature behind it.
+            Box(Modifier.height(14.dp))
+            BasicText(
+                "Android is not showing these yet. They are still recorded below, " +
+                    "but nothing will reach your lock screen until you allow it.",
+                style = OmahaType.caption.toTextStyle(color = Omaha.colors.healthModerate)
+            )
+            Box(Modifier.height(10.dp))
+            Action("Allow notifications", onRequestPermission)
+        } else {
+            Box(Modifier.height(14.dp))
+            Action("Send a test notification", onTest)
+        }
+
+        // Doze and OEM task killers make the cadence approximate, so the honest
+        // thing is to show when it last actually happened rather than to state
+        // a schedule the system may not be honouring.
+        Box(Modifier.height(12.dp))
+        BasicText(
+            lastCheckedLine(alerts.lastSweepAt),
+            style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary)
+        )
+    }
+}
+
+/**
+ * The alert centre — the PWA's `#notificationHistory`, on a phone.
+ *
+ * Worth having even though these arrive as notifications: a notification that
+ * was dismissed on the lock screen is gone, and the reason a holding was
+ * flagged three days ago is exactly the sort of thing someone goes looking for
+ * afterwards.
+ */
+@Composable
+private fun AlertHistoryCard(history: List<NotificationRow>) {
+    SettingsCard("📜 Recent alerts") {
+        if (history.isEmpty()) {
+            BasicText(
+                "No alerts yet. Holdings are checked four times a day.",
+                style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary)
+            )
+            return@SettingsCard
+        }
+
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            for (row in history) {
+                // `.notification-row` in web/app.css: a subtle surface, small
+                // radius, 9x11 padding and a 3px severity rail down the left.
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        // Intrinsic min height so the rail can match the text
+                        // block beside it. `fillMaxHeight` in a wrap-content
+                        // Row measures against an unbounded constraint and
+                        // collapses; this is the same trap the trend charts'
+                        // missing-year column fell into in phase 4.
+                        .height(IntrinsicSize.Min)
+                        .clip(RoundedCornerShape(OmahaRadius.sm))
+                        .background(Omaha.colors.bgSurfaceSubtle)
+                ) {
+                    Box(
+                        Modifier
+                            .width(3.dp)
+                            .fillMaxHeight()
+                            .background(severityColour(row.severity))
+                    )
+                    Column(Modifier.padding(horizontal = 11.dp, vertical = 9.dp)) {
+                        BasicText(
+                            row.title,
+                            style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textPrimary)
+                        )
+                        Box(Modifier.height(2.dp))
+                        BasicText(
+                            row.body,
+                            style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary)
+                        )
+                        Box(Modifier.height(4.dp))
+                        BasicText(
+                            relativeTime(row.deliveredAt),
+                            style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The severity rail's colour, matching `.notification-row.is-*`.
+ *
+ * `positive` is health-pristine rather than health-good, which is what the CSS
+ * uses — the two greens are close enough that picking the wrong one looks
+ * right on a phone and wrong beside the web client.
+ */
+@Composable
+private fun severityColour(severity: String) = when (severity) {
+    "critical" -> Omaha.colors.healthRisk
+    "warning" -> Omaha.colors.healthModerate
+    "positive" -> Omaha.colors.healthPristine
+    else -> Omaha.colors.brandCyan
+}
+
+/**
+ * "4 h ago" from an ISO-8601 stamp — the same ladder as `formatRelativeTime`
+ * in `web/app.js`, so the two clients describe the same age the same way.
+ */
+private fun relativeTime(iso: String): String {
+    val then = runCatching { java.time.Instant.parse(iso) }.getOrNull() ?: return ""
+    val minutes = java.time.Duration.between(then, java.time.Instant.now()).toMinutes()
+    return when {
+        minutes < 1 -> "just now"
+        minutes < 60 -> "$minutes min ago"
+        minutes < 1440 -> "${minutes / 60} h ago"
+        minutes < 2880 -> "yesterday"
+        else -> "${minutes / 1440} days ago"
+    }
+}
+
+private fun lastCheckedLine(iso: String?): String =
+    if (iso == null) {
+        "No check has completed yet. The first runs about fifteen minutes after install."
+    } else {
+        "Last checked ${relativeTime(iso)}. Battery optimisation can delay this; " +
+            "if it falls badly behind, exempt Pocket Omaha in Android's battery settings."
+    }
 
 @Composable
 private fun SettingsCard(title: String, content: @Composable () -> Unit) {

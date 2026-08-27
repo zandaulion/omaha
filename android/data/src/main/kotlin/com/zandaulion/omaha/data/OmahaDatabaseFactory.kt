@@ -37,10 +37,63 @@ object OmahaDatabaseFactory {
         }
     }
 
+    /**
+     * 2 → 3: the alert sweep's three tables.
+     *
+     * Additive again, so nothing existing is read or rewritten. Column names
+     * are Room's camelCase rather than the PWA's snake_case, which is a
+     * deliberate departure: none of these rows crosses between the clients.
+     * `core/backup.js` carries theses and watchlists only, and alert history is
+     * a record of what *this* device showed *this* person — restoring it onto
+     * another device would claim notifications that were never delivered
+     * there, and would carry its cooldowns along with them.
+     *
+     * `notification_settings` gets no SQL defaults on purpose. What is on
+     * before anybody has chosen comes from `core/alerts/sweep.js`, so that both
+     * clients answer it the same way; a DEFAULT clause here would be a second,
+     * silent answer that only appears when a row is inserted without one.
+     */
+    val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `stock_snapshots` (" +
+                    "`ticker` TEXT NOT NULL, `snapshotJson` TEXT NOT NULL, " +
+                    "`healthScore` INTEGER, `baselineScore` INTEGER, " +
+                    "`capturedAt` TEXT NOT NULL, " +
+                    "PRIMARY KEY(`ticker`))"
+            )
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `notification_settings` (" +
+                    "`id` INTEGER NOT NULL, " +
+                    "`notifyEarningsFilings` INTEGER NOT NULL, " +
+                    "`notifyRedFlags` INTEGER NOT NULL, " +
+                    "`notifyMarginOfSafety` INTEGER NOT NULL, " +
+                    "`notifyCapitalReturns` INTEGER NOT NULL, " +
+                    "`notifySundayDigest` INTEGER NOT NULL, " +
+                    "PRIMARY KEY(`id`))"
+            )
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `notification_history` (" +
+                    "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`ticker` TEXT NOT NULL, `alertType` TEXT NOT NULL, " +
+                    "`title` TEXT NOT NULL, `body` TEXT NOT NULL, " +
+                    "`severity` TEXT NOT NULL, `url` TEXT NOT NULL, " +
+                    "`read` INTEGER NOT NULL, `deliveredAt` TEXT NOT NULL)"
+            )
+            // The cooldown lookup filters on both, and the alert centre orders
+            // by time. Without this every sweep table-scans the history once
+            // per fired alert.
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_notification_history_deliveredAt` " +
+                    "ON `notification_history` (`deliveredAt`)"
+            )
+        }
+    }
+
     fun open(context: Context, name: String = NAME): OmahaStore =
         OmahaStore(
             Room.databaseBuilder(context.applicationContext, OmahaDatabase::class.java, name)
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build()
         )
 }
@@ -58,6 +111,7 @@ class OmahaStore internal constructor(private val db: OmahaDatabase) {
     val personalData: PersonalDataDao get() = db.personalData()
     val stockCache: StockCacheDao get() = db.stockCache()
     val appSettings: AppSettingsDao get() = db.appSettings()
+    val alerts: AlertsDao get() = db.alerts()
 
     fun close() = db.close()
 }

@@ -2,6 +2,10 @@ package com.zandaulion.omaha.app.ui
 
 import android.app.Application
 import android.net.Uri
+import com.zandaulion.omaha.app.alerts.AlertNotifier
+import com.zandaulion.omaha.data.Alert
+import com.zandaulion.omaha.data.AlertSettings
+import com.zandaulion.omaha.data.NotificationRow
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.zandaulion.omaha.design.ThemeChoice
@@ -23,12 +27,89 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
     private val _status = MutableStateFlow<String?>(null)
     val status: StateFlow<String?> = _status.asStateFlow()
 
+    private val _alerts = MutableStateFlow<AlertsUi?>(null)
+    val alerts: StateFlow<AlertsUi?> = _alerts.asStateFlow()
+
     private val settings get() = OmahaEngine.get(getApplication()).settings
+    private val alertRepo get() = OmahaEngine.get(getApplication()).alerts
 
     init {
         viewModelScope.launch {
             _includeNotes.value = settings.aiIncludeNotes()
             _theme.value = settings.themeChoice().toThemeChoice()
+            loadAlerts()
+        }
+    }
+
+    /**
+     * Reload the alert card, and mark what it shows as read.
+     *
+     * Called on open and after the permission dialog resolves, because
+     * `permitted()` is a live system state rather than something we store —
+     * a person can revoke notifications from system settings while the app is
+     * running, and the card would otherwise keep claiming they are on.
+     */
+    fun refreshAlerts() {
+        viewModelScope.launch { loadAlerts() }
+    }
+
+    private suspend fun loadAlerts() {
+        val notifier = AlertNotifier(getApplication())
+        _alerts.value = AlertsUi(
+            settings = alertRepo.settings(),
+            history = alertRepo.history(HISTORY_SHOWN),
+            lastSweepAt = alertRepo.lastSweepAt(),
+            permitted = notifier.permitted()
+        )
+        // Reading the list is what marks it read, exactly as the PWA's
+        // notification centre does on load. There is no separate acknowledge
+        // step on either client.
+        alertRepo.markAllRead()
+    }
+
+    /**
+     * Post a sample alert, matching the PWA's "Send a test notification".
+     *
+     * Worth having on a phone more than in a browser. Channel importance, OEM
+     * battery rules and a per-channel mute the user set months ago are all
+     * invisible until something is actually posted, and "I have not had an
+     * alert" is otherwise indistinguishable from "nothing has happened".
+     *
+     * Deliberately routed through [AlertNotifier.show] rather than building a
+     * notification here, so it exercises the real path — the real channel, the
+     * real deep link, the real permission check.
+     */
+    fun sendTestNotification() {
+        viewModelScope.launch {
+            val notifier = AlertNotifier(getApplication())
+            notifier.ensureChannels()
+            if (!notifier.permitted()) {
+                refreshAlerts()
+                return@launch
+            }
+            notifier.show(
+                Alert(
+                    type = "EARNINGS_HEALTH_SHIFT",
+                    ticker = "",
+                    title = "Notifications are working",
+                    body = "Real alerts look like this: health changes, distress signals " +
+                        "and entry points. This one is a test and is not recorded.",
+                    severity = "info",
+                    url = ""
+                )
+            )
+            _status.value = "Test notification sent."
+        }
+    }
+
+    fun setAlertPreferences(next: AlertSettings) {
+        _alerts.value = _alerts.value?.copy(settings = next)
+        viewModelScope.launch {
+            // Re-read rather than trusting the optimistic value, for the same
+            // reason the notes opt-in does: a switch showing a state that was
+            // never stored is a switch that lies about what will happen.
+            val stored = alertRepo.updateSettings(next)
+            _alerts.value = _alerts.value?.copy(settings = stored)
         }
     }
 
@@ -76,7 +157,29 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
     }
+
+    private companion object {
+        /** The PWA's notification centre shows 30. */
+        const val HISTORY_SHOWN = 30
+    }
 }
+
+/**
+ * Everything the Settings screen shows about alerts.
+ *
+ * One object rather than four flows because the four are read together and
+ * would otherwise recompose the card in stages — the toggles arriving before
+ * the history, then the permission state, which reads as the screen thinking
+ * twice about something the user did not ask it to reconsider.
+ */
+data class AlertsUi(
+    val settings: AlertSettings,
+    val history: List<NotificationRow>,
+    /** ISO-8601, or null if no sweep has completed on this device yet. */
+    val lastSweepAt: String?,
+    /** Whether Android will show what the sweep posts. */
+    val permitted: Boolean
+)
 
 /**
  * The theme is stored as the PWA's own string rather than an enum ordinal.

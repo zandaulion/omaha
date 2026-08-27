@@ -113,6 +113,15 @@ Needs a provider decision first (Resend and Postmark are the two doc 05 names).
 The digest content function is already separated from its delivery, so the
 email path is a renderer plus a send call, not new logic.
 
+**Note, 2026-08-27.** The claim above that "the push digest is built and
+scheduled" was true of the code and false of the behaviour. It had never sent:
+`sendWeeklyDigest` called an undefined `both()` and threw `ReferenceError` on
+every run, which the hourly timer caught and logged. Underneath that, the mover
+comparison was against a snapshot the same sweep had just overwritten, so even
+without the crash every digest would have reported no movement. Both are fixed
+in `core/alerts/sweep.js` — see `docs/16_ROADMAP.md` phase 5. The email path is
+still the only outstanding part, and it is now sitting on a digest that works.
+
 ---
 
 ## ~~Move statements to SEC EDGAR before the Play release~~ — done 2026-08-24

@@ -76,6 +76,11 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.10.1")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.1")
     implementation("androidx.core:core-ktx:1.16.0")
+    // The alert sweep. Doc 13 §11 step 5 names WorkManager specifically: an
+    // AlarmManager schedule does not survive a reboot without a receiver, and
+    // a foreground service for a six-hourly network read would be both a Play
+    // policy problem and a persistent notification nobody asked for.
+    implementation("androidx.work:work-runtime-ktx:2.10.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 
     debugImplementation("androidx.compose.ui:ui-tooling")

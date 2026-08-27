@@ -62,6 +62,11 @@ export function initDatabase() {
   migrateStockCache();
   addColumnIfMissing('invites', 'revoked', 'INTEGER DEFAULT 0');
   addColumnIfMissing('stock_snapshots', 'peg_ratio', 'REAL');
+  // The digest's comparison point. Separate from health_score because the
+  // sweep overwrites that one every six hours, which made every week-on-week
+  // delta zero by construction. See rollBaseline in core/alerts/sweep.js.
+  addColumnIfMissing('stock_snapshots', 'week_ago_score', 'INTEGER');
+  addColumnIfMissing('stock_snapshots', 'week_ago_at', 'TEXT');
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS stock_cache (
@@ -169,6 +174,14 @@ export function initDatabase() {
       pe_percentile INTEGER,
       peg_ratio REAL,
       share_change REAL,
+      -- The digest's comparison point, and the reason it is not health_score:
+      -- the sweep overwrites that from the same fetch it scores, so a
+      -- week-on-week delta computed against it is zero by construction. See
+      -- rollBaseline in core/alerts/sweep.js. Declared here for a fresh
+      -- database and added by addColumnIfMissing for a deployed one -- the
+      -- ALTERs above run before this block, so a new install needs both.
+      week_ago_score INTEGER,
+      week_ago_at TEXT,
       captured_at TEXT DEFAULT (datetime('now'))
     );
 

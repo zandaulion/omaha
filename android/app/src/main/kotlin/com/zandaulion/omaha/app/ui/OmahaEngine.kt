@@ -1,8 +1,11 @@
 package com.zandaulion.omaha.app.ui
 
 import android.content.Context
+import com.zandaulion.omaha.data.AlertEngine
+import com.zandaulion.omaha.data.AlertRepository
 import com.zandaulion.omaha.data.OmahaDatabaseFactory
 import com.zandaulion.omaha.data.OmahaStore
+import com.zandaulion.omaha.data.RoomAlertStore
 import com.zandaulion.omaha.data.RoomStockStore
 import com.zandaulion.omaha.data.StockDetailRepository
 import com.zandaulion.omaha.data.StockEngine
@@ -34,7 +37,8 @@ object OmahaEngine {
         val details: StockDetailRepository,
         val theses: ThesisRepository,
         val settings: com.zandaulion.omaha.data.AppSettings,
-        val backup: BackupIo
+        val backup: BackupIo,
+        val alerts: AlertRepository
     )
 
     @Synchronized
@@ -46,6 +50,19 @@ object OmahaEngine {
         val bundle = app.assets.open("core/${StockEngine.BUNDLE_PATH}")
             .bufferedReader().use { it.readText() }
         val engine = StockEngine.fromSource(bundle, OkHttpBridge(), RoomStockStore(store.stockCache))
+
+        // A second bundle, not a second pipeline. `core/host/alerts.js` builds
+        // on `host/stock.js`, so the sweep re-scores through the identical
+        // path the watchlist reads — and shares its cache, which is why the
+        // store handed to both is the same one. One module per interpreter is
+        // a hard constraint of the binding, hence two engines rather than two
+        // methods on one.
+        val alertEngine = AlertEngine.fromSource(
+            app.assets.open("core/${AlertEngine.BUNDLE_PATH}").bufferedReader().use { it.readText() },
+            OkHttpBridge(),
+            RoomStockStore(store.stockCache),
+            RoomAlertStore(store.alerts)
+        )
 
         return Handles(
             store = store,
@@ -59,7 +76,8 @@ object OmahaEngine {
                         .bufferedReader().use { it.readText() }
                 ),
                 PersonalDataStore(store.personalData)
-            )
+            ),
+            alerts = AlertRepository(store.alerts, store.personalData, alertEngine)
         )
     }
 }

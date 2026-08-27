@@ -15,9 +15,13 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.room.Room
+import com.zandaulion.omaha.data.AlertEngine
+import com.zandaulion.omaha.data.AlertRepository
 import com.zandaulion.omaha.data.OmahaDatabase
 import com.zandaulion.omaha.data.PersonalDataStore
+import com.zandaulion.omaha.data.RoomAlertStore
 import com.zandaulion.omaha.data.RoomStockStore
+import com.zandaulion.omaha.data.SnapshotRow
 import com.zandaulion.omaha.data.StockEngine
 import com.zandaulion.omaha.engine.BackupEngine
 import com.zandaulion.omaha.engine.IngestEngine
@@ -126,6 +130,7 @@ class SelfTestActivity : Activity() {
             scoringChecks()
             backupChecks()
             livePipeline()
+            alertChecks()
             edgarSizeCurve()
         } catch (err: Throwable) {
             failures++
@@ -310,6 +315,138 @@ class SelfTestActivity : Activity() {
      * constraint rather than a bug — the JS side escapes every non-ASCII code
      * unit before it crosses, so a large body arrives larger still.
      */
+    /**
+     * The alert sweep, end to end, against a throwaway database.
+     *
+     * Worth running on a handset rather than only in CI because the sweep is
+     * the one feature whose whole job happens where nobody is looking. A
+     * trigger that has stopped firing produces silence, and silence is
+     * indistinguishable from "nothing changed" — so the only honest way to know
+     * the chain works is to make something change and watch it fire.
+     *
+     * The sequence deliberately mirrors what a real device does over a week:
+     * a first sighting that establishes a baseline, an unchanged sweep that
+     * must stay quiet, a genuine move that must not, and an immediate repeat
+     * that the cooldown must swallow.
+     */
+    private suspend fun alertChecks() {
+        heading("Alert sweep  (core/host/alerts.js in QuickJS, over Room)")
+
+        val db = Room.inMemoryDatabaseBuilder(applicationContext, OmahaDatabase::class.java).build()
+        try {
+            val engine = AlertEngine.fromSource(
+                asset("core/" + AlertEngine.BUNDLE_PATH),
+                OkHttpBridge(),
+                RoomStockStore(db.stockCache()),
+                RoomAlertStore(db.alerts())
+            )
+            val alerts = AlertRepository(db.alerts(), db.personalData(), engine)
+
+            // --- policy, straight from the shared module ---------------------
+            val settings = alerts.settings()
+            check(
+                "capital returns starts off, everything else on",
+                settings.earningsAndFilings && settings.redFlags &&
+                    settings.marginOfSafety && settings.sundayDigest &&
+                    !settings.capitalReturns
+            )
+            val interval = alerts.sweepIntervalMs()
+            check(
+                "sweeps four times a day",
+                interval == 6L * 60 * 60 * 1000,
+                interval.toString() + " ms"
+            )
+
+            // --- one holding, four sweeps ------------------------------------
+            db.personalData().upsertWatchlists(
+                listOf(
+                    com.zandaulion.omaha.data.WatchlistRow(
+                        id = "selftest",
+                        name = "Self test",
+                        tickersJson = "[\"NOK\"]",
+                        isDefault = true,
+                        updatedAt = "2026-01-01T00:00:00Z"
+                    )
+                )
+            )
+
+            val first = withContext(Dispatchers.IO) { alerts.sweep() }
+            if (first.evaluated == 0) {
+                line("  SKIP  no live data for NOK; the rest of this section needs it", MUTED)
+                return
+            }
+
+            // A first sighting is a baseline, not an event. Firing here would
+            // mean every newly added holding announces itself on day one.
+            check(
+                "first sighting establishes a baseline and says nothing",
+                first.delivered.isEmpty(),
+                first.delivered.size.toString() + " fired"
+            )
+            check("a snapshot was stored", db.alerts().snapshot("NOK") != null)
+
+            val unchanged = withContext(Dispatchers.IO) { alerts.sweep() }
+            check(
+                "an unchanged holding stays quiet",
+                unchanged.delivered.isEmpty(),
+                unchanged.delivered.joinToString { it.type }
+            )
+
+            // --- make something move -----------------------------------------
+            // The snapshot is rewritten with a health score nine points lower,
+            // which is a real EARNINGS_HEALTH_SHIFT by the shared threshold of
+            // three. Doctoring the stored past rather than the fetched present
+            // keeps the live data honest: what is being tested is the
+            // comparison, not the scoring.
+            val stored = db.alerts().snapshot("NOK")!!
+            val current = (Json.parseToJsonElement(stored.snapshotJson) as JsonObject)
+            val score = (current["health_score"] as? JsonPrimitive)?.content?.toIntOrNull()
+            if (score == null) {
+                line("  SKIP  NOK scored null; nothing to move", MUTED)
+                return
+            }
+            db.alerts().putSnapshot(
+                stored.copy(
+                    snapshotJson = stored.snapshotJson.replace(
+                        "\"health_score\":" + score,
+                        "\"health_score\":" + (score - 9)
+                    ),
+                    healthScore = score - 9
+                )
+            )
+
+            val moved = withContext(Dispatchers.IO) { alerts.sweep() }
+            check(
+                "a 9-point health move fires",
+                moved.delivered.any { it.type == "EARNINGS_HEALTH_SHIFT" },
+                moved.delivered.joinToString { it.type + " / " + it.title }
+            )
+
+            // --- and does not fire twice --------------------------------------
+            db.alerts().putSnapshot(
+                stored.copy(
+                    snapshotJson = stored.snapshotJson.replace(
+                        "\"health_score\":" + score,
+                        "\"health_score\":" + (score - 9)
+                    ),
+                    healthScore = score - 9
+                )
+            )
+            val repeat = withContext(Dispatchers.IO) { alerts.sweep() }
+            check(
+                "the same alert is suppressed by its cooldown",
+                repeat.delivered.none { it.type == "EARNINGS_HEALTH_SHIFT" } &&
+                    repeat.suppressed.any { it.contains("EARNINGS_HEALTH_SHIFT") },
+                repeat.suppressed.joinToString()
+            )
+        } catch (err: JsBridgeException) {
+            failures++
+            line("  FAIL  bridge: " + (err.message ?: "").take(120), BAD)
+        } finally {
+            db.close()
+        }
+    }
+
     private suspend fun edgarSizeCurve() {
         heading("EDGAR on device  (cold fetch, parse and score by blob size)")
         line("  companyfacts sizes measured 2026-08-24 on a laptop:", MUTED)
