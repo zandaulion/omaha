@@ -99,6 +99,28 @@ class StockDetailRepository(private val engine: StockEngine) {
                     explanation = c.text("explanation") ?: ""
                 )
             },
+            history = (d["financials"]?.jsonObject?.get("historical")?.jsonObject).let { h ->
+                History(
+                    years = h.ints("years"),
+                    revenue = h.dbls("revenue"),
+                    freeCashFlow = h.dbls("freeCashFlow"),
+                    grossMarginPct = h.dbls("grossMarginPct"),
+                    operatingMarginPct = h.dbls("operatingMarginPct"),
+                    sharesOutstanding = h.dbls("sharesOutstanding"),
+                    cagrYears = h?.int("cagrYears"),
+                    revenueCagr = h?.dbl("revenueCAGR"),
+                    shareChangeYoY = h?.dbl("shareChangeYoY")
+                )
+            },
+            balanceSheet = BalanceSheet(
+                cash = metrics?.dbl("cash"),
+                totalDebt = metrics?.dbl("totalDebt"),
+                netCash = metrics?.dbl("netCash"),
+                grossMarginChangeBps = metrics?.int("grossMarginChangeBps"),
+                operatingMarginChangeBps = metrics?.int("operatingMarginChangeBps"),
+                fcfConversionPct = d.dbl("fcf_conversion_pct"),
+                reportingCurrency = metrics?.text("reportingCurrency") ?: d.text("currency") ?: "USD"
+            ),
             checklistSummary = summary?.get("checklistSummary")?.jsonObject.let {
                 ChecklistSummary(
                     pass = it?.int("passCount") ?: 0,
@@ -110,6 +132,19 @@ class StockDetailRepository(private val engine: StockEngine) {
         )
     }
 }
+
+/**
+ * A numeric series, preserving JSON nulls as Kotlin nulls.
+ *
+ * `mapNotNull` would be the reflex here and would silently shorten the list,
+ * sliding every later year one position left against `years`. The gaps are the
+ * information.
+ */
+private fun JsonObject?.dbls(key: String): List<Double?> =
+    (this?.get(key) as? JsonArray)?.map { (it as? JsonPrimitive)?.doubleOrNull } ?: emptyList()
+
+private fun JsonObject?.ints(key: String): List<Int?> =
+    (this?.get(key) as? JsonArray)?.map { (it as? JsonPrimitive)?.intOrNull } ?: emptyList()
 
 private fun JsonArray?.orEmpty(): List<kotlinx.serialization.json.JsonElement> = this ?: emptyList()
 

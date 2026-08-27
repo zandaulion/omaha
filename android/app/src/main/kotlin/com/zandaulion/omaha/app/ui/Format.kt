@@ -56,3 +56,33 @@ fun fmtPercent(value: Double?, places: Int = 1, signed: Boolean = false): String
 
 fun fmtRatio(value: Double?, places: Int = 1, suffix: String = ""): String =
     if (value == null) EM_DASH else fixed(value, places) + suffix
+
+/**
+ * A raw currency amount, abbreviated the way the filings are read.
+ *
+ * `core/model/assemble.js` emits the historical series already in billions, but
+ * the balance-sheet scalars arrive whole, so this is the one place a magnitude
+ * is chosen. Thresholds rather than a log scale: "$1.2B" and "$980M" are how a
+ * person says these numbers, and switching at a round boundary keeps two
+ * amounts on the same screen comparable.
+ */
+fun fmtMoney(value: Double?, currency: String?): String {
+    if (value == null) return EM_DASH
+    val symbol = SYMBOLS[currency?.uppercase()] ?: (currency?.let { "$it " } ?: "")
+    val sign = if (value < 0) "-" else ""
+    val n = abs(value)
+    return when {
+        n >= 1_000_000_000_000 -> "$sign$symbol${fixed(n / 1_000_000_000_000, 2)}T"
+        n >= 1_000_000_000 -> "$sign$symbol${fixed(n / 1_000_000_000, 2)}B"
+        n >= 1_000_000 -> "$sign$symbol${fixed(n / 1_000_000, 1)}M"
+        n >= 1_000 -> "$sign$symbol${fixed(n / 1_000, 1)}K"
+        else -> "$sign$symbol${fixed(n, 2)}"
+    }
+}
+
+/** A figure the engine already scaled to billions. */
+fun fmtBillions(value: Double?, currency: String?): String {
+    if (value == null) return EM_DASH
+    val symbol = SYMBOLS[currency?.uppercase()] ?: (currency?.let { "$it " } ?: "")
+    return "$symbol${fixed(value, 1)}B"
+}

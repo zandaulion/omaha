@@ -103,9 +103,32 @@ private fun Loaded(stock: StockDetail) {
                 item { ChecklistSummaryBar(stock) }
                 items(stock.checklist, key = { it.id }) { ChecklistRow(it) }
             }
-            DeepDiveTab.Trends -> item {
-                Slice("5Y Trends", "Revenue against free cash flow, the balance-sheet " +
-                    "cushion, margin trajectory and share count. Phase 4d, next slice.")
+            DeepDiveTab.Trends -> {
+                val h = stock.history
+                val bs = stock.balanceSheet
+                item {
+                    ChartCard(
+                        "Revenue vs. free cash flow",
+                        summary = revenueSummary(stock)
+                    ) {
+                        RevenueFcfChart(h.years, h.revenue, h.freeCashFlow, bs.reportingCurrency)
+                    }
+                }
+                item {
+                    ChartCard("Balance sheet cushion") {
+                        BalanceSheetStack(bs.cash, bs.totalDebt, bs.netCash, bs.reportingCurrency)
+                    }
+                }
+                item {
+                    ChartCard("Margin trajectory", summary = marginSummary(bs)) {
+                        MarginTrendChart(h.years, h.grossMarginPct, h.operatingMarginPct)
+                    }
+                }
+                item {
+                    ChartCard("Shares outstanding") {
+                        SharesChart(h.years, h.sharesOutstanding, h.shareChangeYoY)
+                    }
+                }
             }
             DeepDiveTab.Dcf -> item {
                 Slice("DCF Sandbox", "Two-stage discounted cash flow with live sliders " +
@@ -344,6 +367,58 @@ private fun ChecklistRow(check: Check) {
                 )
             }
         }
+    }
+}
+
+/**
+ * Revenue's start and end with its CAGR, and how much of it became cash.
+ *
+ * Uses the first and last *filed* values rather than the first and last slots,
+ * so a leading or trailing gap does not silently become an endpoint.
+ */
+private fun revenueSummary(stock: StockDetail): String? {
+    val rev = stock.history.revenue.filterNotNull()
+    if (rev.isEmpty()) return null
+    val cur = stock.balanceSheet.reportingCurrency
+    val years = stock.history.cagrYears
+    return buildString {
+        append("${fmtBillions(rev.first(), cur)} → ${fmtBillions(rev.last(), cur)}")
+        stock.history.revenueCagr?.let {
+            append(" (${fmtPercent(it * 100, 1, signed = true)} ${years?.let { y -> "${y}Y " } ?: ""}CAGR)")
+        }
+        stock.balanceSheet.fcfConversionPct?.let {
+            append(" · Cash conversion ${fmtPercent(it, 0)}")
+        }
+    }
+}
+
+private fun marginSummary(bs: com.zandaulion.omaha.data.BalanceSheet): String? {
+    val parts = listOfNotNull(
+        bs.grossMarginChangeBps?.let { "Gross ${if (it >= 0) "+" else ""}$it bps" },
+        bs.operatingMarginChangeBps?.let { "Operating ${if (it >= 0) "+" else ""}$it bps" }
+    )
+    return parts.takeIf { it.isNotEmpty() }?.joinToString(" · ")
+}
+
+@Composable
+private fun ChartCard(
+    title: String,
+    summary: String? = null,
+    chart: @Composable () -> Unit
+) {
+    Card {
+        BasicText(title, style = OmahaType.title2.toTextStyle(color = Omaha.colors.textPrimary))
+        if (summary != null) {
+            Box(Modifier.height(4.dp))
+            BasicText(
+                summary,
+                style = OmahaType.caption
+                    .toTextStyle(color = Omaha.colors.textSecondary)
+                    .copy(fontFamily = Omaha.fonts.mono)
+            )
+        }
+        Box(Modifier.height(12.dp))
+        chart()
     }
 }
 

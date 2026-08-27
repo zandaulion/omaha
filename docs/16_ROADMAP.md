@@ -363,10 +363,10 @@ counterpart.
 > classpath, which contradicts that module's own statement that what it exposes
 > is a store and not a particular way of storing.
 
-> **4d is being built in slices, and the first two landed 2026-08-27**: the
-> deep-dive shell with its sub-tabs, the score ring and five pillars, and the
-> 12-point checklist with its explanation drawers. Trends, the DCF sandbox and
-> the thesis name their slice; Gemini is absent rather than placeholdered, since
+> **4d is being built in slices. Three landed 2026-08-27**: the deep-dive shell
+> with its sub-tabs, the score ring and five pillars, the 12-point checklist
+> with its explanation drawers, and the four 5Y trend charts. The DCF sandbox
+> and the thesis name their slice; Gemini is absent rather than placeholdered, since
 > it is gated on billing and a relay in phase 6 and a tab that cannot work even
 > in principle is the wrong promise.
 >
@@ -383,6 +383,14 @@ counterpart.
 > fewer than all of them; and the header carries the filing period and the
 > reporting-versus-traded currency split, so a euro balance sheet never sits
 > silently under a dollar price.
+>
+> **The charts confirmed doc 13 §10's prediction**: three are weighted rows and
+> boxes, only the margin trajectory needs a path, and no charting dependency was
+> required. That mattered for a reason beyond size — a charting library brings
+> its own opinion about what to do with a missing point, which is the one thing
+> these charts must get right. A gap draws nothing: no bar, and a lifted pen
+> rather than a line joining across it. JPM exercises the fully-absent case, since
+> a bank files no gross or operating margin at all.
 >
 > `OmahaEngine` holds one store and one engine per process. Per-screen instances
 > were the obvious arrangement and the wrong one — two Room handles on one file

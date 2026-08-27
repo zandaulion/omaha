@@ -65,6 +65,41 @@ data class FxNote(
     val rate: Double
 )
 
+/**
+ * The filed history, for the trend charts.
+ *
+ * Every series is aligned to [years] and every element is nullable, because a
+ * year a company did not report must draw **no bar at all**. The previous web
+ * build padded a missing year with a scaled copy of its neighbour, which is the
+ * exact behaviour the README's rule forbids: a chart that fills a gap is a
+ * chart that invents a number.
+ *
+ * Amounts are in billions of the reporting currency, as `core/model/assemble.js`
+ * emits them. Margins are percentages already — 46.9 rather than 0.469.
+ */
+data class History(
+    val years: List<Int?>,
+    val revenue: List<Double?>,
+    val freeCashFlow: List<Double?>,
+    val grossMarginPct: List<Double?>,
+    val operatingMarginPct: List<Double?>,
+    val sharesOutstanding: List<Double?>,
+    val cagrYears: Int?,
+    val revenueCagr: Double?,
+    val shareChangeYoY: Double?
+)
+
+/** The latest balance-sheet position, in units of the reporting currency. */
+data class BalanceSheet(
+    val cash: Double?,
+    val totalDebt: Double?,
+    val netCash: Double?,
+    val grossMarginChangeBps: Int?,
+    val operatingMarginChangeBps: Int?,
+    val fcfConversionPct: Double?,
+    val reportingCurrency: String
+)
+
 data class StockDetail(
     val ticker: String,
     val name: String,
@@ -81,5 +116,7 @@ data class StockDetail(
     val fx: FxNote?,
     val pillars: List<Pillar>,
     val checklist: List<Check>,
-    val checklistSummary: ChecklistSummary
+    val checklistSummary: ChecklistSummary,
+    val history: History,
+    val balanceSheet: BalanceSheet
 )
