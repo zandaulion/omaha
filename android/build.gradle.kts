@@ -21,3 +21,35 @@ tasks.register<Exec>("bundleCore") {
         "node tools/bundle-core.mjs"
     )
 }
+
+/**
+ * Every JVM test process gets the C numeric locale.
+ *
+ * Not a preference. The QuickJS native library reaches libc for decimal
+ * conversion, and glibc's `strtod` and `snprintf` honour `LC_NUMERIC` — so on a
+ * host whose locale uses a comma as the decimal separator, QuickJS parses
+ * `8.5` as **8**. Not an error, not a NaN: it stops at the `.` and keeps the
+ * integer part. Source literals, `JSON.parse`, `parseFloat` and `Number()` are
+ * all affected, and `(8.5).toFixed(2)` comes back as `"8,00"`.
+ *
+ * This machine runs `LC_NUMERIC=ro_RO.UTF-8`, which is how it was found: the
+ * scoring parity suite went red with 116 differing fields, every one of them
+ * explained by a truncated decimal somewhere upstream of it. The engine was
+ * never at fault, which is why an investigation that looked only at the engine
+ * found nothing.
+ *
+ * `LC_NUMERIC` alone rather than `LC_ALL`, deliberately. `LC_ALL=C` would also
+ * force `LC_CTYPE` to C, and this project's tests deliberately push non-BMP
+ * characters through the bridge; changing the character locale to fix a number
+ * problem would be trading one environmental variable for another.
+ *
+ * **Android is unaffected**, and that is a property of the platform rather than
+ * luck: bionic implements only the C locale, so `LC_NUMERIC` cannot be set to
+ * anything else on a device. `DeviceScoringParityTest` and the self-test assert
+ * it rather than taking that on trust.
+ */
+subprojects {
+    tasks.withType<Test>().configureEach {
+        environment("LC_NUMERIC", "C")
+    }
+}

@@ -44,20 +44,36 @@ class ScoringParityTest {
 
     @Test
     fun `every fixture scores identically to Node`() = runTest {
-        for (ticker in tickers) {
-            val expected = normalise(fixture(ticker, "scoring-output"))
-            val actual = normalise(
-                ScoringEngine.create(coreDir).score(fixture(ticker, "scoring-input"))
-            )
-
-            assertEquals(
-                expected,
-                actual,
-                "$ticker scored differently under QuickJS than under Node. " +
-                    "This is engine divergence, not a logic difference — the " +
-                    "same core/scoring.js produced both."
-            )
+        // Every ticker is scored before anything is asserted.
+        //
+        // A loop that asserts inside it stops at the first failure, and the
+        // report then says "NOK differs" while saying nothing at all about the
+        // other two. That is not a small loss of detail: it was read as "AAPL
+        // and JPM pass", recorded in the backlog as such, and used to argue the
+        // fault was specific to one ticker's data. All three were failing, for
+        // one reason, in every decimal they contained.
+        val differed = tickers.filter { ticker ->
+            normalise(fixture(ticker, "scoring-output")) !=
+                normalise(ScoringEngine.create(coreDir).score(fixture(ticker, "scoring-input")))
         }
+
+        if (differed.isEmpty()) return@runTest
+
+        // The full diff for the first one, since three of them is unreadable,
+        // but the roster up front — "all three" and "only NOK" are different
+        // diagnoses and the reader needs to know which they are looking at.
+        val ticker = differed.first()
+        assertEquals(
+            normalise(fixture(ticker, "scoring-output")),
+            normalise(ScoringEngine.create(coreDir).score(fixture(ticker, "scoring-input"))),
+            "Differed from Node: ${differed.joinToString()} (of ${tickers.joinToString()}). " +
+                "The diff below is $ticker's.\n\n" +
+                "This is engine divergence, not a logic difference — the same " +
+                "core/scoring.js produced both. Before reading it as a scoring " +
+                "bug, check NumericLocaleTest: a comma decimal separator in the " +
+                "host locale corrupts every decimal in the engine and presents " +
+                "as exactly this."
+        )
     }
 
     @Test

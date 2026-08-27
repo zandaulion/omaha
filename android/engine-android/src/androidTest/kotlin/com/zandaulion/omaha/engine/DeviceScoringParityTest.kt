@@ -73,17 +73,25 @@ class DeviceScoringParityTest {
 
     @Test
     fun everyFixtureScoresIdenticallyOnDevice() = runTest {
-        for (ticker in tickers) {
-            val expected = canonical(parseJson(fixture(ticker, "scoring-output")))
-            val actual = canonical(parseJson(engine().score(fixture(ticker, "scoring-input"))))
-
-            assertEquals(
-                expected,
-                actual,
-                "$ticker scored differently on Android than in Node. Same " +
-                    "core/scoring.js, so this is engine or platform divergence."
-            )
+        // Scored in full before anything is asserted, for the same reason as
+        // the JVM suite: a loop that asserts inside it reports only the first
+        // ticker, and "one ticker differs" and "all of them differ" are
+        // different diagnoses that were once confused for months.
+        val differed = tickers.filter { ticker ->
+            canonical(parseJson(fixture(ticker, "scoring-output"))) !=
+                canonical(parseJson(engine().score(fixture(ticker, "scoring-input"))))
         }
+
+        if (differed.isEmpty()) return@runTest
+
+        val ticker = differed.first()
+        assertEquals(
+            canonical(parseJson(fixture(ticker, "scoring-output"))),
+            canonical(parseJson(engine().score(fixture(ticker, "scoring-input")))),
+            "Differed from Node: ${differed.joinToString()} (of ${tickers.joinToString()}). " +
+                "The diff below is $ticker's. Same core/scoring.js, so this is " +
+                "engine or platform divergence."
+        )
     }
 
     @Test

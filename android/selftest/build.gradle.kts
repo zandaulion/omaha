@@ -75,6 +75,11 @@ dependencies {
     // Declared here because this module uses them directly. :data keeps them
     // as implementation details, which is right: what it exposes is a store,
     // not a particular way of storing.
+    // Declared for the same reason: the numeric-locale check pokes QuickJS
+    // directly rather than through an engine class, because what it is asking
+    // about is the runtime underneath them all.
+    implementation("io.github.dokar3:quickjs-kt-android:1.0.0-alpha13")
+
     implementation("androidx.room:room-runtime:2.7.1")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")

@@ -67,38 +67,62 @@ than telling them it is out of date.
 
 ---
 
-## JVM scoring parity is red; on-device parity is green
+## ~~JVM scoring parity is red; on-device parity is green~~ — fixed 2026-08-27
 
-**Raised 2026-08-27.** Found by running `:engine:test`, which `npm test` does
-not cover — the JS suite runs `core/**` and `test/**` only, so this had been
-failing without anyone seeing it.
+**Raised 2026-08-27, fixed the same day.** It was not the engine, not the
+fixtures and not the binding version. It was the **host's locale**.
 
-`ScoringParityTest` reports NOK scoring differently under QuickJS/JVM than under
-Node: `altmanZ` comes back `0` against `2.61`, free cash flow history reads
-"2 of 4 years positive" against "4 of 4", and the checklist statuses move with
-them. AAPL and JPM pass.
+`LC_NUMERIC=ro_RO.UTF-8` on this machine. QuickJS reaches libc for decimal
+conversion, and glibc's `strtod` and `snprintf` honour `LC_NUMERIC`, so under a
+comma locale `strtod("8.5")` stops at the `.` and returns `8`. Nothing throws.
+Every decimal in the engine simply becomes its integer part:
 
-**What has been ruled out.** `core/dist/scoring.bundle.js` and both NOK fixtures
-are byte-identical to when they were recorded at `caedd18`. Node run against
-that same bundle and that same input reproduces the fixture field for field —
-zero differing keys — so the fixture is not stale and the engine source is not
-at fault. The binding is pinned at `io.github.dokar3:quickjs-kt-jvm:1.0.0-alpha13`.
+```
+source literal 8.5   -> 8          0.1 + 0.2        -> 0
+JSON.parse('8.5')    -> 8          parseFloat('8.5')-> 8
+Number('8.5')        -> 8          (8.5).toFixed(2) -> "8,00"
+```
 
-**The Android side is fine.** The sideloadable harness reported "NOK scores
-identically to Node" on a Xiaomi 24117RK2CG on 2026-08-24, and the instrumented
-`:engine-android` suite is the gate that matters for the shipped app. This is
-the JVM variant of QuickJS, which exists so the parity question is answerable in
-CI without an emulator.
+That is the whole of the 116-field diff. NOK's price arrived as `8` instead of
+`8.652033`, so market cap, enterprise value, every ratio built on them, the
+WACC, the DCF and five pillars all moved — and `altmanZ` came out `0` because
+its coefficients are decimal literals in the bundle, which were `0` too.
 
-So the most likely explanation is environmental — the JVM native library
-behaving differently than when doc 13 §18 recorded the spike as passing. Worth
-confirming against a clean checkout on another machine before assuming the
-engine is at fault.
+**Two things I got wrong while diagnosing it, both recorded here as fact.**
 
-**Do not regenerate the fixtures to make this green.** They are Node's output
-and Node still agrees with them; rewriting them would silently adopt whatever
-the JVM is doing now as the expected answer, which is precisely the failure this
-gate exists to prevent.
+*"AAPL and JPM pass."* They were never reached. `ScoringParityTest` asserted
+inside its loop, so NOK threw and the other two were never scored. Run to
+completion under the bad locale, the roster reads `NOK, AAPL, JPM (of NOK,
+AAPL, JPM)` — all three, always. That wrong belief is what made it look like a
+data problem specific to one ticker, and that is the direction the whole
+investigation went.
+
+*"Node reproduces the fixture with zero differing keys, so the engine is not at
+fault."* True, and correctly reasoned, but it was evidence about `core/` when
+the fault was under it. Node links its own locale-independent `strtod`.
+
+**The fix, in four parts.**
+
+1. `android/build.gradle.kts` sets `LC_NUMERIC=C` on every JVM test process.
+   `LC_NUMERIC` and not `LC_ALL`: the latter would also force `LC_CTYPE` to C,
+   and these suites deliberately push non-BMP characters through the bridge.
+2. `NumericLocaleTest`, in `src/testShared` so it runs on **both** the JVM and
+   the device. Six assertions that name `LC_NUMERIC` in their failure message,
+   in place of a diff that reads like a scoring bug. Verified to fail under the
+   bad locale and pass under C — a canary that cannot fire is not a canary.
+3. Both parity suites now score every ticker before asserting, and name the
+   full roster. "One ticker differs" and "all of them differ" are different
+   diagnoses and the report has to be able to say which.
+4. `npm run verify` runs the JS suite **and** `:engine:test`. `npm test` covers
+   `core/**` and `test/**` only, which is why this failed unseen; that gap was
+   as much the problem as the locale was.
+
+**The shipped app was never affected.** Bionic implements only the C locale, so
+`LC_NUMERIC` cannot be set to anything else on a device. That was the right
+call for the wrong reason at the time — it was inferred rather than measured —
+so the self-test and `DeviceScoringParityTest` now assert it on the handset.
+
+Recorded in `docs/13_ANDROID_ARCHITECTURE.md` §18.
 
 ---
 
