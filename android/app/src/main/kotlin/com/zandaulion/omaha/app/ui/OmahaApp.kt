@@ -74,6 +74,7 @@ enum class OmahaTab(val label: String, val route: String, val icon: ImageVector)
 @Composable
 fun OmahaApp() {
     var tab by rememberSaveable { mutableStateOf(OmahaTab.Watchlist) }
+    val deepDive: DeepDiveViewModel = viewModel()
 
     Column(
         Modifier
@@ -93,17 +94,16 @@ fun OmahaApp() {
                     WatchlistScreen(
                         state = ui,
                         onRetry = { vm.load() },
-                        // The deep dive is phase 4d. Until it exists a tap
-                        // moves to that tab rather than doing nothing, so the
-                        // card reads as leading somewhere.
-                        onSelect = { tab = OmahaTab.Scorecard }
+                        onSelect = { ticker ->
+                            deepDive.open(ticker)
+                            tab = OmahaTab.Scorecard
+                        }
                     )
                 }
-                OmahaTab.Scorecard -> PlaceholderScreen(
-                    "Scorecard",
-                    "Five pillars, the 12-point checklist, charts, the DCF sandbox, " +
-                        "and the thesis with its sell triggers. Phase 4d — most of the product."
-                )
+                OmahaTab.Scorecard -> {
+                    val ui by deepDive.state.collectAsState()
+                    DeepDiveScreen(state = ui, onRetry = { deepDive.retry() })
+                }
                 OmahaTab.Filter -> PlaceholderScreen(
                     "Filter",
                     "Narrows the companies you already follow. It does not search the " +

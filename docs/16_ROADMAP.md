@@ -363,6 +363,32 @@ counterpart.
 > classpath, which contradicts that module's own statement that what it exposes
 > is a store and not a particular way of storing.
 
+> **4d is being built in slices, and the first two landed 2026-08-27**: the
+> deep-dive shell with its sub-tabs, the score ring and five pillars, and the
+> 12-point checklist with its explanation drawers. Trends, the DCF sandbox and
+> the thesis name their slice; Gemini is absent rather than placeholdered, since
+> it is gated on billing and a relay in phase 6 and a tab that cannot work even
+> in principle is the wrong promise.
+>
+> **The drawers were built first rather than last.** Doc 15 §3.3 rates
+> transparency second only to the sell triggers and names the per-item
+> explanations as the thing distinguishing this from a proprietary rating. They
+> are the easiest part of a checklist to defer as "detail", and they are not
+> detail.
+>
+> Three places where the honest rendering differs from the obvious one, all the
+> same rule: an unscored company draws **no ring at all** rather than an empty
+> one, because an empty ring says "scored zero" and absence says "could not be
+> scored"; a pillar states how many of its measures were filed when that is
+> fewer than all of them; and the header carries the filing period and the
+> reporting-versus-traded currency split, so a euro balance sheet never sits
+> silently under a dollar price.
+>
+> `OmahaEngine` holds one store and one engine per process. Per-screen instances
+> were the obvious arrangement and the wrong one — two Room handles on one file
+> is how a database gets locked, and the shared cache is the point: a ticker
+> opened from the watchlist is already warm.
+
 **4d is not one view.** The PWA's Deep Dive carries the five pillars, the
 12-point checklist with its explanation drawers, four chart types, the DCF
 sandbox with live sliders and bear/base/bull presets, and the thesis, sell

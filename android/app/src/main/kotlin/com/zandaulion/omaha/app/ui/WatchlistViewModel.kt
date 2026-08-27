@@ -3,12 +3,7 @@ package com.zandaulion.omaha.app.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.zandaulion.omaha.data.OmahaDatabaseFactory
-import com.zandaulion.omaha.data.RoomStockStore
-import com.zandaulion.omaha.data.StockEngine
-import com.zandaulion.omaha.data.WatchlistRepository
 import com.zandaulion.omaha.data.WatchlistView
-import com.zandaulion.omaha.engine.OkHttpBridge
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,16 +27,7 @@ sealed interface WatchlistUiState {
  */
 class WatchlistViewModel(app: Application) : AndroidViewModel(app) {
 
-    private val db = OmahaDatabaseFactory.open(app)
-
-    private val repository by lazy {
-        val bundle = app.assets.open("core/${StockEngine.BUNDLE_PATH}")
-            .bufferedReader().use { it.readText() }
-        WatchlistRepository(
-            dao = db.personalData,
-            engine = StockEngine.fromSource(bundle, OkHttpBridge(), RoomStockStore(db.stockCache))
-        )
-    }
+    private val repository get() = OmahaEngine.get(getApplication()).watchlists
 
     private val _state = MutableStateFlow<WatchlistUiState>(WatchlistUiState.Loading)
     val state: StateFlow<WatchlistUiState> = _state.asStateFlow()
@@ -76,8 +62,7 @@ class WatchlistViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    override fun onCleared() {
-        db.close()
-        super.onCleared()
-    }
+    // No onCleared: the store and engine outlive this view model by design.
+    // See OmahaEngine — one handle per process, shared so the two screens read
+    // the same cache rather than two.
 }
