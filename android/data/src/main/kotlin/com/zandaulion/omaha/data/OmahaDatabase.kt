@@ -79,12 +79,19 @@ interface PersonalDataDao {
 }
 
 @Database(
-    entities = [ThesisRow::class, WatchlistRow::class, StockCacheRow::class, AppSettingRow::class],
+    entities = [
+        ThesisRow::class, WatchlistRow::class, StockCacheRow::class, AppSettingRow::class,
+        SnapshotRow::class, NotificationSettingsRow::class, NotificationRow::class
+    ],
     // 2: app_settings, for the Settings view. Room has no data to preserve
     // that a re-fetch cannot replace, but theses and watchlists are not
     // re-fetchable, so this must be a migration and never a destructive
     // rebuild. Adding a table is additive; Room generates it automatically.
-    version = 2,
+    //
+    // 3: the three alert tables. `notification_history` is the one with real
+    // weight — the cooldown floor is enforced against it, so losing it would
+    // let every standing condition re-announce itself on the next sweep.
+    version = 3,
     exportSchema = false
 )
 abstract class OmahaDatabase : RoomDatabase() {
@@ -98,4 +105,6 @@ abstract class OmahaDatabase : RoomDatabase() {
     abstract fun stockCache(): StockCacheDao
 
     abstract fun appSettings(): AppSettingsDao
+
+    abstract fun alerts(): AlertsDao
 }

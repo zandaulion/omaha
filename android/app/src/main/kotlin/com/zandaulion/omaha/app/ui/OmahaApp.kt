@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -88,9 +89,28 @@ enum class OmahaTab(val label: String, val route: String, val icon: ImageVector)
  * which is what `omaha_active_view` in localStorage buys the web client.
  */
 @Composable
-fun OmahaApp() {
+fun OmahaApp(
+    /**
+     * The company an alert was about, if the app was opened by tapping one.
+     *
+     * Handled here rather than in the watchlist because an alert is about a
+     * company, not about a list — the ticker may not be on the list currently
+     * selected, and the scorecard can show any of them.
+     */
+    initialTicker: String? = null,
+    onTickerConsumed: () -> Unit = {}
+) {
     var tab by rememberSaveable { mutableStateOf(OmahaTab.Watchlist) }
     val deepDive: DeepDiveViewModel = viewModel()
+
+    LaunchedEffect(initialTicker) {
+        val ticker = initialTicker ?: return@LaunchedEffect
+        deepDive.open(ticker)
+        tab = OmahaTab.Scorecard
+        // Cleared so returning to the app later does not re-open the same
+        // company over whatever the person navigated to since.
+        onTickerConsumed()
+    }
 
     Column(
         Modifier
@@ -296,8 +316,17 @@ private fun SettingsTab() {
     val includeNotes by vm.includeNotes.collectAsState()
     val theme by vm.theme.collectAsState()
     val status by vm.status.collectAsState()
+    val alerts by vm.alerts.collectAsState()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+
+    // Asked for from the Alerts card, never on launch. Whatever the person
+    // answers, `refreshAlerts` re-reads the live permission state rather than
+    // assuming the dialog's result — it can also be answered by the system
+    // without showing, once it has been permanently declined.
+    val notificationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { vm.refreshAlerts() }
 
     // CreateDocument hands back a URI the app may write to exactly once.
     val exporter = rememberLauncherForActivityResult(
@@ -330,8 +359,24 @@ private fun SettingsTab() {
         includeNotes = includeNotes,
         theme = theme,
         backupStatus = status,
+        alerts = alerts,
         onIncludeNotesChange = { vm.setIncludeNotes(it) },
         onThemeChange = { vm.setTheme(it) },
+        onAlertsChange = { vm.setAlertPreferences(it) },
+        onTestNotification = { vm.sendTestNotification() },
+        onRequestPermission = {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                notificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            } else {
+                // Below 13 there is no runtime permission to request: the only
+                // way notifications are off is that they were switched off in
+                // system settings, which is where the person has to go.
+                context.startActivity(
+                    android.content.Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                        .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                )
+            }
+        },
         onExport = {
             exporter.launch("pocket-omaha-backup-${System.currentTimeMillis()}.json")
         },

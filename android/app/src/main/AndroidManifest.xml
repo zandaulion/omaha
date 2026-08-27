@@ -6,6 +6,13 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- Alerts are local: the sweep runs on device and posts to the shade.
+         Nothing is transmitted to deliver one, and there is no push service.
+         Runtime-requested on 13+; on earlier releases the grant is implicit,
+         which is why AlertNotifier checks areNotificationsEnabled() as well —
+         a person can still switch them off from system settings there. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
         android:label="Pocket Omaha"
         android:supportsRtl="true"

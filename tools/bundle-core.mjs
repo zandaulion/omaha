@@ -41,6 +41,11 @@ export const ENTRIES = [
   { entry: 'core/backup.js', out: 'backup.bundle.js' },
   { entry: 'core/host/ingest.js', out: 'ingest.bundle.js' },
   { entry: 'core/host/stock.js', out: 'stock.bundle.js' },
+  // `host/alerts.js` is the sweep. It builds on `host/stock.js`, so this bundle
+  // is a superset of that one and needs the same host functions plus the alert
+  // store — which is why it is a separate entry rather than a shared engine:
+  // one module per interpreter is a hard constraint, not a preference.
+  { entry: 'core/host/alerts.js', out: 'alerts.bundle.js' },
   // The DCF sandbox recomputes on every slider drag, so both clients run it
   // locally rather than asking a host. That makes it the one module the
   // *browser* also needs as a module, which is why it is emitted twice: once

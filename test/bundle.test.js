@@ -27,3 +27,39 @@ test('the committed bundles are current', () => {
     );
   }
 });
+
+/**
+ * The names the Android hosts call must actually be exported.
+ *
+ * `JsBridge.call(fn, ...)` looks the function up by string at run time, so a
+ * rename in `core/` and a stale spelling in Kotlin do not fail to compile,
+ * fail a type check, or fail here — they throw `JsBridgeException` on a
+ * handset, in a background sweep, where nobody sees it. This is the cheapest
+ * place to catch that, and it is the only one that runs on every commit.
+ *
+ * Kept as a literal list rather than derived from the Kotlin, deliberately: the
+ * point is to pin the contract from the side that defines it. If a name here
+ * changes, both sides have to be visited.
+ */
+test('every function the Android hosts call by name is exported', async () => {
+  const surface = {
+    'core/host/stock.js': ['stock', 'search'],
+    'core/host/alerts.js': [
+      'sweepTicker', 'defaults', 'spacingMs', 'intervalMs', 'digestSlot',
+      'digest', 'cooledDown'
+    ],
+    'core/scoring.js': ['computeComprehensiveHealth'],
+    'core/analysis/dcf.js': ['projectDcf', 'dcfBaselines', 'clampAssumptions']
+  };
+
+  for (const [module, names] of Object.entries(surface)) {
+    const exported = await import(`../${module}`);
+    for (const name of names) {
+      assert.equal(
+        typeof exported[name],
+        'function',
+        `${module} no longer exports ${name}(), which a Kotlin engine calls by that string`
+      );
+    }
+  }
+});

@@ -447,10 +447,19 @@ together rather than as alternatives.
   committing to it as the statement path, since non-US listings fall outside it.
 * **QuickJS APK size and cold-start cost** — unmeasured. `quickjs-kt` documents
   neither. Step 2 should record both, including bytecode-cache warm start.
-* **Sweep reliability under Doze and OEM task killers** (Samsung, Xiaomi). A 6h
-  cadence will be approximate. Whether to prompt for a battery-optimisation
-  exemption is a UX decision deferred to step 5.
-* **Android 13+ `POST_NOTIFICATIONS`** — where in the flow to request it.
+* ~~**Sweep reliability under Doze and OEM task killers**~~ — **answered
+  2026-08-27, step 5.** No exemption is requested. It is a system dialog asking
+  someone to weaken a protection, for a feature whose worst failure is a filing
+  noticed six hours late, and asking before the app has produced a useful alert
+  is how the request gets refused permanently. Settings shows *when the last
+  sweep actually ran* instead, so a cadence the OEM is not honouring is visible
+  rather than merely absent, with the battery-settings route named in the same
+  line. Reliability is still approximate and is now legible.
+* ~~**Android 13+ `POST_NOTIFICATIONS`**~~ — **answered 2026-08-27, step 5.**
+  Requested from the Alerts card in Settings, never on launch. The sweep runs
+  and records without it, so refusing turns alerts into an in-app feature
+  rather than switching them off — and the cooldowns stay in step, so granting
+  it later does not produce a backlog.
 * **Credit pack pricing** — needs a measured cost-per-analysis from real Gemini
   token counts before it can be set.
 
