@@ -586,13 +586,69 @@ produces output byte-identical to Node for all three fixtures, including the
 bank whose Altman Z must stay `null` and the depositary receipt with its two
 currencies.
 
-Run it with `cd android && ./gradlew :engine:test`.
+Run it with `npm run verify`, which runs the JS suite and `:engine:test`
+together. `npm test` alone covers `core/**` and `test/**` and has never run the
+QuickJS half — see §18a for what that cost.
 
 | Measurement | Value |
 |---|---|
 | First score, cold interpreter | ~5 ms |
 | Per score, mean of 10 | ~3.3 ms |
 | Scoring parity, NOK / AAPL / JPM | byte-identical to Node |
+
+### 18a. The suite went red, and the engine was not at fault
+
+**2026-08-27.** `ScoringParityTest` reported NOK scoring differently under
+QuickJS than under Node — `altmanZ` of `0` against `2.61`, free cash flow "2 of
+4 years positive" against "4 of 4", 116 differing fields across five pillars and
+a DCF that declined to run. Every symptom pointed at the engine.
+
+The cause was `LC_NUMERIC=ro_RO.UTF-8` in the developer's environment.
+
+QuickJS reaches libc for decimal conversion, and glibc's `strtod` and `snprintf`
+honour `LC_NUMERIC`. Under a comma locale, `strtod("8.5")` stops at the `.` and
+returns `8` — no error, no NaN, a plausible smaller number. It corrupts
+everything at once: source literals in the bundle, `JSON.parse`, `parseFloat`,
+`Number()`. `0.1 + 0.2` evaluates to `0`. And it corrupts the output too:
+`(8.5).toFixed(2)` returns `"8,00"`, which is not valid JSON and is also the
+string a person would have read on screen.
+
+NOK's price arrived as `8` rather than `8.652033`, and everything downstream
+followed. `altmanZ` came out `0` because its coefficients are decimal literals,
+and they were `0` as well.
+
+**Three things about the diagnosis are worth keeping.**
+
+*The evidence that cleared `core/` was correct and pointed the wrong way.* Node
+reproduced the fixture field for field, the bundle and fixtures were
+byte-identical to when recorded, and the binding was pinned. All true, all
+concluding "not the engine" — while the fault sat underneath the engine, in a
+library neither had reason to suspect.
+
+*The test hid two thirds of the evidence.* The parity loop asserted inside
+itself, so NOK threw and AAPL and JPM were never scored. "AAPL and JPM pass"
+went into the backlog as fact and made the fault look specific to one ticker's
+data. Run to completion under the bad locale, all three fail. Both parity suites
+now score everything before asserting and report the roster, because "one ticker
+differs" and "all of them differ" are different diagnoses.
+
+*It failed unseen because nothing ran it.* `npm test` covers `core/**` and
+`test/**`. The QuickJS gate — the only place engine divergence is visible at all
+— had to be run by hand and therefore was not. `npm run verify` now runs both.
+
+**The shipped app was never exposed.** Bionic implements only the C locale, so
+`LC_NUMERIC` cannot be set to anything else on a device. That was inferred at
+the time rather than measured; `NumericLocaleTest` lives in `src/testShared` so
+it runs on the JVM *and* on a handset, and the sideloadable self-test carries
+the same check. `android/build.gradle.kts` sets `LC_NUMERIC=C` on every JVM test
+process — `LC_NUMERIC` and not `LC_ALL`, because the latter would force
+`LC_CTYPE` to C and these suites deliberately push non-BMP characters through
+the bridge.
+
+Anyone building a desktop host on `JsBridge` should set it too. The class says
+so in its header.
+
+---
 
 Both figures include **building a whole new interpreter per call** (see below),
 so they are an upper bound rather than a warm-path number. Against a 6-hourly

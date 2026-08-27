@@ -8,6 +8,8 @@
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
     "test": "node --test \"core/**/*.test.js\" \"test/**/*.test.js\"",
+    "test:engine": "cd android && ./gradlew :engine:test",
+    "verify": "npm test && npm run test:engine",
     "prompt": "node scripts/dump-prompt.mjs",
     "bundle:core": "node tools/bundle-core.mjs",
     "tokens": "node tools/gen-tokens.mjs"

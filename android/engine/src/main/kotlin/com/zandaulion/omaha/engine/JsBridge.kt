@@ -55,6 +55,23 @@ import kotlinx.coroutines.Dispatchers
  *
  * `QuickJsBindingQuirksTest` pins the evaluate and non-BMP defects. A failure
  * there is good news.
+ *
+ * ## And one defect that is the host's, not the binding's
+ *
+ * **The JVM build reads the decimal separator from the C library locale.**
+ * QuickJS reaches libc for decimal conversion, and glibc's `strtod` and
+ * `snprintf` honour `LC_NUMERIC` — so on a host set to a comma locale, `8.5`
+ * evaluates to `8`. Source literals, `JSON.parse`, `parseFloat` and `Number()`
+ * all truncate at the point, and `(8.5).toFixed(2)` returns `"8,00"`. Nothing
+ * throws; every number is simply smaller and plausible.
+ *
+ * This does not affect the shipped app. Bionic implements only the C locale, so
+ * `LC_NUMERIC` cannot be set to anything else on a device — but the JVM variant
+ * exists precisely so parity is answerable in CI, and it answered wrongly
+ * without saying so. `android/build.gradle.kts` sets `LC_NUMERIC=C` on
+ * every test process; `NumericLocaleTest` runs on both targets and catches a
+ * run that bypassed it. Anyone building a desktop host on this class should set
+ * it too.
  */
 class JsBridge(
     private val moduleSource: String,

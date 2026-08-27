@@ -127,6 +127,7 @@ class SelfTestActivity : Activity() {
         line("  page size  " + pageSize())
 
         try {
+            localeChecks()
             scoringChecks()
             backupChecks()
             livePipeline()
@@ -143,6 +144,45 @@ class SelfTestActivity : Activity() {
                 NEWLINE + "the hardware: timings from a real handset, not an emulator.",
             MUTED
         )
+    }
+
+    /**
+     * Does this runtime read a decimal point as a decimal point?
+     *
+     * Expected to pass, and worth asserting anyway. The JVM build of QuickJS
+     * takes the decimal separator from the C library locale, so on a desktop
+     * set to a comma locale `8.5` evaluates to `8` — silently, in source
+     * literals and `JSON.parse` alike — which took the scoring parity suite red
+     * while looking exactly like an engine fault.
+     *
+     * Android should be immune because bionic implements only the C locale.
+     * That is a claim about the platform, and this is the difference between
+     * having checked it on this handset and having read it somewhere.
+     */
+    private suspend fun localeChecks() {
+        heading("Numeric locale  (does 8.5 mean 8.5 here?)")
+        line("  default locale " + java.util.Locale.getDefault(), MUTED)
+
+        val quickJs = com.dokar.quickjs.QuickJs.create(Dispatchers.Default)
+        try {
+            var out: String? = null
+            quickJs.defineBinding(
+                "__out",
+                com.dokar.quickjs.binding.FunctionBinding { args -> out = args.firstOrNull() as? String; null }
+            )
+            quickJs.evaluate<Any?>(
+                "__out([8.5, JSON.parse('8.5'), parseFloat('8.5'), (8.5).toFixed(2)].join('|'));",
+                "locale-probe.js",
+                false
+            )
+            check(
+                "decimals survive source, JSON.parse, parseFloat and toFixed",
+                out == "8.5|8.5|8.5|8.50",
+                out ?: "no result"
+            )
+        } finally {
+            quickJs.close()
+        }
     }
 
     private suspend fun scoringChecks() {
