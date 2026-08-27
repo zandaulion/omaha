@@ -107,13 +107,22 @@ fun OmahaApp() {
                 OmahaTab.Watchlist -> {
                     val vm: WatchlistViewModel = viewModel()
                     val ui by vm.state.collectAsState()
+                    val lists by vm.lists.collectAsState()
+                    val notice by vm.notice.collectAsState()
                     WatchlistScreen(
                         state = ui,
+                        lists = lists,
+                        activeId = vm.activeId,
+                        notice = notice,
                         onRetry = { vm.load() },
                         onSelect = { ticker ->
                             deepDive.open(ticker)
                             tab = OmahaTab.Scorecard
-                        }
+                        },
+                        onSelectList = { vm.select(it) },
+                        onAddTicker = { vm.addTicker(it) },
+                        onRemoveTicker = { vm.removeTicker(it) },
+                        onCreateList = { vm.createWatchlist(it) }
                     )
                 }
                 OmahaTab.Scorecard -> {

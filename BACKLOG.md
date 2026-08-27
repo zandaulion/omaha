@@ -67,6 +67,41 @@ than telling them it is out of date.
 
 ---
 
+## JVM scoring parity is red; on-device parity is green
+
+**Raised 2026-08-27.** Found by running `:engine:test`, which `npm test` does
+not cover — the JS suite runs `core/**` and `test/**` only, so this had been
+failing without anyone seeing it.
+
+`ScoringParityTest` reports NOK scoring differently under QuickJS/JVM than under
+Node: `altmanZ` comes back `0` against `2.61`, free cash flow history reads
+"2 of 4 years positive" against "4 of 4", and the checklist statuses move with
+them. AAPL and JPM pass.
+
+**What has been ruled out.** `core/dist/scoring.bundle.js` and both NOK fixtures
+are byte-identical to when they were recorded at `caedd18`. Node run against
+that same bundle and that same input reproduces the fixture field for field —
+zero differing keys — so the fixture is not stale and the engine source is not
+at fault. The binding is pinned at `io.github.dokar3:quickjs-kt-jvm:1.0.0-alpha13`.
+
+**The Android side is fine.** The sideloadable harness reported "NOK scores
+identically to Node" on a Xiaomi 24117RK2CG on 2026-08-24, and the instrumented
+`:engine-android` suite is the gate that matters for the shipped app. This is
+the JVM variant of QuickJS, which exists so the parity question is answerable in
+CI without an emulator.
+
+So the most likely explanation is environmental — the JVM native library
+behaving differently than when doc 13 §18 recorded the spike as passing. Worth
+confirming against a clean checkout on another machine before assuming the
+engine is at fault.
+
+**Do not regenerate the fixtures to make this green.** They are Node's output
+and Node still agrees with them; rewriting them would silently adopt whatever
+the JVM is doing now as the expected answer, which is precisely the failure this
+gate exists to prevent.
+
+---
+
 ## Sunday digest by email
 
 **Dropped during the notification build, 2026-08-19.** Doc 05 specifies a rich

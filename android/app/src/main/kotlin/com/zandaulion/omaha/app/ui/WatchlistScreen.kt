@@ -16,6 +16,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,8 +50,15 @@ import com.zandaulion.omaha.design.toTextStyle
 @Composable
 fun WatchlistScreen(
     state: WatchlistUiState,
+    lists: List<com.zandaulion.omaha.data.WatchlistRow> = emptyList(),
+    activeId: String? = null,
+    notice: String? = null,
     onRetry: () -> Unit,
-    onSelect: (String) -> Unit
+    onSelect: (String) -> Unit,
+    onSelectList: (String) -> Unit = {},
+    onAddTicker: (String) -> Unit = {},
+    onRemoveTicker: (String) -> Unit = {},
+    onCreateList: (String) -> Unit = {}
 ) {
     when (state) {
         is WatchlistUiState.Loading -> CentredMessage(
@@ -63,9 +78,25 @@ fun WatchlistScreen(
             contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            item { PortfolioHero(state.view.health) }
+            item {
+                ListSwitcher(lists, activeId, onSelectList, onCreateList)
+            }
+            item { PortfolioHero(state.view.health, state.view.pending) }
+            item { AddTickerRow(onAddTicker) }
+            if (notice != null) {
+                item {
+                    BasicText(
+                        notice,
+                        style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary)
+                    )
+                }
+            }
             items(state.view.holdings, key = { it.ticker }) { holding ->
-                HoldingCard(holding, onClick = { onSelect(holding.ticker) })
+                HoldingCard(
+                    holding,
+                    onClick = { if (!holding.loading) onSelect(holding.ticker) },
+                    onRemove = { onRemoveTicker(holding.ticker) }
+                )
             }
         }
     }
@@ -73,7 +104,7 @@ fun WatchlistScreen(
 
 /** `.portfolio-hero`: the list's name, its size, and the composite badge. */
 @Composable
-private fun PortfolioHero(health: PortfolioHealth) {
+private fun PortfolioHero(health: PortfolioHealth, pending: Int = 0) {
     Column(
         Modifier
             .fillMaxWidth()
@@ -105,7 +136,16 @@ private fun PortfolioHero(health: PortfolioHealth) {
         // five holdings is a different claim from one over all five, and the
         // engine reports null rather than zero where too few line items were
         // filed — averaging those in would read "bad" instead of "unmeasured".
-        if (health.scoredCount != health.holdingCount) {
+        // While the list is still loading the composite is a partial figure,
+        // and saying "averaged over 1 of 5" would read as a finding about the
+        // holdings rather than as progress. The two cases are worded apart.
+        if (pending > 0) {
+            Box(Modifier.height(10.dp))
+            BasicText(
+                "Scoring… $pending of ${health.holdingCount} still to go.",
+                style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary)
+            )
+        } else if (health.scoredCount != health.holdingCount) {
             Box(Modifier.height(10.dp))
             BasicText(
                 if (health.scoredCount == 0)
@@ -121,7 +161,7 @@ private fun PortfolioHero(health: PortfolioHealth) {
 
 /** `.stock-card`. */
 @Composable
-private fun HoldingCard(holding: Holding, onClick: () -> Unit) {
+private fun HoldingCard(holding: Holding, onClick: () -> Unit, onRemove: () -> Unit = {}) {
     Column(
         Modifier
             .fillMaxWidth()
@@ -131,6 +171,23 @@ private fun HoldingCard(holding: Holding, onClick: () -> Unit) {
             .clickable(onClick = onClick)
             .padding(14.dp)
     ) {
+        if (holding.loading) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                BasicText(
+                    holding.ticker,
+                    style = OmahaType.title2.toTextStyle(color = Omaha.colors.textTertiary)
+                        .copy(fontFamily = Omaha.fonts.mono)
+                )
+                Box(Modifier.padding(start = 10.dp)) {
+                    BasicText(
+                        "queued",
+                        style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary)
+                    )
+                }
+            }
+            return@Column
+        }
+
         if (holding.error != null) {
             // Named, not hidden. A holding missing from the list would make the
             // composite an average over a different set than the one on screen.
@@ -149,6 +206,19 @@ private fun HoldingCard(holding: Holding, onClick: () -> Unit) {
                 },
                 style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.healthRisk)
             )
+            Box(Modifier.height(8.dp))
+            Box(
+                Modifier
+                    .clip(RoundedCornerShape(OmahaRadius.pill))
+                    .background(Omaha.colors.bgSurfaceSubtle)
+                    .clickable(onClick = onRemove)
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+                BasicText(
+                    "Remove from watchlist",
+                    style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary)
+                )
+            }
             return@Column
         }
 
@@ -300,5 +370,133 @@ internal fun CentredMessage(
                 )
             }
         }
+    }
+}
+
+/**
+ * Which list is shown, and a way to start a new one.
+ *
+ * The PWA uses a `<select>` plus a "+ New Watchlist" button. A row of chips is
+ * the phone equivalent: the lists are few and short-named, and a dropdown would
+ * hide the fact that there is more than one — which is exactly what was missing
+ * when the first build shipped with no way to switch at all.
+ */
+@Composable
+private fun ListSwitcher(
+    lists: List<com.zandaulion.omaha.data.WatchlistRow>,
+    activeId: String?,
+    onSelect: (String) -> Unit,
+    onCreate: (String) -> Unit
+) {
+    var creating by remember { mutableStateOf(false) }
+    var name by remember { mutableStateOf("") }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            for (list in lists) {
+                val active = list.id == activeId
+                Box(
+                    Modifier
+                        .clip(RoundedCornerShape(OmahaRadius.pill))
+                        .background(if (active) Omaha.colors.brandCyan else Omaha.colors.bgSurfaceSubtle)
+                        .clickable { onSelect(list.id) }
+                        .padding(horizontal = 12.dp, vertical = 7.dp)
+                ) {
+                    BasicText(
+                        list.name,
+                        style = OmahaType.caption.toTextStyle(
+                            color = if (active) Omaha.colors.bgCanvas else Omaha.colors.textSecondary
+                        )
+                    )
+                }
+            }
+            Box(
+                Modifier
+                    .clip(RoundedCornerShape(OmahaRadius.pill))
+                    .background(Omaha.colors.bgSurfaceSubtle)
+                    .clickable { creating = !creating }
+                    .padding(horizontal = 12.dp, vertical = 7.dp)
+            ) {
+                BasicText(
+                    "+ New",
+                    style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary)
+                )
+            }
+        }
+
+        if (creating) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f)) {
+                    InlineField(name, "Watchlist name") { name = it }
+                }
+                Box(Modifier.padding(start = 8.dp)) {
+                    Pill2("Create", name.isNotBlank()) {
+                        onCreate(name.trim()); name = ""; creating = false
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** `+ Add Stock`. Validated against the engine before it is stored. */
+@Composable
+private fun AddTickerRow(onAdd: (String) -> Unit) {
+    var text by remember { mutableStateOf("") }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.weight(1f)) {
+            InlineField(text, "Add a ticker, e.g. TSLA") { text = it.uppercase() }
+        }
+        Box(Modifier.padding(start = 8.dp)) {
+            Pill2("Add", text.isNotBlank()) { onAdd(text.trim()); text = "" }
+        }
+    }
+}
+
+@Composable
+private fun InlineField(value: String, placeholder: String, onChange: (String) -> Unit) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(OmahaRadius.sm))
+            .background(Omaha.colors.bgSurface)
+            .border(1.dp, Omaha.colors.borderSubtle, RoundedCornerShape(OmahaRadius.sm))
+            .padding(horizontal = 12.dp, vertical = 10.dp)
+    ) {
+        if (value.isEmpty()) {
+            BasicText(
+                placeholder,
+                style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textTertiary)
+            )
+        }
+        BasicTextField(
+            value = value,
+            onValueChange = onChange,
+            singleLine = true,
+            textStyle = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textPrimary),
+            cursorBrush = SolidColor(Omaha.colors.brandCyan),
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Composable
+private fun Pill2(label: String, enabled: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .clip(RoundedCornerShape(OmahaRadius.pill))
+            .background(if (enabled) Omaha.colors.brandCyan else Omaha.colors.bgSurfaceSubtle)
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 9.dp)
+    ) {
+        BasicText(
+            label,
+            style = OmahaType.caption.toTextStyle(
+                color = if (enabled) Omaha.colors.bgCanvas else Omaha.colors.textTertiary
+            )
+        )
     }
 }
