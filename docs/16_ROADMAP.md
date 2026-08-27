@@ -304,7 +304,13 @@ This is the mechanism that turns "the two clients look the same" from an
 intention into a build failure. Retrofitting it after the UI exists means
 revisiting every colour in the tree.
 
-### Phase 4 — The Android client (doc 13 step 4)
+### Phase 4 — The Android client (doc 13 step 4) — **done 2026-08-27**
+
+> Every slice landed. The Android client now does what the PWA does, minus the
+> AI analysis, which is gated on billing in phase 6.
+>
+> **The parity ledger's UI rows are closed.** What remains between the clients
+> is alerts (phase 5), paid AI (phase 6) and the widget (phase 7).
 
 The bulk of the remaining work, and the phase that actually closes the parity
 gap. Sequenced so each slice is independently reviewable against its PWA
@@ -315,9 +321,9 @@ counterpart.
 | 4a | ~~`:app` module, navigation shell, theme from generated tokens~~ **done 2026-08-26** | four tabs, matching the PWA's `nav-tab` structure |
 | 4b | ~~Room: `app_settings`~~ **done 2026-08-26** | the rest arrive with their features in 5 and 6 |
 | 4c | ~~**Watchlist** view~~ **done 2026-08-26** | plus the aggregate portfolio health score |
-| 4d | **Deep Dive** view | the large one — see below |
-| 4e | **Filter** and **Compare** views | under phase 1's new name |
-| 4f | **Settings**, and SAF import/export | closes doc 13 step 3's outstanding item |
+| 4d | ~~**Deep Dive** view~~ **done 2026-08-27** | the large one — see below |
+| 4e | ~~**Filter** and **Compare** views~~ **done 2026-08-27** | under phase 1's new name |
+| 4f | ~~**Settings**, and SAF import/export~~ **done 2026-08-27** | closes doc 13 step 3's outstanding item |
 
 > **4a landed 2026-08-26.** `:app` builds and runs on foundation only — no
 > Material. That was the load-bearing decision: Material3 carries its own colour
@@ -391,6 +397,17 @@ counterpart.
 > these charts must get right. A gap draws nothing: no bar, and a lifted pen
 > rather than a line joining across it. JPM exercises the fully-absent case, since
 > a bank files no gross or operating margin at all.
+>
+> **The DCF is the project's only deliberate dual implementation**, and it has a
+> gate. `core/analysis/dcf.js` is the definition, shipped to the browser so the
+> PWA's copy could be deleted rather than duplicated; Kotlin reimplements it
+> because the sandbox recomputes on every drag frame and a QuickJS call costs
+> about 21 ms. `DcfParityTest` caught a real divergence on its first run.
+>
+> **Settings is a fifth tab rather than a header button.** The PWA reaches it
+> from a header because a browser page has one; the Android alternative is an
+> overflow menu, which would put the privacy opt-in and the backup one tap
+> further away than anything else on the screen.
 >
 > `OmahaEngine` holds one store and one engine per process. Per-screen instances
 > were the obvious arrangement and the wrong one — two Room handles on one file
@@ -471,18 +488,18 @@ The state to hold each client against. "Inherits" means the work lands in
 | Feature | PWA | Android | Closes in |
 |---|---|---|---|
 | Ingest, score, cache | ✅ | ✅ | done |
-| Backup export/import + merge | ✅ | ✅ engine; ❌ picker | 4f |
-| Notes opt-in toggle | ✅ | ❌ | 1 |
-| Screener → Filter rename | ✅ | n/a | 1 |
-| Disclaimer, AI labelling | ✅ | n/a | 1 |
-| EDGAR statements | ✅ | inherits | 2 |
-| AI staleness flag | ✅ | inherits | 2 |
-| Watchlist view | ✅ | ❌ | 4c |
-| Deep Dive: pillars, checklist, charts | ✅ | ❌ | 4d |
-| DCF sandbox | ✅ | ❌ | 4d |
-| Thesis, sell triggers, journal | ✅ | ❌ | 4d |
-| Filter, Compare | ✅ | ❌ | 4e |
-| Settings | ✅ | ❌ | 4f |
+| Backup export/import + merge | ✅ | ✅ | done |
+| Notes opt-in toggle | ✅ | ✅ | done |
+| Screener → Filter rename | ✅ | ✅ built as Filter | done |
+| Disclaimer, AI labelling | ✅ | ✅ disclaimer; AI label with phase 6 | 6 |
+| EDGAR statements | ✅ | ✅ inherited | done |
+| AI staleness flag | ✅ | core inherited; surfaces with the AI tab | 6 |
+| Watchlist view | ✅ | ✅ | done |
+| Deep Dive: pillars, checklist, charts | ✅ | ✅ | done |
+| DCF sandbox | ✅ | ✅ | done |
+| Thesis, sell triggers, journal | ✅ | ✅ | done |
+| Filter, Compare | ✅ | ✅ | done |
+| Settings | ✅ | ✅ | done |
 | Alerts | ✅ push | ❌ | 5 |
 | Sunday digest | ⚠️ push only, no email | n/a — local notifications | backlog |
 | AI analysis | ✅ free | ❌ | 6 |

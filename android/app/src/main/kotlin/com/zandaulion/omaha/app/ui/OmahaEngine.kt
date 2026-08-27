@@ -6,7 +6,11 @@ import com.zandaulion.omaha.data.OmahaStore
 import com.zandaulion.omaha.data.RoomStockStore
 import com.zandaulion.omaha.data.StockDetailRepository
 import com.zandaulion.omaha.data.StockEngine
+import com.zandaulion.omaha.data.ThesisRepository
 import com.zandaulion.omaha.data.WatchlistRepository
+import com.zandaulion.omaha.data.BackupIo
+import com.zandaulion.omaha.data.PersonalDataStore
+import com.zandaulion.omaha.engine.BackupEngine
 import com.zandaulion.omaha.engine.OkHttpBridge
 
 /**
@@ -27,7 +31,10 @@ object OmahaEngine {
     class Handles internal constructor(
         val store: OmahaStore,
         val watchlists: WatchlistRepository,
-        val details: StockDetailRepository
+        val details: StockDetailRepository,
+        val theses: ThesisRepository,
+        val settings: com.zandaulion.omaha.data.AppSettings,
+        val backup: BackupIo
     )
 
     @Synchronized
@@ -43,7 +50,16 @@ object OmahaEngine {
         return Handles(
             store = store,
             watchlists = WatchlistRepository(store.personalData, engine),
-            details = StockDetailRepository(engine)
+            details = StockDetailRepository(engine),
+            theses = ThesisRepository(store.personalData),
+            settings = com.zandaulion.omaha.data.AppSettings(store.appSettings),
+            backup = BackupIo(
+                BackupEngine.fromSource(
+                    app.assets.open("core/${BackupEngine.BUNDLE_PATH}")
+                        .bufferedReader().use { it.readText() }
+                ),
+                PersonalDataStore(store.personalData)
+            )
         )
     }
 }

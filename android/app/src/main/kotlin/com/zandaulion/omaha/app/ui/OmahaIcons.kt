@@ -69,3 +69,17 @@ val IconCompare: ImageVector = featherIcon(
     "M12 20 L12 4",
     "M6 20 L6 14"
 )
+
+/** Cog. Feather's `settings`, simplified to a ring and six teeth. */
+val IconSettings: ImageVector = featherIcon(
+    "settings",
+    "M15 12 A3 3 0 1 1 9 12 A3 3 0 1 1 15 12 Z",
+    "M12 2 L12 5",
+    "M12 19 L12 22",
+    "M4.2 4.2 L6.3 6.3",
+    "M17.7 17.7 L19.8 19.8",
+    "M2 12 L5 12",
+    "M19 12 L22 12",
+    "M4.2 19.8 L6.3 17.7",
+    "M17.7 6.3 L19.8 4.2"
+)
