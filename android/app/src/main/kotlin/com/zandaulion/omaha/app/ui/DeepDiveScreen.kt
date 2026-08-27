@@ -59,7 +59,13 @@ enum class DeepDiveTab(val label: String) {
 }
 
 @Composable
-fun DeepDiveScreen(state: DeepDiveUiState, onRetry: () -> Unit) {
+fun DeepDiveScreen(
+    state: DeepDiveUiState,
+    thesis: com.zandaulion.omaha.data.Thesis?,
+    onRetry: () -> Unit,
+    onThesisChange: (com.zandaulion.omaha.data.Thesis) -> Unit,
+    onAddJournal: (String) -> Unit
+) {
     when (state) {
         is DeepDiveUiState.Empty -> CentredMessage(
             "No company selected",
@@ -78,12 +84,18 @@ fun DeepDiveScreen(state: DeepDiveUiState, onRetry: () -> Unit) {
             onAction = onRetry
         )
 
-        is DeepDiveUiState.Ready -> Loaded(state.detail)
+        is DeepDiveUiState.Ready ->
+            Loaded(state.detail, thesis, onThesisChange, onAddJournal)
     }
 }
 
 @Composable
-private fun Loaded(stock: StockDetail) {
+private fun Loaded(
+    stock: StockDetail,
+    thesis: com.zandaulion.omaha.data.Thesis?,
+    onThesisChange: (com.zandaulion.omaha.data.Thesis) -> Unit,
+    onAddJournal: (String) -> Unit
+) {
     var tab by rememberSaveable(stock.ticker) { mutableStateOf(DeepDiveTab.Overview) }
 
     LazyColumn(
@@ -134,8 +146,16 @@ private fun Loaded(stock: StockDetail) {
                 Card { DcfSandbox(stock) }
             }
             DeepDiveTab.Thesis -> item {
-                Slice("My Thesis & Log", "Conviction, target buy price, pre-committed " +
-                    "sell triggers and the journal. Phase 4d — the product's differentiator.")
+                Card {
+                    if (thesis == null) {
+                        BasicText(
+                            "Loading your notes…",
+                            style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textTertiary)
+                        )
+                    } else {
+                        ThesisSection(thesis, onThesisChange, onAddJournal)
+                    }
+                }
             }
         }
     }

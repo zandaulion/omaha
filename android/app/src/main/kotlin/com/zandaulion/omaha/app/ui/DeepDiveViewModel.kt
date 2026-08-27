@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.zandaulion.omaha.data.StockDetail
+import com.zandaulion.omaha.data.Thesis
 import com.zandaulion.omaha.data.StockUnavailable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,6 +31,9 @@ class DeepDiveViewModel(app: Application) : AndroidViewModel(app) {
     private val _state = MutableStateFlow<DeepDiveUiState>(DeepDiveUiState.Empty)
     val state: StateFlow<DeepDiveUiState> = _state.asStateFlow()
 
+    private val _thesis = MutableStateFlow<Thesis?>(null)
+    val thesis: StateFlow<Thesis?> = _thesis.asStateFlow()
+
     private var current: String? = null
 
     fun open(ticker: String) {
@@ -42,8 +46,35 @@ class DeepDiveViewModel(app: Application) : AndroidViewModel(app) {
         current?.let { load(it) }
     }
 
+    /**
+     * Every edit writes immediately.
+     *
+     * No Save button, deliberately. A sell guardrail written and then lost to a
+     * back gesture is exactly the material this screen exists to keep, and the
+     * PWA's alert-on-save is not a pattern worth porting.
+     */
+    fun updateThesis(updated: Thesis) {
+        _thesis.value = updated
+        viewModelScope.launch {
+            _thesis.value = OmahaEngine.get(getApplication()).theses.save(updated)
+        }
+    }
+
+    fun addJournalEntry(note: String) {
+        val ticker = current ?: return
+        viewModelScope.launch {
+            _thesis.value = OmahaEngine.get(getApplication()).theses.addJournalEntry(ticker, note)
+        }
+    }
+
     private fun load(ticker: String) {
         _state.value = DeepDiveUiState.Loading(ticker)
+        viewModelScope.launch {
+            // Loaded alongside the scorecard rather than on tab switch: it is a
+            // local read, and a thesis that appears a beat after the tab does
+            // reads as though it were fetched.
+            _thesis.value = OmahaEngine.get(getApplication()).theses.load(ticker)
+        }
         viewModelScope.launch {
             _state.value = try {
                 DeepDiveUiState.Ready(OmahaEngine.get(getApplication()).details.detail(ticker))

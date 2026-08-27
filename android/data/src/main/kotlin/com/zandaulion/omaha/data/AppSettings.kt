@@ -55,6 +55,16 @@ class AppSettings(private val dao: AppSettingsDao) {
 
     suspend fun setAiIncludeNotes(enabled: Boolean) = writeFlag(KEY_AI_INCLUDE_NOTES, enabled)
 
+    /**
+     * Which palette to use: "system", "dark" or "light".
+     *
+     * Same three values the PWA stores in `omaha_theme`, so the setting means
+     * the same thing on both clients rather than each inventing its own.
+     */
+    suspend fun themeChoice(): String = dao.get(KEY_THEME)?.value ?: "system"
+
+    suspend fun setThemeChoice(value: String) = dao.put(AppSettingRow(KEY_THEME, value))
+
     private suspend fun readFlag(key: String): Boolean =
         dao.get(key)?.value?.let { it == "1" || it.toIntOrNull()?.let { n -> n != 0 } == true } ?: false
 
@@ -63,5 +73,6 @@ class AppSettings(private val dao: AppSettingsDao) {
 
     companion object {
         const val KEY_AI_INCLUDE_NOTES = "ai_include_notes"
+        const val KEY_THEME = "omaha_theme"
     }
 }

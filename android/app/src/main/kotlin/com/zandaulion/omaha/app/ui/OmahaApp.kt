@@ -1,5 +1,7 @@
 package com.zandaulion.omaha.app.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -24,10 +26,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.ColorFilter
@@ -39,6 +43,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.Image
 import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.zandaulion.omaha.design.Omaha
 import com.zandaulion.omaha.design.OmahaLayout
 import com.zandaulion.omaha.design.OmahaRadius
@@ -57,7 +64,16 @@ enum class OmahaTab(val label: String, val route: String, val icon: ImageVector)
     Watchlist("Watchlist", "watchlist", IconWatchlist),
     Scorecard("Scorecard", "deepdive", IconScorecard),
     Filter("Filter", "filter", IconFilter),
-    Compare("Compare", "compare", IconCompare)
+    Compare("Compare", "compare", IconCompare),
+
+    /**
+     * The PWA reaches Settings from a header button rather than a tab, because
+     * a browser page has a header to put it in. A fifth tab is the Android
+     * equivalent: the alternative is an overflow menu, which is one more tap to
+     * reach the privacy opt-in and the backup — the two things most worth
+     * finding.
+     */
+    Settings("Settings", "settings", IconSettings)
 }
 
 /**
@@ -102,17 +118,34 @@ fun OmahaApp() {
                 }
                 OmahaTab.Scorecard -> {
                     val ui by deepDive.state.collectAsState()
-                    DeepDiveScreen(state = ui, onRetry = { deepDive.retry() })
+                    val thesis by deepDive.thesis.collectAsState()
+                    DeepDiveScreen(
+                        state = ui,
+                        thesis = thesis,
+                        onRetry = { deepDive.retry() },
+                        onThesisChange = { deepDive.updateThesis(it) },
+                        onAddJournal = { deepDive.addJournalEntry(it) }
+                    )
                 }
-                OmahaTab.Filter -> PlaceholderScreen(
-                    "Filter",
-                    "Narrows the companies you already follow. It does not search the " +
-                        "wider market. Phase 4e."
-                )
-                OmahaTab.Compare -> PlaceholderScreen(
-                    "Compare",
-                    "Side by side, up to four tickers. Phase 4e."
-                )
+                OmahaTab.Filter -> {
+                    // Shares the watchlist's view model: the filter acts on
+                    // what is already loaded and scored, so it neither fetches
+                    // nor keeps a second copy that could disagree.
+                    val vm: WatchlistViewModel = viewModel()
+                    val ui by vm.state.collectAsState()
+                    FilterScreen(
+                        state = ui,
+                        onRetry = { vm.load() },
+                        onSelect = { ticker -> deepDive.open(ticker); tab = OmahaTab.Scorecard }
+                    )
+                }
+                OmahaTab.Compare -> {
+                    val vm: WatchlistViewModel = viewModel()
+                    val ui by vm.state.collectAsState()
+                    CompareScreen(state = ui, onRetry = { vm.load() })
+                }
+
+                OmahaTab.Settings -> SettingsTab()
             }
         }
 
@@ -238,4 +271,64 @@ private fun PlaceholderScreen(title: String, detail: String) {
                 .copy(textAlign = TextAlign.Center)
         )
     }
+}
+
+/**
+ * Settings, with the two SAF pickers.
+ *
+ * The file is chosen by the user through the system picker rather than written
+ * to a path the app decides. Doc 13 §12 asks for SAF specifically, and the
+ * reason is ownership: this is the only copy of what someone wrote, and it
+ * should land somewhere they chose and can find again.
+ */
+@Composable
+private fun SettingsTab() {
+    val vm: SettingsViewModel = viewModel()
+    val includeNotes by vm.includeNotes.collectAsState()
+    val theme by vm.theme.collectAsState()
+    val status by vm.status.collectAsState()
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    // CreateDocument hands back a URI the app may write to exactly once.
+    val exporter = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri == null) {
+            vm.onExported(null)
+        } else {
+            scope.launch {
+                val json = vm.exportJson()
+                if (json == null) {
+                    vm.onExported(null)
+                } else {
+                    withContext(Dispatchers.IO) {
+                        context.contentResolver.openOutputStream(uri)?.use {
+                            it.write(json.toByteArray())
+                        }
+                    }
+                    vm.onExported(uri)
+                }
+            }
+        }
+    }
+
+    val importer = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri -> uri?.let { vm.importFrom(it) } }
+
+    SettingsScreen(
+        includeNotes = includeNotes,
+        theme = theme,
+        backupStatus = status,
+        onIncludeNotesChange = { vm.setIncludeNotes(it) },
+        onThemeChange = { vm.setTheme(it) },
+        onExport = {
+            exporter.launch("pocket-omaha-backup-${System.currentTimeMillis()}.json")
+        },
+        // Narrowed to JSON, but "*/*" would be the safer net if a provider
+        // reports the type oddly; keep an eye on this if a restore ever fails
+        // to see a file that is plainly there.
+        onImport = { importer.launch(arrayOf("application/json")) }
+    )
 }
