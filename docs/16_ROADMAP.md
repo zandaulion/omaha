@@ -513,6 +513,34 @@ No server, and nothing transmitted beyond market data.
 > **Fixed in passing: the theme picker did nothing.** `MainActivity` hard-coded
 > `ThemeChoice.System` while Settings stored the choice correctly, so picking
 > Light persisted and changed nothing. Phase 4 was marked done with that live.
+>
+> **The app crashed on the first real-device launch, 2026-08-27, and the fix
+> that shipped a build before that one made it worse rather than better.**
+> `MIGRATION_2_3` created an index on `notification_history` —
+> `CREATE INDEX ... index_notification_history_deliveredAt` — that
+> `NotificationRow` never declared with `@Index`. Room derives its *expected*
+> schema from the entity annotations alone, so on any install upgrading from
+> schema version 2 (every phone that already had the app), `onValidateSchema`
+> found an index it had no way to know it should expect, could not tell that
+> apart from real drift, and refused to open the database.
+>
+> The interim crash-guard build ([`eac348a`](../BACKLOG.md)) made this
+> *survivable* — `OmahaApplication` recorded the trace, `MainActivity` showed
+> it on the next launch — but the app underneath it still could not open its
+> own database, which is a state worth naming honestly rather than filing
+> under "fixed." The actual fix was one `indices = [Index("deliveredAt")]` on
+> the entity, verified against Room's own regenerated `onValidateSchema`
+> before it shipped.
+>
+> **No test had ever opened a database through this migration.** Every other
+> Room test in the module uses `inMemoryDatabaseBuilder`, which builds the
+> *current* schema straight from the entities and never runs a `Migration` at
+> all — so a migration whose raw SQL disagrees with its own entities cannot
+> fail a test that never exercises it. `AlertMigrationTest` now seeds a
+> version-2-shaped database by hand and opens it through the real migration
+> path, which is what should have caught this before it reached a phone. It
+> compiles; **it has not yet been run**, since running it needs a connected
+> device or emulator and this session had neither. Worth doing before phase 6.
 
 ### Phase 6 — Paid AI (doc 13 step 6)
 

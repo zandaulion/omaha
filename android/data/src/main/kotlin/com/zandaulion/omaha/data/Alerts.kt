@@ -2,6 +2,7 @@ package com.zandaulion.omaha.data
 
 import androidx.room.Dao
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
@@ -86,8 +87,19 @@ data class NotificationSettingsRow(
  * cooldown floor in `core/alerts/sweep.js` is enforced against this, so a
  * reinstall or a process restart cannot re-announce a standing condition.
  * The first job is the alert centre in Settings, matching the PWA's.
+ *
+ * `deliveredAt` is indexed. The cooldown lookup and the alert centre both scan
+ * this table by it on every sweep, and — this is the reason the index has to
+ * be declared here rather than only in the migration's raw SQL — Room derives
+ * its *expected* schema from the annotations on this class alone. The index
+ * was originally added only in `OmahaDatabaseFactory.MIGRATION_2_3`, which
+ * created it on the real table without Room's compile-time model ever
+ * learning it should exist. `onValidateSchema` compares the two and finds a
+ * table with an index Room did not ask for — a mismatch it cannot tell apart
+ * from actual drift — and refuses to open the database. That refusal was the
+ * crash on first launch after phase 5 shipped.
  */
-@Entity(tableName = "notification_history")
+@Entity(tableName = "notification_history", indices = [Index("deliveredAt")])
 data class NotificationRow(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     /** Empty rather than null for the digest, which is about a list, not a stock. */
