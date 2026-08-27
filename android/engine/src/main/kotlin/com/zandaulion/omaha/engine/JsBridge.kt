@@ -4,6 +4,8 @@ import com.dokar.quickjs.QuickJs
 import com.dokar.quickjs.binding.AsyncFunctionBinding
 import com.dokar.quickjs.binding.FunctionBinding
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.Dispatchers
 
 /**
@@ -38,7 +40,21 @@ import kotlinx.coroutines.Dispatchers
  * but ASCII therefore crosses the bridge: the JavaScript side escapes every
  * non-ASCII code unit as `\uXXXX`, which is still valid JSON.
  *
- * `QuickJsBindingQuirksTest` pins the last two. A failure there is good news.
+ * **Concurrent instances fail.** Found on a handset on 2026-08-27, not in any
+ * test: a watchlist that fanned out across five tickers at once returned one
+ * scored company and four `JsBridgeException`s. A fresh interpreter per call
+ * is necessary but not sufficient — two of them alive at the same time is
+ * enough to break, so calls are serialised through a mutex below.
+ *
+ * That is a real cost and it is worth naming. Ingestion is roughly 1,800 ms
+ * against 5.5 ms for scoring (doc 13 §23), and the network happens *inside*
+ * the call through the fetch shim, so serialising the engine serialises the
+ * network with it. A cold five-holding watchlist is therefore additive rather
+ * than concurrent. Callers should stream results as they arrive rather than
+ * waiting for the set; `WatchlistRepository` does.
+ *
+ * `QuickJsBindingQuirksTest` pins the evaluate and non-BMP defects. A failure
+ * there is good news.
  */
 class JsBridge(
     private val moduleSource: String,
@@ -72,7 +88,11 @@ class JsBridge(
      *   array literal, so a caller passing a bare string must quote it
      * @return the JSON-encoded return value, or an empty string for `undefined`
      */
-    suspend fun call(fn: String, vararg jsonArgs: String): String {
+    suspend fun call(fn: String, vararg jsonArgs: String): String = engineLock.withLock {
+        callLocked(fn, *jsonArgs)
+    }
+
+    private suspend fun callLocked(fn: String, vararg jsonArgs: String): String {
         var result: String? = null
         var failure: String? = null
 
@@ -122,6 +142,18 @@ class JsBridge(
 
     companion object {
         private const val MODULE_NAME = "omaha-module"
+
+        /**
+         * One QuickJS call at a time, across the whole process.
+         *
+         * Deliberately shared rather than per-instance. The defect is in the
+         * native binding, not in any one bridge, so two *different* bridges —
+         * the stock engine and the backup engine — are as capable of colliding
+         * as two calls on one. A per-instance lock would have looked correct
+         * and then failed the first time a backup ran while a watchlist was
+         * still loading.
+         */
+        private val engineLock = Mutex()
 
         /**
          * Errors are reported through a binding rather than thrown out of the
