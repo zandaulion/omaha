@@ -604,6 +604,17 @@ The only phase requiring infrastructure. Phases 1–5 ship without any.
 > *consumable* would let the same account re-"buy" it for free indefinitely.
 > Full reasoning, including why this replaced an earlier device-fingerprint
 > proposal, in doc 13 §7.
+>
+> **The app stays anonymous unless a credit is spent, and the relay shares
+> analyses by ticker across accounts — both decided 2026-08-28.** Google
+> Sign-In triggers lazily, only at the moment of spending; reading a cached
+> hit needs no identity at all, mirroring the PWA's existing
+> `getCachedAISummary(ticker)`, which already has no user in it. That means
+> most people may never sign in — a popular ticker is likely already cached
+> from someone else's credit. The one hard requirement: an analysis generated
+> with someone's notes included must never be served to another account, so
+> the relay's cache lookup filters on `includedNotes: false`, not on ticker
+> alone. Full reasoning in doc 13 §7.
 
 ### Phase 7 — Release, then the widget
 

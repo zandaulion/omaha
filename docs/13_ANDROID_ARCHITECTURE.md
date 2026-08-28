@@ -241,6 +241,30 @@ the budget.
   must be preserved.
 * Prompt construction stays in `core/` on-device; the function is a thin
   verified relay, not a second implementation.
+* **The app stays fully anonymous unless a credit is actually spent — decided
+  2026-08-28.** Everything except phase 6 already has no account concept
+  (watchlist, scoring, DCF, thesis, alerts all run with no sign-in, matching
+  the "no account, no telemetry, no sync" claim `SettingsScreen` already
+  makes). Google Sign-In must be invoked **lazily** — at the moment of
+  spending a credit or claiming the free grant, never on app launch and never
+  merely on opening the AI tab. A naive build checks "am I signed in?" the
+  instant that screen renders, which quietly forces sign-in on anyone who
+  opened it out of curiosity; that is the specific mistake this line exists
+  to prevent.
+* **The relay shares analyses by ticker across accounts — decided
+  2026-08-28**, matching the PWA's existing `getCachedAISummary(ticker)`,
+  which already has no identity in it at all. Extends the anonymity above
+  further than "no sign-in until you spend": a popular ticker is likely
+  already cached from someone else's credit, so most people may never spend
+  one or sign in at all. Reading a cached hit is therefore an **unauthenticated**
+  relay endpoint — identity is only needed on the path that spends a credit.
+  **Hard requirement, not an optimisation to add later:** only entries with
+  `includedNotes: false` may be served across accounts. An analysis generated
+  with someone's notes included is derived from their own thesis text, and
+  serving it to a stranger is a privacy leak, not a cache hit. `includedNotes`
+  already exists on the result shape (`server/gemini.js`) for exactly this
+  gate — the relay's cache lookup must filter on it, not merely key on
+  ticker.
 * **5 free credits on first launch** — decided 2026-08-28. At $0.0130 measured
   mean cost per analysis (docs/16_ROADMAP.md phase 6), that is $0.065 per new
   install, ~$0.13 once Gemini's rate doubles on 2027-01-01. Trivial at this
