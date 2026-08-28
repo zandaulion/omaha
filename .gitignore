@@ -21,3 +21,4 @@ android/data/build/
 # Firebase — names the project, has no reason to be public
 android/app/google-services.json
 .firebase/
+.firebaserc
