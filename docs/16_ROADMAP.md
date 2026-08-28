@@ -590,6 +590,17 @@ The only phase requiring infrastructure. Phases 1–5 ship without any.
 > for-profit app would stop at; it is the number that still reads as
 > "comfortable" once the rate doubles, for a price a family will not think
 > twice about.
+>
+> **5 free credits on first launch — decided 2026-08-28.** $0.065 per new
+> install today, ~$0.13 after the January rate change — trivial at this
+> project's scale. The one design point it forces: the grant cannot key off
+> the anonymous Firebase UID alone, since that identity does not survive an
+> uninstall and a reinstall would otherwise be a free 5 credits on request, at
+> no real cost or effort. The relay dedupes on a hashed `ANDROID_ID` instead —
+> survives a reinstall, costs nothing beyond a lookup on infrastructure this
+> phase builds anyway, and is proportionate to the actual stakes rather than
+> reached for Play Integrity to defend a few cents of quota. Full reasoning in
+> doc 13 §7.
 
 ### Phase 7 — Release, then the widget
 

@@ -218,6 +218,26 @@ the budget.
   must be preserved.
 * Prompt construction stays in `core/` on-device; the function is a thin
   verified relay, not a second implementation.
+* **5 free credits on first launch** — decided 2026-08-28. At $0.0130 measured
+  mean cost per analysis (docs/16_ROADMAP.md phase 6), that is $0.065 per new
+  install, ~$0.13 once Gemini's rate doubles on 2027-01-01. Trivial at this
+  project's actual scale.
+
+  **The grant must not key off the anonymous Firebase UID alone.** That UID is
+  created fresh on install and is not preserved across an uninstall — a
+  reinstall is a fresh identity and a fresh 5 credits, at no cost or effort
+  worth mentioning. The relay should additionally accept a hash of
+  `Settings.Secure.ANDROID_ID` at the first grant request and refuse a second
+  grant to a device that has already claimed one, recorded in the same
+  Firestore-backed store the purchase-token verification already needs.
+  `ANDROID_ID` survives an uninstall (it resets only on a factory reset), costs
+  nothing beyond a lookup on infrastructure phase 6 builds anyway, and is
+  proportionate to the actual stakes: this stops the casual reinstall-for-
+  credits case, not a determined attacker on a rooted device, and a determined
+  attacker's payoff here is a few analyses worth of quota, not a target worth
+  defeating with Play Integrity. Hash it before it ever reaches the relay —
+  it is a device identifier, and the raw value has no reason to exist outside
+  the phone that generated it.
 
 Play requires disclosure of AI-generated content, and a financial app needs
 explicit "not investment advice" framing.
