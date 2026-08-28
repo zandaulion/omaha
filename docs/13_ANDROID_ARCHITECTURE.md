@@ -460,8 +460,11 @@ together rather than as alternatives.
   and records without it, so refusing turns alerts into an in-app feature
   rather than switching them off — and the cooldowns stay in step, so granting
   it later does not produce a backlog.
-* **Credit pack pricing** — needs a measured cost-per-analysis from real Gemini
-  token counts before it can be set.
+* ~~**Credit pack pricing**~~ — **answered 2026-08-28.** Measured at $0.0130
+  mean per analysis (`scripts/measure-ai-cost.mjs`, five real tickers, real
+  Gemini call). 10 credits for $0.99 — chosen to stay comfortably margined
+  (3.2×) even after Gemini 3.7 Flash's published rate roughly doubles on
+  2027-01-01. Full numbers in `docs/16_ROADMAP.md` phase 6.
 
 ---
 

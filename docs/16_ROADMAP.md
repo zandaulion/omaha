@@ -550,11 +550,46 @@ No server, and nothing transmitted beyond market data.
   packs; anonymous Firebase Auth for the balance.
 - Prompt construction stays in `core/` on-device. The function is a thin
   verified relay, not a second implementation.
-- **Price point needs a measured cost-per-analysis first** — open in doc 13 §13
-  and unresolved.
+- **Credit pack: 10 for $0.99** — decided 2026-08-28, measurement below.
 - The phase 1 notes toggle must be honoured on this path too.
 
 The only phase requiring infrastructure. Phases 1–5 ship without any.
+
+> **Cost-per-analysis, measured 2026-08-28** via `scripts/measure-ai-cost.mjs`
+> — five real tickers (AAPL, JPM, NOK, NOVN.SW, O) through the real prompt
+> builder and the real Gemini call, chosen for shape rather than convenience:
+> a lender where Altman Z is inapplicable, a foreign filer that falls back to
+> Yahoo, a REIT.
+>
+> | | mean | worst of 5 |
+> |---|---|---|
+> | Input tokens | 4,936 | — |
+> | Output tokens | 1,725 (+ 753 thinking, billed as output) | — |
+> | **Cost per analysis** | **$0.0130** | $0.01375 |
+>
+> An offline estimate taken before this run — chars/4 against a locally-built
+> prompt — had guessed ~3,800 input tokens. The real count was 4,936, 30%
+> higher. That is why the script insists on a live call rather than an
+> estimate: Gemini's tokenizer is not a character-count heuristic, and a
+> pricing decision built on the wrong number would be wrong quietly.
+>
+> **The rate holds only through 2026-12-31.** Both input and output roughly
+> double on 2027-01-01 (`ai.google.dev/gemini-api/docs/pricing`, Gemini 3.7
+> Flash standard tier), which puts cost-per-analysis at ~$0.026 four months
+> after a plausible ship date. The pack price had to survive that without a
+> second pricing decision in January, which is what ruled out the
+> higher-volume option below.
+>
+> | Pack | Net per credit (after Play's ~15%) | Margin today | Margin after Jan 2027 |
+> |---|---|---|---|
+> | **10 for $0.99 — chosen** | $0.0842 | 6.5× | 3.2× |
+> | 25 for $0.99 — rejected | $0.0337 | 2.6× | 1.3×, thin |
+>
+> Consistent with the phase 0 framing — a household tool, priced to recover
+> cost rather than to maximise revenue. 6.5× today is not the number a
+> for-profit app would stop at; it is the number that still reads as
+> "comfortable" once the rate doubles, for a price a family will not think
+> twice about.
 
 ### Phase 7 — Release, then the widget
 
@@ -631,8 +666,8 @@ counterpart. Everything else should converge.
 ## 5. What this roadmap does not decide
 
 - ~~**Phase 0.**~~ **Answered 2026-08-24** — see the phase 0 note above.
-- **Credit pack pricing** — blocked on a measured cost-per-analysis. The
-  household frame lowers the stakes: the number only has to cover cost.
+- ~~**Credit pack pricing.**~~ **Answered 2026-08-28** — 10 for $0.99, see the
+  phase 6 note above.
 - **Sunday digest email** — needs a provider decision (Resend or Postmark). The
   digest content function is already separated from delivery, so it stays in the
   backlog rather than entering a phase.
