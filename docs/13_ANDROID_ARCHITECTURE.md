@@ -210,8 +210,31 @@ the budget.
 
 * **Consumable credit packs**, not a one-time unlock. A permanent unlock against
   a Re-Analyze button is unbounded cost liability.
-* **Anonymous Firebase Auth** provides an install identity for the credit
-  balance. It is not a login and requires no user action.
+* **Firebase Auth with the Google Sign-In provider** — not anonymous —
+  provides the identity for the credit balance. **Changed 2026-08-28**, from
+  anonymous auth, because it's only fair that a balance survives a reinstall.
+  An anonymous UID is created fresh on install and is not preserved across
+  one, so under the original plan someone who buys 10 credits, spends 3, and
+  reinstalls has no way to recover the other 7 — the same reinstall-loses-
+  everything defect the free-grant design hit and was fixed for, just not yet
+  applied to the paid balance. Google Sign-In makes the Firebase UID stable
+  per Google account instead: it survives a reinstall, a factory reset, a new
+  phone.
+
+  Costs a small amount of UX ceremony anonymous auth didn't: an account
+  picker rather than a silent sign-in. That cost is close to zero in
+  practice, because Play Billing already requires a signed-in Google account
+  to buy anything at all — by the time someone can purchase a credit pack or
+  claim the free grant, an account is already chosen. Requires the usual
+  Firebase setup for the provider: the app's release and debug SHA
+  fingerprints registered against the Firebase project.
+
+  One identity now does three jobs that were three separate concerns before:
+  it is the account Play Billing purchases are made from, the account the
+  free-grant non-consumable is owned by, and the key the Cloud Function
+  relay's Firestore balance document is stored under. A purchase verified
+  server-side and a balance credited server-side are then unambiguously the
+  same person's, without a second identity scheme bridging them.
 * **Play Billing is mandatory** for a digital feature. A Play account is not an
   app account, so requirement 1 holds.
 * The existing on-device `ai_summaries` cache is the primary cost control and
