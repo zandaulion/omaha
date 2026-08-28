@@ -36,14 +36,39 @@ Decided 2026-08-28 (doc 13 §7): the balance and the free grant are both keyed
 to a real Google account, not an anonymous per-install identity, so a
 purchase or a claimed grant survives a reinstall.
 
-1. Firebase Console → Authentication → Sign-in method → enable **Google**.
-2. Project Settings → Your apps → the Android app → add **both** SHA
-   certificate fingerprints — the debug keystore's and the release signing
-   config's. Google Sign-In on Android fails silently for a fingerprint it
-   does not recognise, and this project signs release builds with the debug
-   config today (`android/app/build.gradle.kts`), so for now both fingerprints
-   are the same key — add it anyway under both slots, so nothing breaks
-   silently the day release signing changes.
+**Order matters here — the fingerprint first, then the provider.** A Google
+Sign-In flow started before Firebase knows the signing key it should trust
+fails without a clear error on the device; get the key registered before
+touching the Authentication tab at all.
+
+1. Get the SHA-1 (and SHA-256) fingerprints for **every signing config this
+   build uses**. From `android/`:
+   ```
+   ./gradlew signingReport        # macOS/Linux
+   gradlew.bat signingReport      # Windows
+   ```
+   Look for the `:app` module's `debug` and `release` variants in the output;
+   each prints its own `SHA1` and `SHA256` lines. This project signs release
+   builds with the debug config today (`android/app/build.gradle.kts`), so
+   for now both variants print the *same* fingerprint — register it anyway
+   under both slots in the next step, so nothing breaks silently the day
+   release signing changes.
+2. Firebase Console → the gear icon → **Project settings** → **Your apps** →
+   the Android app (`com.zandaulion.omaha`) → **Add fingerprint**, under
+   "SHA certificate fingerprints." Paste the SHA-1 from step 1. Add the
+   SHA-256 too, if the console offers a second slot for it — some Firebase
+   features want it, Sign-In itself only strictly needs SHA-1.
+3. Authentication (may be nested under a "Build" or "Security" section
+   depending on the console's current layout) → **Sign-in method** tab →
+   **Add new provider** → **Google** → toggle **Enable**.
+4. Firebase requires a **project support email** on this screen before it
+   will save — pick whichever address should show up if a user ever sees a
+   Google consent screen for this app. **Save.**
+5. Firebase Console → **Project settings** → **General** tab, scroll to
+   "Your apps" → the Android app → confirm `google-services.json` is current
+   and re-download it if the console shows a banner saying it changed
+   (adding the fingerprint or enabling the provider can trigger this) — drop
+   the fresh copy into `android/app/`, replacing the one from §1.
 
 ## 3. The Gemini key
 
