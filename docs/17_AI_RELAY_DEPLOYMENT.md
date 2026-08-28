@@ -70,7 +70,33 @@ touching the Authentication tab at all.
    (adding the fingerprint or enabling the provider can trigger this) — drop
    the fresh copy into `android/app/`, replacing the one from §1.
 
-## 3. The Gemini key
+## 3. Link the Firebase CLI to this project
+
+Not yet covered above, and everything from here on needs it. This repo has no
+`.firebaserc` — nothing on disk says which Firebase project `firebase`
+commands should target until this step creates it.
+
+1. Install the CLI, if `firebase --version` doesn't already work:
+   ```
+   npm install -g firebase-tools
+   ```
+2. Authenticate it to the Google account that owns the Firebase project:
+   ```
+   firebase login
+   ```
+   Opens a browser for the Google sign-in flow, same as any other Google
+   OAuth consent screen.
+3. From the repo root, link this checkout to the project created in §1:
+   ```
+   firebase use --add
+   ```
+   Pick the project from the list, then give it an alias — `default` is
+   fine unless there's a reason to want more than one. This writes
+   `.firebaserc`, which **is not committed** (it names the Firebase project,
+   same reasoning as `google-services.json`) — every machine that runs
+   `firebase deploy` needs to do this once.
+
+## 4. The Gemini key
 
 ```
 firebase functions:secrets:set GEMINI_API_KEY
@@ -80,14 +106,14 @@ Paste the same key already configured on the PWA's `.env`. One key, two
 hosts — `functions/src/index.js` imports the identical `callGemini` the PWA
 uses, so there is no second key to keep in sync, only the one to paste twice.
 
-## 4. Play Developer API access, for the relay to verify purchases
+## 5. Play Developer API access, for the relay to verify purchases
 
 The relay authenticates to the Play Developer API as its own Cloud Functions
 runtime service account — deliberately not a downloaded JSON key (see
 `functions/src/billing.js`'s header for why: nothing to leak, nothing to
 rotate).
 
-1. Deploy once first (§6 below) so the function's service account exists —
+1. Deploy once first (§7 below) so the function's service account exists —
    its email is on the function's details page in the Firebase or GCP
    console, of the form
    `<project-id>@appspot.gserviceaccount.com` or a dedicated per-function
@@ -101,7 +127,7 @@ rotate).
    read and acknowledge, in the API's own terms); Play Console's own UI names
    these more casually and that wording is not worth pinning here.
 
-## 5. The two Play Store products
+## 6. The two Play Store products
 
 Play Console → Monetize → Products → **In-app products** (or **One-time
 products**, depending on which UI generation the console shows — see
@@ -124,7 +150,7 @@ different ID is used in Play Console, update that file to match before
 deploying — a mismatch here is silent until someone actually buys or claims
 one.
 
-## 6. Deploy
+## 7. Deploy
 
 ```
 cd functions && npm install && cd ..
@@ -142,7 +168,7 @@ goes through the three callables in `functions/`, running with Admin SDK
 privileges the rules do not apply to. There is nothing to grant a client here,
 by design.
 
-## 7. Verifying it actually works
+## 8. Verifying it actually works
 
 No Android client exists for this yet (docs/16_ROADMAP.md phase 6, backend
 slice) — the relay can be exercised directly once deployed, before any app
