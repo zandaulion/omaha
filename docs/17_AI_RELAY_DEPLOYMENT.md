@@ -137,12 +137,15 @@ runtime service account — deliberately not a downloaded JSON key (see
 `functions/src/billing.js`'s header for why: nothing to leak, nothing to
 rotate).
 
-1. Now that §5 has deployed once, find that service account's email — the
-   function's details page in the Firebase or GCP console names it, of the
-   form `<project-id>@appspot.gserviceaccount.com` or a dedicated per-function
-   identity, depending on how this project's Cloud Functions generation
-   assigns them. Confirm the exact email there rather than assuming the
-   pattern above; it has differed between Cloud Functions generations before.
+1. **Confirmed against a real deploy, 2026-08-29**: this project's functions
+   are 2nd Gen (Cloud Run under the hood), and 2nd Gen uses the project's
+   **default Compute Engine service account** unless a dedicated one is
+   configured — `<project-number>-compute@developer.gserviceaccount.com`.
+   The project number, not the project ID; the deploy log itself names it
+   (search for `secretmanager.secretAccessor` in the deploy output — the
+   automatic grant for `GEMINI_API_KEY` names the exact account), or it's on
+   IAM → Service Accounts in the GCP console. Superseded here what an earlier
+   draft of this doc only guessed at.
 2. Play Console → Setup → **API access** → link the Google Cloud project (if
    not already linked) → grant that service account access. **The exact
    permission names in this page have moved before and may again** — grant
