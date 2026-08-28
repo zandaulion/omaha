@@ -226,18 +226,42 @@ the budget.
   **The grant must not key off the anonymous Firebase UID alone.** That UID is
   created fresh on install and is not preserved across an uninstall — a
   reinstall is a fresh identity and a fresh 5 credits, at no cost or effort
-  worth mentioning. The relay should additionally accept a hash of
-  `Settings.Secure.ANDROID_ID` at the first grant request and refuse a second
-  grant to a device that has already claimed one, recorded in the same
-  Firestore-backed store the purchase-token verification already needs.
-  `ANDROID_ID` survives an uninstall (it resets only on a factory reset), costs
-  nothing beyond a lookup on infrastructure phase 6 builds anyway, and is
-  proportionate to the actual stakes: this stops the casual reinstall-for-
-  credits case, not a determined attacker on a rooted device, and a determined
-  attacker's payoff here is a few analyses worth of quota, not a target worth
-  defeating with Play Integrity. Hash it before it ever reaches the relay —
-  it is a device identifier, and the raw value has no reason to exist outside
-  the phone that generated it.
+  worth mentioning.
+
+  **Fixed by making the grant a Play Store product, not a server-side counter
+  — decided 2026-08-28, superseding an `ANDROID_ID`-hash proposal from the
+  same day that never shipped.** The 5 credits are a **non-consumable
+  one-time product priced at $0.00**, "purchased" through the ordinary Play
+  Billing flow. Play refuses a second purchase of a non-consumable product
+  already owned by an account — that is the entire mechanism, and it needs no
+  code here to enforce it. This is strictly better than device-based dedup:
+  it survives a factory reset or a new phone, not only a reinstall, because it
+  is tied to the Google account rather than the hardware; and it costs no new
+  infrastructure, since the Cloud Function relay already has to verify a
+  purchase token against the Play Developer API for the paid packs — the free
+  grant is the same verification against a second product ID, one code path
+  rather than two.
+  >
+  > **The one way to get this wrong: configuring it as a consumable.** A
+  > consumable priced at $0.00 can be consumed and re-"purchased" by the same
+  > account indefinitely — free credits without limit, the exact failure this
+  > product exists to prevent. It must be non-consumable, checked when the
+  > product is created in Play Console and again in the relay's own handling
+  > of the purchase type.
+  >
+  > The ceiling this does not remove: a new Google account is a new grant.
+  > That is real friction — Google's own account-creation verification and
+  > velocity limits sit in front of it — and it is the same limit every app
+  > giving away a free IAP accepts. Not worth defending further at this
+  > project's scale.
+  >
+  > As a secondary effect, tying identity to the Google account rather than an
+  > ephemeral anonymous UID also fixes a latent problem in the paid-pack
+  > design: an anonymous Firebase identity does not survive a reinstall
+  > either, so a person who buys 10 credits, spends 3, and reinstalls
+  > currently has no way to recover the other 7. Worth deciding before phase 6
+  > is built whether the credit *balance*, not only the free grant, should be
+  > keyed the same way.
 
 Play requires disclosure of AI-generated content, and a financial app needs
 explicit "not investment advice" framing.

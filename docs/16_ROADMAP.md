@@ -593,14 +593,16 @@ The only phase requiring infrastructure. Phases 1–5 ship without any.
 >
 > **5 free credits on first launch — decided 2026-08-28.** $0.065 per new
 > install today, ~$0.13 after the January rate change — trivial at this
-> project's scale. The one design point it forces: the grant cannot key off
-> the anonymous Firebase UID alone, since that identity does not survive an
-> uninstall and a reinstall would otherwise be a free 5 credits on request, at
-> no real cost or effort. The relay dedupes on a hashed `ANDROID_ID` instead —
-> survives a reinstall, costs nothing beyond a lookup on infrastructure this
-> phase builds anyway, and is proportionate to the actual stakes rather than
-> reached for Play Integrity to defend a few cents of quota. Full reasoning in
-> doc 13 §7.
+> project's scale. Delivered as a **non-consumable Play Store product priced
+> at $0.00**, not a server-side counter: Play refuses a second purchase of a
+> non-consumable already owned by an account, which is the entire "once per
+> user" guarantee and needs no custom code to enforce. Tied to the Google
+> account rather than the device, so it survives more than a reinstall — and
+> it reuses the same purchase-verification relay the paid packs need, rather
+> than adding a second mechanism. The one failure mode: configuring it as a
+> *consumable* would let the same account re-"buy" it for free indefinitely.
+> Full reasoning, including why this replaced an earlier device-fingerprint
+> proposal, in doc 13 §7.
 
 ### Phase 7 — Release, then the widget
 
