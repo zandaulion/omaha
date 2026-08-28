@@ -547,7 +547,8 @@ No server, and nothing transmitted beyond market data.
 - Room: `ai_summaries` — the cache **is** the primary cost control, not a
   performance nicety.
 - Cloud Function relay verifying the Play purchase token; consumable credit
-  packs; anonymous Firebase Auth for the balance.
+  packs; **Firebase Auth via Google Sign-In** for the balance — not
+  anonymous, decided 2026-08-28, so a balance survives a reinstall.
 - Prompt construction stays in `core/` on-device. The function is a thin
   verified relay, not a second implementation.
 - **Credit pack: 10 for $0.99** — decided 2026-08-28, measurement below.
