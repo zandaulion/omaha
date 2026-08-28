@@ -17,3 +17,7 @@ android/local.properties
 android/.kotlin/
 android/probe/build/
 android/data/build/
+
+# Firebase — names the project, has no reason to be public
+android/app/google-services.json
+.firebase/

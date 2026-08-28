@@ -7,12 +7,13 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
-    "test": "node --test \"core/**/*.test.js\" \"test/**/*.test.js\"",
+    "test": "node --test \"core/**/*.test.js\" \"test/**/*.test.js\" \"functions/src/**/*.test.js\"",
     "test:engine": "cd android && ./gradlew :engine:test",
     "verify": "npm test && npm run test:engine",
     "prompt": "node scripts/dump-prompt.mjs",
     "bundle:core": "node tools/bundle-core.mjs",
-    "tokens": "node tools/gen-tokens.mjs"
+    "tokens": "node tools/gen-tokens.mjs",
+    "bundle:functions": "node tools/bundle-functions.mjs"
   },
   "license": "GPL-3.0-or-later",
   "repository": {

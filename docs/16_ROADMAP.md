@@ -542,15 +542,59 @@ No server, and nothing transmitted beyond market data.
 > compiles; **it has not yet been run**, since running it needs a connected
 > device or emulator and this session had neither. Worth doing before phase 6.
 
-### Phase 6 — Paid AI (doc 13 step 6)
+### Phase 6 — Paid AI (doc 13 step 6) — **backend started 2026-08-28**
 
 - Room: `ai_summaries` — the cache **is** the primary cost control, not a
   performance nicety.
 - Cloud Function relay verifying the Play purchase token; consumable credit
   packs; **Firebase Auth via Google Sign-In** for the balance — not
   anonymous, decided 2026-08-28, so a balance survives a reinstall.
-- Prompt construction stays in `core/` on-device. The function is a thin
-  verified relay, not a second implementation.
+- **The relay builds the prompt, not the client** — decided 2026-08-28,
+  refining "prompt construction stays in `core/` on-device." The client sends
+  structured stock data and an optional thesis, not prompt text; the relay
+  calls the identical `core/analysis/prompt.js` — now via
+  `server/gemini-client.js`, imported a third place with zero duplication —
+  server-side. Still true that there is one implementation; no longer true
+  that Android is the one that runs it. Chosen because a relay that forwards
+  client-supplied prompt text verbatim is a relay that will forward anything
+  a modified client sends it, spending the project's Gemini quota on whatever
+  that is — a real cost-control gap for a paywall whose whole stated purpose
+  (doc 13 §7) is cost control. A relay that only accepts a scored-stock shape
+  cannot be asked an arbitrary question.
+
+**Built so far** — the whole server-side relay, none of it yet exercised
+against a live Firebase project:
+
+- `server/gemini-client.js` — `callGemini`, split out of `server/gemini.js`
+  so importing it never touches the PWA's SQLite `db.js`. The PWA's own
+  caching now wraps this rather than duplicating it.
+- `functions/src/` — three callables. `getAiSummary` (no auth, reads the
+  shared-by-ticker cache), `generateAiSummary` (Google-Sign-In required,
+  spends and refunds-on-failure a credit transactionally), `redeemPurchase`
+  (verifies a Play purchase via the Play Developer API, credits idempotently
+  by `orderId`).
+- `functions/src/products.js`, `play-verify.js`, `cache-key.js` — the parts
+  small and pure enough to unit-test without an emulator, and tested: 20
+  assertions, `npm test`, no network, no Firestore.
+- `tools/bundle-functions.mjs` — inlines the relay's relative imports into
+  `functions/lib/index.js` for deploy, leaving `firebase-admin`,
+  `firebase-functions` and `googleapis` external. Mirrors `bundle-core.mjs`;
+  `test/functions-bundle.test.js` gates drift the same way.
+- `firestore.rules` — denies all client access outright. Every read and
+  write goes through the callables above, which run with Admin privileges
+  the rules do not apply to; there is nothing to grant a client.
+- `docs/17_AI_RELAY_DEPLOYMENT.md` — the manual setup runbook: Firebase
+  project, Google Sign-In fingerprints, the Play Developer API service
+  account grant, the two Play Console products with the consumable /
+  non-consumable warning in bold, deploy commands. Every step there needs
+  credentials this assistant does not have, the same reason the PWA is
+  deployed by hand.
+
+**Not yet built:** anything on the Android side — Play Billing wiring,
+Firebase Auth, the `ai_summaries` Room table, the AI tab itself. The relay
+has no caller yet. **Not yet verified by anything:** the actual Firestore
+transactions and the actual Play Developer API call, since neither can run
+in this repository's test environment — see doc 17 §7.
 - **Credit pack: 10 for $0.99** — decided 2026-08-28, measurement below.
 - The phase 1 notes toggle must be honoured on this path too.
 
