@@ -106,17 +106,40 @@ Paste the same key already configured on the PWA's `.env`. One key, two
 hosts — `functions/src/index.js` imports the identical `callGemini` the PWA
 uses, so there is no second key to keep in sync, only the one to paste twice.
 
-## 5. Play Developer API access, for the relay to verify purchases
+## 5. Deploy
+
+Moved ahead of the two Play Console steps that follow — both of those need to
+know the relay's own service-account identity, and the only reliable way to
+know it is to have deployed once and looked. Nothing about deploying itself
+needs Play Console configured first; the code does not touch Play at all
+until someone actually calls `redeemPurchase`.
+
+```
+cd functions && npm install && cd ..
+npm run bundle:functions
+firebase deploy --only functions,firestore:rules
+```
+
+`firebase.json`'s `predeploy` hook runs the bundler automatically, so the
+explicit `npm run bundle:functions` above is a local sanity check rather than
+a required step — but running it by hand first means a stale bundle shows up
+before the deploy does, not during it.
+
+`firestore.rules` denies all client access outright — every read and write
+goes through the three callables in `functions/`, running with Admin SDK
+privileges the rules do not apply to. There is nothing to grant a client here,
+by design.
+
+## 6. Play Developer API access, for the relay to verify purchases
 
 The relay authenticates to the Play Developer API as its own Cloud Functions
 runtime service account — deliberately not a downloaded JSON key (see
 `functions/src/billing.js`'s header for why: nothing to leak, nothing to
 rotate).
 
-1. Deploy once first (§7 below) so the function's service account exists —
-   its email is on the function's details page in the Firebase or GCP
-   console, of the form
-   `<project-id>@appspot.gserviceaccount.com` or a dedicated per-function
+1. Now that §5 has deployed once, find that service account's email — the
+   function's details page in the Firebase or GCP console names it, of the
+   form `<project-id>@appspot.gserviceaccount.com` or a dedicated per-function
    identity, depending on how this project's Cloud Functions generation
    assigns them. Confirm the exact email there rather than assuming the
    pattern above; it has differed between Cloud Functions generations before.
@@ -127,7 +150,7 @@ rotate).
    read and acknowledge, in the API's own terms); Play Console's own UI names
    these more casually and that wording is not worth pinning here.
 
-## 6. The two Play Store products
+## 7. The two Play Store products
 
 Play Console → Monetize → Products → **In-app products** (or **One-time
 products**, depending on which UI generation the console shows — see
@@ -149,24 +172,6 @@ The IDs above are what `functions/src/products.js` already expects. If a
 different ID is used in Play Console, update that file to match before
 deploying — a mismatch here is silent until someone actually buys or claims
 one.
-
-## 7. Deploy
-
-```
-cd functions && npm install && cd ..
-npm run bundle:functions
-firebase deploy --only functions,firestore:rules
-```
-
-`firebase.json`'s `predeploy` hook runs the bundler automatically, so the
-explicit `npm run bundle:functions` above is a local sanity check rather than
-a required step — but running it by hand first means a stale bundle shows up
-before the deploy does, not during it.
-
-`firestore.rules` denies all client access outright — every read and write
-goes through the three callables in `functions/`, running with Admin SDK
-privileges the rules do not apply to. There is nothing to grant a client here,
-by design.
 
 ## 8. Verifying it actually works
 
