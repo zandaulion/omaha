@@ -1,0 +1,21 @@
+{
+  "name": "omaha-functions",
+  "private": true,
+  "type": "module",
+  "description": "The Cloud Function relay for Pocket Omaha's paid AI feature (docs/16_ROADMAP.md phase 6). Deployed as `functions/index.js`, built from `functions/src/` by `tools/bundle-functions.mjs` so its imports into `core/` and `server/gemini-client.js` are inlined into a single self-contained file — Firebase's own deploy step only uploads this directory, not the rest of the monorepo.",
+  "main": "lib/index.js",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "test": "node --test src/*.test.js",
+    "build": "node ../tools/bundle-functions.mjs",
+    "deploy": "npm run build && firebase deploy --only functions"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "firebase-admin": "^13.0.0",
+    "firebase-functions": "^6.0.0",
+    "googleapis": "^144.0.0"
+  }
+}

@@ -1,24 +1,27 @@
-import dotenv from 'dotenv';
 import { db } from './db.js';
 
-dotenv.config();
-
 /**
- * Pocket Omaha — Gemini Fundamental & Moat Analysis Engine
- * Sends comprehensive stock KPIs, computed scores (Altman Z, Piotroski, ROIC, DCF),
- * 12-point checklist, and trends to Google Gemini to receive a structured
- * Warren Buffett / Charlie Munger style summary, moat breakdown, and actionable conclusion.
+ * Pocket Omaha — Gemini analysis, cached for the PWA.
+ *
+ * The actual Gemini call lives in `gemini-client.js`, with no storage
+ * attached — this file adds only what is specific to the PWA host: a single
+ * shared SQLite row per ticker, since the PWA serves one household from one
+ * process. `functions/src/analyze.js` (the Cloud Function relay) imports
+ * `callGemini` from `gemini-client.js` directly rather than from here, so
+ * that importing it never pulls in a local database file a Cloud Function
+ * has no use for.
  */
 
-const ENDPOINT_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/';
+import { callGemini, getGeminiApiKey, getGeminiModel } from './gemini-client.js';
 
-export function getGeminiApiKey() {
-  return (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '').trim();
-}
-
-export function getGeminiModel() {
-  return (process.env.GEMINI_MODEL || 'gemini-3.7-flash').trim();
-}
+// Re-exported so every existing import site — the route, the prompt-dumping
+// script, the cost-measurement script — keeps working unchanged.
+export { getGeminiApiKey, getGeminiModel };
+export {
+  buildComprehensivePayload,
+  buildPrompt,
+  RESPONSE_SCHEMA
+} from './gemini-client.js';
 
 /**
  * Retrieve cached AI summary from SQLite
@@ -56,108 +59,14 @@ export function saveCachedAISummary(ticker, summary) {
   }
 }
 
-import {
-  buildComprehensivePayload,
-  buildPrompt,
-  RESPONSE_SCHEMA
-} from '../core/analysis/prompt.js';
-
-// Re-exported so the prompt-dumping script and the route keep one import site.
-export { buildComprehensivePayload, buildPrompt, RESPONSE_SCHEMA };
-
 /**
- * Generate in-depth Gemini analysis
+ * Generate in-depth Gemini analysis for the PWA, and cache it in SQLite.
+ *
+ * Thin on purpose: `callGemini` does the actual work. This adds only what is
+ * specific to the PWA host.
  */
 export async function generateStockAISummary(stock, thesis = null) {
-  const apiKey = getGeminiApiKey();
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY is not configured on the server. Please provide a valid Gemini API key.');
-  }
-
-  const model = getGeminiModel();
-
-  const promptText = buildPrompt(stock, thesis);
-
-  const requestBody = {
-    contents: [{ parts: [{ text: promptText }] }],
-    generationConfig: {
-      responseMimeType: 'application/json',
-      // Enforced server-side, so the shape cannot come back malformed.
-      responseSchema: RESPONSE_SCHEMA,
-      temperature: 0.2,
-      // Thinking was previously disabled outright. This is a reasoning task
-      // over ~2,500 tokens of financial data — weighing partial measurements
-      // against each other is exactly what the budget buys.
-      thinkingConfig: { thinkingBudget: 4096 },
-      maxOutputTokens: 16384
-    }
-  };
-
-  const url = `${ENDPOINT_BASE}${encodeURIComponent(model)}:generateContent`;
-
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-goog-api-key': apiKey
-    },
-    body: JSON.stringify(requestBody),
-    signal: AbortSignal.timeout(35000)
-  });
-
-  if (!res.ok) {
-    let errorDetail = `Gemini API returned status ${res.status}`;
-    try {
-      const errJson = await res.json();
-      if (errJson.error?.message) {
-        errorDetail = errJson.error.message;
-      }
-    } catch (e) {}
-    throw new Error(`Gemini upstream error: ${errorDetail}`);
-  }
-
-  const data = await res.json();
-  const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!rawText) {
-    throw new Error('Gemini returned an empty response. Please try again.');
-  }
-
-  let parsed = null;
-  try {
-    parsed = JSON.parse(rawText);
-  } catch (err) {
-    try {
-      // Belt and braces: the schema should prevent a code fence, but a
-      // truncated or wrapped body should still fail with a usable message
-      // rather than a bare SyntaxError.
-      parsed = JSON.parse(rawText.replace(/```json\s*|\s*```/g, '').trim());
-    } catch {
-      throw new Error(
-        'Gemini returned a response that could not be parsed as JSON. Try again.'
-      );
-    }
-  }
-
-  const result = {
-    ticker: stock.ticker,
-    name: stock.name,
-    model,
-    generatedAt: new Date().toISOString(),
-    // Ties the analysis to the filing period it was written against, so a
-    // cached summary can be spotted as stale once new fundamentals land.
-    fiscalPeriodEnd: stock.summary?.metrics?.fiscalPeriodEnd || null,
-    priceAtGeneration: stock.price ?? null,
-    // Whether this analysis was written with the user's own notes in front of
-    // it. Recorded rather than inferred: the preference can be changed after
-    // the fact, and a cached summary must still be able to say what it was
-    // actually built from. `thesis` is null both when the preference is off
-    // and when nothing has been written, and in both cases nothing personal
-    // left the device — which is exactly what this flag claims.
-    includedNotes: Boolean(thesis),
-    currency: stock.currency || 'USD',
-    ...parsed
-  };
-
+  const result = await callGemini(stock, thesis);
   saveCachedAISummary(stock.ticker, result);
   return result;
 }

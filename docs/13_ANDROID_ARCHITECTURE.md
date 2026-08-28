@@ -160,15 +160,20 @@ omaha/
 │   └── gen-tokens.mjs       # emits web/tokens.css + Tokens.kt
 ├── server/                  # PWA host: express, sqlite, auth, push
 ├── web/                     # PWA client, unchanged
-└── android/
-    ├── core-js/             # core/ as assets + QuickJS engine + fetch bridge
-    ├── data/                # Room, DataStore, import/export
-    ├── design/              # generated Tokens.kt + shared composables
-    ├── work/                # WorkManager sweep + local notifications
-    ├── billing/             # Play Billing + entitlement
-    ├── ai/                  # Cloud Function client
-    └── app/                 # Compose UI — four views
+├── functions/               # Cloud Function relay (§7) — src/, lib/ (built)
+└── android/                 # see below — this subtree is the original plan
 ```
+
+**The `android/` subtree above is what step 1 planned, not what steps 2–5
+built.** The real module names are `:app`, `:design`, `:engine`,
+`:engine-android`, `:data`, `:selftest`, `:probe` — `core-js` became
+`:engine`/`:engine-android` once the QuickJS binding turned out to need a
+bundled `core/dist/` rather than raw assets (§20), `work/` and `billing/`
+never became separate modules (the alert sweep lives in `:app`'s own
+`alerts/` package; billing does not exist yet — phase 6's next slice).
+Left uncorrected here as a record of the original plan rather than rewritten
+to match; `docs/16_ROADMAP.md`'s phase notes are the current, load-bearing
+account of what actually shipped in each module.
 
 A submodule or published package would put a version-skew window between a
 scoring change and its arrival in each consumer. That window is precisely the
@@ -239,8 +244,16 @@ the budget.
   app account, so requirement 1 holds.
 * The existing on-device `ai_summaries` cache is the primary cost control and
   must be preserved.
-* Prompt construction stays in `core/` on-device; the function is a thin
-  verified relay, not a second implementation.
+* **Prompt construction runs in the relay, not on-device** — refined
+  2026-08-28 from an earlier "stays on-device" framing. The client sends
+  structured stock data and an optional thesis; `functions/src/analyze.js`
+  calls the identical `core/analysis/prompt.js` server-side, via
+  `server/gemini-client.js` — still one implementation, just no longer the
+  one Android runs. A relay that instead forwarded client-supplied prompt
+  text verbatim would forward anything a modified client sent it, which is a
+  cost-control gap for a paywall whose stated purpose is exactly that. A
+  relay that only accepts a scored-stock shape cannot be asked an arbitrary
+  question. See `docs/16_ROADMAP.md` phase 6 for what is actually built.
 * **The app stays fully anonymous unless a credit is actually spent — decided
   2026-08-28.** Everything except phase 6 already has no account concept
   (watchlist, scoring, DCF, thesis, alerts all run with no sign-in, matching

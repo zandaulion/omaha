@@ -1,0 +1,21 @@
+rules_version = '2';
+
+// Pocket Omaha — Firestore access rules.
+//
+// Deny everything, deliberately absolute. No client — Android or otherwise —
+// ever reads or writes Firestore directly. Every piece of data here (credit
+// balances, the AI cache, redeemed-purchase records) is read and written by
+// the Cloud Functions in functions/, running with Admin SDK privileges that
+// bypass these rules entirely. That is not an oversight to fix later; it is
+// the design. A client that could write its own `users/{uid}.credits` could
+// set it to anything, and a per-field rule trying to prevent that (allow
+// updating other fields, deny updating credits) is exactly the kind of rule
+// that looks right until someone finds the one operation it forgot to cover.
+// "The client never touches this collection" has no such gap.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
