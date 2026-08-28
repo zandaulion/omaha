@@ -647,7 +647,7 @@ var getAiSummary = onCall(async (request) => {
   const doc = await getFirestore().doc(location.path).get();
   return { summary: doc.exists ? doc.data() : null };
 });
-var generateAiSummary = onCall(async (request) => {
+var generateAiSummary = onCall({ secrets: ["GEMINI_API_KEY"] }, async (request) => {
   const uid = request.auth?.uid;
   if (!uid) throw new HttpsError("unauthenticated", "sign in to generate an analysis");
   const ticker = String(request.data?.ticker || "").trim();

@@ -44,8 +44,17 @@ export const getAiSummary = onCall(async (request) => {
  * summary out. Requires an authenticated (Google Sign-In) caller and spends
  * one credit — refunded if the Gemini call itself fails, since the credit is
  * for a successful analysis, not for an attempt.
+ *
+ * `secrets: ['GEMINI_API_KEY']` is not decoration. A function does not get a
+ * secret injected into `process.env` just because it exists in Secret
+ * Manager — only a function that names it here does. Without this,
+ * `callGemini` would read an empty string and fail every call with "Gemini
+ * API key not configured," despite `firebase functions:secrets:set` having
+ * succeeded. `getAiSummary` and `redeemPurchase` deliberately do not declare
+ * it: neither calls Gemini, and a secret only reaches the functions that ask
+ * for it.
  */
-export const generateAiSummary = onCall(async (request) => {
+export const generateAiSummary = onCall({ secrets: ['GEMINI_API_KEY'] }, async (request) => {
   const uid = request.auth?.uid;
   if (!uid) throw new HttpsError('unauthenticated', 'sign in to generate an analysis');
 
