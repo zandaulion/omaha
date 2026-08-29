@@ -1,10 +1,14 @@
 package com.zandaulion.omaha.app.ui
 
 import android.content.Context
+import com.zandaulion.omaha.data.AiRepository
 import com.zandaulion.omaha.data.AlertEngine
 import com.zandaulion.omaha.data.AlertRepository
+import com.zandaulion.omaha.data.AuthRepository
+import com.zandaulion.omaha.data.BillingRepository
 import com.zandaulion.omaha.data.OmahaDatabaseFactory
 import com.zandaulion.omaha.data.OmahaStore
+import com.zandaulion.omaha.data.RelayRepository
 import com.zandaulion.omaha.data.RoomAlertStore
 import com.zandaulion.omaha.data.RoomStockStore
 import com.zandaulion.omaha.data.StockDetailRepository
@@ -38,7 +42,11 @@ object OmahaEngine {
         val theses: ThesisRepository,
         val settings: com.zandaulion.omaha.data.AppSettings,
         val backup: BackupIo,
-        val alerts: AlertRepository
+        val alerts: AlertRepository,
+        val auth: AuthRepository,
+        val billing: BillingRepository,
+        val relay: RelayRepository,
+        val ai: AiRepository
     )
 
     @Synchronized
@@ -64,12 +72,17 @@ object OmahaEngine {
             RoomAlertStore(store.alerts)
         )
 
+        val details = StockDetailRepository(engine)
+        val theses = ThesisRepository(store.personalData)
+        val settings = com.zandaulion.omaha.data.AppSettings(store.appSettings)
+        val relay = RelayRepository()
+
         return Handles(
             store = store,
             watchlists = WatchlistRepository(store.personalData, engine),
-            details = StockDetailRepository(engine),
-            theses = ThesisRepository(store.personalData),
-            settings = com.zandaulion.omaha.data.AppSettings(store.appSettings),
+            details = details,
+            theses = theses,
+            settings = settings,
             backup = BackupIo(
                 BackupEngine.fromSource(
                     app.assets.open("core/${BackupEngine.BUNDLE_PATH}")
@@ -77,7 +90,11 @@ object OmahaEngine {
                 ),
                 PersonalDataStore(store.personalData)
             ),
-            alerts = AlertRepository(store.alerts, store.personalData, alertEngine)
+            alerts = AlertRepository(store.alerts, store.personalData, alertEngine),
+            auth = AuthRepository(app),
+            billing = BillingRepository(app),
+            relay = relay,
+            ai = AiRepository(details, theses, settings, relay)
         )
     }
 }

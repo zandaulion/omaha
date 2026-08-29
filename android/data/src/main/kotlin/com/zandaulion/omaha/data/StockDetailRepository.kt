@@ -42,6 +42,30 @@ class StockDetailRepository(private val engine: StockEngine) {
             parse(root["data"]!!.jsonObject)
         }
 
+    /**
+     * The engine's scored-stock JSON, verbatim — the same `data` envelope
+     * [detail] parses into [StockDetail], but undigested. `core/analysis/prompt.js`
+     * expects exactly this shape for its `stock` argument, and re-deriving it
+     * from [StockDetail] would be a second, lossier definition of what [detail]
+     * already discards fields from (only the deep dive's own fields survive
+     * [parse] — [StockDetail] was never meant to round-trip).
+     */
+    suspend fun rawJson(ticker: String, forceRefresh: Boolean = false): String =
+        withContext(Dispatchers.IO) {
+            val root = json.parseToJsonElement(engine.stock(ticker, forceRefresh)).jsonObject
+
+            val ok = root["ok"]?.jsonPrimitive?.contentOrNull.let { it == "true" }
+            if (!ok) {
+                val err = root["error"]?.jsonObject
+                throw StockUnavailable(
+                    kind = err?.text("kind") ?: "unavailable",
+                    message = err?.text("message") ?: "Could not load $ticker."
+                )
+            }
+
+            root["data"]!!.jsonObject.toString()
+        }
+
     private fun parse(d: JsonObject): StockDetail {
         val summary = d["summary"]?.jsonObject
         val metrics = summary?.get("metrics")?.jsonObject

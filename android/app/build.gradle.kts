@@ -2,6 +2,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("com.google.gms.google-services")
 }
 
 /**
@@ -22,8 +23,8 @@ android {
         applicationId = "com.zandaulion.omaha"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1"
+        versionCode = 4
+        versionName = "0.4"
     }
 
     sourceSets {
@@ -83,14 +84,13 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.10.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 
-    // Phase 6 (docs/16_ROADMAP.md), dependency only so far — no purchase flow
-    // wired to it yet. Added now because it's what actually satisfies Play
-    // Console's "add the BILLING permission to your APK" gate on the
-    // one-time-products page: the library's own manifest declares
-    // `com.android.vending.BILLING`, merged in automatically. Google requires
-    // v8+ for any upload from 2026-08-31; pinned to the current 9.1.0 rather
-    // than an older cached version.
-    implementation("com.android.billingclient:billing-ktx:9.1.0")
+    // AuthRepository, RelayRepository and BillingRepository — Firebase Auth,
+    // Cloud Functions, Credential Manager and Play Billing — all live in
+    // :data (see its build.gradle.kts). This module only needs the
+    // com.google.gms.google-services *plugin*, applied above, since
+    // google-services.json lives here; Firebase's SDK is a process-wide
+    // singleton once initialised, reachable from :data without either module
+    // repeating the other's dependency declarations.
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

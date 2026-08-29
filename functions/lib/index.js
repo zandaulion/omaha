@@ -658,13 +658,14 @@ var generateAiSummary = onCall({ secrets: ["GEMINI_API_KEY"] }, async (request) 
   }
   const db = getFirestore();
   const balanceRef = db.doc(`users/${uid}`);
-  await db.runTransaction(async (tx) => {
+  const afterSpend = await db.runTransaction(async (tx) => {
     const snap = await tx.get(balanceRef);
     const credits = snap.exists ? Number(snap.data().credits || 0) : 0;
     if (credits < 1) {
       throw new HttpsError("resource-exhausted", "no credits remaining");
     }
     tx.set(balanceRef, { credits: credits - 1 }, { merge: true });
+    return credits - 1;
   });
   let result;
   try {
@@ -680,7 +681,7 @@ var generateAiSummary = onCall({ secrets: ["GEMINI_API_KEY"] }, async (request) 
   if (location.scope !== "unreachable") {
     await db.doc(location.path).set(result);
   }
-  return { summary: result };
+  return { summary: result, credits: afterSpend };
 });
 
 // src/billing.js
@@ -818,11 +819,22 @@ var claimFreeGrant = onCall3(async (request) => {
   return { credits: newBalance, granted, productLabel: FREE_GRANT.label };
 });
 
+// src/balance.js
+import { HttpsError as HttpsError4, onCall as onCall4 } from "firebase-functions/v2/https";
+import { getFirestore as getFirestore4 } from "firebase-admin/firestore";
+var getBalance = onCall4(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError4("unauthenticated", "sign in to check your balance");
+  const snap = await getFirestore4().doc(`users/${uid}`).get();
+  return { credits: Number(snap.data()?.credits || 0) };
+});
+
 // src/index.js
 initializeApp();
 export {
   claimFreeGrant,
   generateAiSummary,
   getAiSummary,
+  getBalance,
   redeemPurchase
 };
