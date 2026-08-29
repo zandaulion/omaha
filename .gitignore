@@ -24,3 +24,8 @@ android/app/release/
 android/app/google-services.json
 .firebase/
 .firebaserc
+
+# IDE window/tab layout — per-machine, not project config. The rest of
+# .idea/ (vcs.xml, misc.xml, etc.) stays tracked deliberately.
+.idea/workspace.xml
+android/.idea/workspace.xml
