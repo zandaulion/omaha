@@ -83,5 +83,14 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.10.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 
+    // Phase 6 (docs/16_ROADMAP.md), dependency only so far — no purchase flow
+    // wired to it yet. Added now because it's what actually satisfies Play
+    // Console's "add the BILLING permission to your APK" gate on the
+    // one-time-products page: the library's own manifest declares
+    // `com.android.vending.BILLING`, merged in automatically. Google requires
+    // v8+ for any upload from 2026-08-31; pinned to the current 9.1.0 rather
+    // than an older cached version.
+    implementation("com.android.billingclient:billing-ktx:9.1.0")
+
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
