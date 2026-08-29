@@ -180,14 +180,19 @@ rotate).
    automatic grant for `GEMINI_API_KEY` names the exact account), or it's on
    IAM → Service Accounts in the GCP console. Superseded here what an earlier
    draft of this doc only guessed at.
-2. Play Console → **Settings** (left sidebar, gear or "Settings" label
-   depending on console version) → **Developer account** → **API access**.
-   Link the Google Cloud project here if it isn't linked already.
-3. The grant itself does not happen on the API access page. Play Console
-   treats a service account like an invited team member: **Users and
-   permissions** → **Invite new users** → paste the service account's email
-   (§7.1's `<project-number>-compute@developer.gserviceaccount.com`) → assign
-   permissions.
+2. **Confirmed against a real console, 2026-08-29: there is no separate
+   "API access" / link-the-GCP-project page any more.** An earlier draft of
+   this doc described one; current Play Console has no such item in
+   Settings or Developer account. Inviting the service account's email is
+   the entire mechanism — Play Console → **Users and permissions** →
+   **Invite new users** → paste the service account's email (§7.1's
+   `<project-number>-compute@developer.gserviceaccount.com`) → assign
+   permissions. Play resolves which GCP project it belongs to from the
+   address itself; there is nothing to link beforehand.
+3. Service accounts don't receive or click an email confirmation the way a
+   human invitee does — the row shows **Active** immediately rather than
+   sitting in a pending state. That is the confirmation the grant took,
+   without a separate verification step.
 4. **Confirmed against a real screen, 2026-08-29.** Check both:
    - **"View financial data, orders, and cancellation survey responses"** —
      its own description says it directly: "access the Purchases API." Covers
