@@ -2,14 +2,18 @@
  * Pocket Omaha — turning a Play purchase into credits.
  *
  * One callable, `redeemPurchase`, called after `BillingClient` reports a
- * successful purchase — for the paid 10-pack and for the free 5-credit grant
- * alike, since both are Play products now (docs/13_ANDROID_ARCHITECTURE.md
- * §7) and both go through the identical verify-then-credit path. The only
- * thing that differs between them is which row of `products.js` the product
- * ID resolves to — and, since 2026-08-29, that difference now does real work
- * at the very end of this function: Play Console's one-time-products model
- * dropped the "consumable" product type entirely, so whether a purchase can
- * be repurchased is decided by which API call is made here, `consume` or
+ * successful purchase of `omaha_credits_10`, the one real Play product this
+ * app has. **The free 5-credit grant used to go through this same path —
+ * see `free-grant.js`'s header, 2026-08-29, for why it does not any more.**
+ * `productFor` still resolves against `PRODUCTS`, not against the free
+ * grant, so an attempt to redeem the old free-grant product ID here now
+ * fails the same way an unrecognised ID always has, rather than silently
+ * succeeding against stale logic.
+ *
+ * Since 2026-08-29, `product.consumable` does real work at the very end of
+ * this function: Play Console's one-time-products model dropped the
+ * "consumable" product type entirely, so whether a purchase can be
+ * repurchased is decided by which API call is made here, `consume` or
  * `acknowledge`, not by anything configured in Play Console.
  *
  * Nothing here trusts the client's word for what was purchased. The purchase

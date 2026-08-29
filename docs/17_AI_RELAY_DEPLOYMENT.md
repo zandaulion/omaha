@@ -205,7 +205,7 @@ rotate).
      "orders in general," so this is the correct practical choice, not merely
      an acceptable one.
 
-## 8. The two Play Store products
+## 8. The one Play Store product
 
 Play Console → Monetize → Products → **In-app products** (or **One-time
 products**, depending on which UI generation the console shows — see
@@ -214,19 +214,19 @@ products**, depending on which UI generation the console shows — see
 | Product ID | Type | Price | Credits |
 |---|---|---|---|
 | `omaha_credits_10` | **Consumable** | $0.99 | 10 |
-| `omaha_credits_free_5` | **Non-consumable** | $0.00 | 5 |
 
-**The type column is the one thing on this page that must not be gotten
-backwards.** A consumable priced at $0.00 can be bought, consumed and bought
-again by the same account with no limit — unlimited free credits, the exact
-failure the non-consumable type exists to prevent. `functions/src/products.js`
-encodes which is which on the relay's side; this table is where that gets
-encoded on Play's.
-
-The IDs above are what `functions/src/products.js` already expects. If a
+The ID above is what `functions/src/products.js` already expects. If a
 different ID is used in Play Console, update that file to match before
-deploying — a mismatch here is silent until someone actually buys or claims
-one.
+deploying — a mismatch here is silent until someone actually buys it.
+
+**There used to be a second row here, `omaha_credits_free_5` at $0.00 —
+removed 2026-08-29.** Play Console's one-time-products system refuses a
+$0.00 price outright: every region tried while actually attempting to create
+it enforced a nonzero floor (USD 0.05, DZD 7.90, and others). Nothing to
+configure in Play Console for the free grant any more — `claimFreeGrant`
+(`functions/src/free-grant.js`) grants it directly in Firestore instead, on
+the first authenticated call from a given account. See
+`docs/13_ANDROID_ARCHITECTURE.md` §7 for the full reasoning.
 
 ## 9. Verifying it actually works
 
@@ -238,16 +238,21 @@ code calls it:
   Functions testing tool, or `curl` against its HTTPS trigger URL with
   `{"data": {"ticker": "AAPL"}}` — expect `{"result": {"summary": null}}` on
   a fresh project with nothing cached yet.
-- **`generateAiSummary`** and **`redeemPurchase`** both require a real
-  Firebase Auth ID token, which needs a signed-in Google account — these are
-  realistically only testable once the Android client exists to produce one,
-  or via the Firebase emulator suite with the Auth emulator's token-minting
-  shortcuts.
+- **`generateAiSummary`**, **`redeemPurchase`** and **`claimFreeGrant`** all
+  require a real Firebase Auth ID token, which needs a signed-in Google
+  account — these are realistically only testable once the Android client
+  exists to produce one, or via the Firebase emulator suite with the Auth
+  emulator's token-minting shortcuts. `claimFreeGrant` takes no other
+  arguments, so a minted token is the entire test input once the emulator can
+  produce one.
 
-The three unit-testable pieces — `functions/src/products.js`,
-`functions/src/play-verify.js`, `functions/src/cache-key.js` — already have
-coverage that runs with `npm test`, no emulator, no deployment. What is not
-yet verified by anything is the actual Firestore transactions and the actual
-Play Developer API call, since neither can run in this repository's test
-environment. Worth an emulator-based integration pass before this carries
-real money.
+The unit-testable pieces — `functions/src/products.js`,
+`functions/src/play-verify.js`, `functions/src/cache-key.js`,
+`functions/src/settlement.js` — already have coverage that runs with
+`npm test`, no emulator, no deployment. What is not yet verified by anything
+is the actual Firestore transactions in `billing.js` and `free-grant.js`, and
+the actual Play Developer API call, since neither can run in this
+repository's test environment. Worth an emulator-based integration pass
+before this carries real money — `claimFreeGrant`'s double-claim guard
+(§8's revised design) is exactly the kind of thing that reads as correct and
+fails under real concurrency, and an emulator is what would actually show that.

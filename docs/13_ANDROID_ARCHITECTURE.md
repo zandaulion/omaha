@@ -309,6 +309,30 @@ the budget.
   > product is created in Play Console and again in the relay's own handling
   > of the purchase type.
   >
+  > **Superseded, found live 2026-08-29: Play Console will not accept $0.00 at
+  > all.** Every region in the current one-time-products system carries a
+  > nonzero price floor (USD 0.05, DZD 7.90, and so on) — confirmed against a
+  > real console attempting to create exactly this product, not against
+  > documentation, since neither of Play's help pages for the new system
+  > states the floor explicitly. The entire mechanism above — "Play refuses a
+  > second purchase of a non-consumable" — depends on the grant being a real
+  > Play product, and it cannot be one at $0.00.
+  >
+  > Fixed by moving the guarantee out of Play entirely:
+  > `functions/src/free-grant.js`'s `claimFreeGrant` callable grants the
+  > credits directly in Firestore, in one atomic transaction keyed to
+  > `request.auth.uid`, the first time that account claims it. This is *not*
+  > a return to the device-fingerprint or anonymous-counter ideas rejected
+  > above — those were rejected specifically because the identity behind them
+  > did not survive a reinstall. `request.auth.uid` here is the Google-Sign-In
+  > UID from the switch earlier the same day (this section, above), which
+  > does survive one, a factory reset, and a new phone, exactly as the
+  > Play-product version did. The only property genuinely lost is reusing the
+  > Play Developer API as an external arbiter of "already granted"; Firestore's
+  > own transaction is the sole guarantee now. The ceiling below is unchanged
+  > either way — it was never about Play, it was always about the Google
+  > account.
+  >
   > The ceiling this does not remove: a new Google account is a new grant.
   > That is real friction — Google's own account-creation verification and
   > velocity limits sit in front of it — and it is the same limit every app

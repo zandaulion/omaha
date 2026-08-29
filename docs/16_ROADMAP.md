@@ -636,18 +636,18 @@ The only phase requiring infrastructure. Phases 1–5 ship without any.
 > "comfortable" once the rate doubles, for a price a family will not think
 > twice about.
 >
-> **5 free credits on first launch — decided 2026-08-28.** $0.065 per new
-> install today, ~$0.13 after the January rate change — trivial at this
-> project's scale. Delivered as a **non-consumable Play Store product priced
-> at $0.00**, not a server-side counter: Play refuses a second purchase of a
-> non-consumable already owned by an account, which is the entire "once per
-> user" guarantee and needs no custom code to enforce. Tied to the Google
-> account rather than the device, so it survives more than a reinstall — and
-> it reuses the same purchase-verification relay the paid packs need, rather
-> than adding a second mechanism. The one failure mode: configuring it as a
-> *consumable* would let the same account re-"buy" it for free indefinitely.
-> Full reasoning, including why this replaced an earlier device-fingerprint
-> proposal, in doc 13 §7.
+> **5 free credits on first launch — decided 2026-08-28, mechanism revised
+> 2026-08-29.** $0.065 per new install today, ~$0.13 after the January rate
+> change — trivial at this project's scale. Originally a **non-consumable
+> Play Store product priced at $0.00**; Play Console's one-time-products
+> system turned out not to allow $0.00 at all, found live while actually
+> creating the product, in every region tried. Delivered instead by
+> `claimFreeGrant`, a Cloud Function callable that credits the account
+> directly in Firestore, one atomic transaction keyed to the Google-Sign-In
+> UID — the same "once per account, survives a reinstall" guarantee, made by
+> this project's own database instead of by Play. Full reasoning, including
+> why this replaced an earlier device-fingerprint proposal and then the
+> Play-product approach itself, in doc 13 §7.
 >
 > **The app stays anonymous unless a credit is spent, and the relay shares
 > analyses by ticker across accounts — both decided 2026-08-28.** Google
