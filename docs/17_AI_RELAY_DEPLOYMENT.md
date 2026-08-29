@@ -130,7 +130,41 @@ goes through the three callables in `functions/`, running with Admin SDK
 privileges the rules do not apply to. There is nothing to grant a client here,
 by design.
 
-## 6. Play Developer API access, for the relay to verify purchases
+## 6. Create the app in Play Console
+
+Missed in the original runbook, found while walking through it live: §8 (the
+two products) needs the app to exist — Play Console's Products page is
+per-app, there is no way to define one before the app is there — and §7's
+Play Developer API access grant needs it too, to scope the service account's
+permissions to a specific app's purchase data. Neither needs the app
+**published**; a draft is enough.
+
+Assumes a Play Console developer account already exists. If it doesn't, that
+is a separate, one-time $25 registration plus an identity-verification step
+that has gotten stricter over the last couple of years — sometimes minutes,
+sometimes days. Settle that first if it applies; nothing below can proceed
+without a developer account regardless of anything in this repository.
+
+1. Play Console → **All apps** → **Create app**.
+2. App name **Pocket Omaha** (matches `android:label` in
+   `android/app/src/main/AndroidManifest.xml`), default language, **App**
+   (not Game), **Free**. The base app has no cost; only the AI credits are an
+   in-app purchase, configured separately in §8.
+3. Accept the standard declarations (Play policies, US export laws).
+4. **Create app.** Play registers the package name as part of this flow — no
+   separate step needed, though it may prompt for it explicitly if the console's
+   current version splits that out.
+5. If Play Console separately prompts for **Android developer verification**
+   at this point, that is a newer, Google-wide identity requirement unrelated
+   to anything in this project — complete it if asked, but it is a Play
+   policy matter, not something this runbook or this assistant can help
+   with further.
+
+Nothing past this point needs the store listing, screenshots or content
+rating finished — those belong to the actual release (phase 7 of
+`docs/16_ROADMAP.md`), not to standing up the AI relay.
+
+## 7. Play Developer API access, for the relay to verify purchases
 
 The relay authenticates to the Play Developer API as its own Cloud Functions
 runtime service account — deliberately not a downloaded JSON key (see
@@ -153,7 +187,7 @@ rotate).
    read and acknowledge, in the API's own terms); Play Console's own UI names
    these more casually and that wording is not worth pinning here.
 
-## 7. The two Play Store products
+## 8. The two Play Store products
 
 Play Console → Monetize → Products → **In-app products** (or **One-time
 products**, depending on which UI generation the console shows — see
@@ -176,7 +210,7 @@ different ID is used in Play Console, update that file to match before
 deploying — a mismatch here is silent until someone actually buys or claims
 one.
 
-## 8. Verifying it actually works
+## 9. Verifying it actually works
 
 No Android client exists for this yet (docs/16_ROADMAP.md phase 6, backend
 slice) — the relay can be exercised directly once deployed, before any app
