@@ -25,6 +25,10 @@ android/app/google-services.json
 .firebase/
 .firebaserc
 
+# The release-signing keystore path and its passwords. android/keystore.properties.example
+# documents the shape; this file holds the real values and never leaves this machine.
+android/keystore.properties
+
 # IDE window/tab layout — per-machine, not project config. The rest of
 # .idea/ (vcs.xml, misc.xml, etc.) stays tracked deliberately.
 .idea/workspace.xml

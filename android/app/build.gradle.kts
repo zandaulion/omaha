@@ -1,9 +1,29 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.gms.google-services")
 }
+
+/**
+ * The actual Play Store upload keystore — `zandaulion`, at
+ * C:\Users\danie\StudioProjects\zandaulion, outside this repo. Play Console
+ * locks each app to the certificate its first upload was signed with; a
+ * release built against any other key (this module briefly fell back to the
+ * debug keystore) gets rejected at upload with a certificate-mismatch error,
+ * not a build error, so this has to be correct before `bundleRelease` runs at
+ * all. keystore.properties is gitignored — see keystore.properties.example.
+ */
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+require(keystorePropertiesFile.exists()) {
+    "android/keystore.properties is missing. Copy android/keystore.properties.example " +
+        "to android/keystore.properties and fill in the zandaulion keystore's real path " +
+        "and passwords — release builds must not silently fall back to the debug keystore."
+}
+val keystoreProperties = Properties().apply { load(FileInputStream(keystorePropertiesFile)) }
 
 /**
  * The Compose client. Doc 13 §11 step 4; `docs/16_ROADMAP.md` phase 4.
@@ -38,10 +58,19 @@ android {
         compose = true
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file(keystoreProperties.getProperty("storeFile"))
+            storePassword = keystoreProperties.getProperty("storePassword")
+            keyAlias = keystoreProperties.getProperty("keyAlias")
+            keyPassword = keystoreProperties.getProperty("keyPassword")
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 
