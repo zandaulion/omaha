@@ -180,12 +180,21 @@ rotate).
    automatic grant for `GEMINI_API_KEY` names the exact account), or it's on
    IAM → Service Accounts in the GCP console. Superseded here what an earlier
    draft of this doc only guessed at.
-2. Play Console → Setup → **API access** → link the Google Cloud project (if
-   not already linked) → grant that service account access. **The exact
-   permission names in this page have moved before and may again** — grant
-   whatever covers reading and acknowledging a purchase (`purchases.products`
-   read and acknowledge, in the API's own terms); Play Console's own UI names
-   these more casually and that wording is not worth pinning here.
+2. Play Console → **Settings** (left sidebar, gear or "Settings" label
+   depending on console version) → **Developer account** → **API access**.
+   Link the Google Cloud project here if it isn't linked already.
+3. The grant itself does not happen on the API access page. Play Console
+   treats a service account like an invited team member: **Users and
+   permissions** → **Invite new users** → paste the service account's email
+   (§7.1's `<project-number>-compute@developer.gserviceaccount.com`) → assign
+   permissions.
+4. **The exact checkbox wording has moved before and may again** — look for
+   something covering reading order/purchase state (candidates seen in
+   current Play Console: "View financial data, orders, and cancellation
+   survey responses") and something covering acknowledging or managing an
+   order, not only viewing it. Read-only access is not enough — `redeemPurchase`
+   calls `purchases.products.acknowledge`, a write. If the exact set on screen
+   is unclear, list what's actually offered rather than guessing at it.
 
 ## 8. The two Play Store products
 
