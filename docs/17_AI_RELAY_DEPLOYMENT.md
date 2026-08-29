@@ -188,13 +188,17 @@ rotate).
    permissions** → **Invite new users** → paste the service account's email
    (§7.1's `<project-number>-compute@developer.gserviceaccount.com`) → assign
    permissions.
-4. **The exact checkbox wording has moved before and may again** — look for
-   something covering reading order/purchase state (candidates seen in
-   current Play Console: "View financial data, orders, and cancellation
-   survey responses") and something covering acknowledging or managing an
-   order, not only viewing it. Read-only access is not enough — `redeemPurchase`
-   calls `purchases.products.acknowledge`, a write. If the exact set on screen
-   is unclear, list what's actually offered rather than guessing at it.
+4. **Confirmed against a real screen, 2026-08-29.** Check both:
+   - **"View financial data, orders, and cancellation survey responses"** —
+     its own description says it directly: "access the Purchases API." Covers
+     `purchases.products.get`.
+   - **"Manage orders and subscriptions"** — covers the write side,
+     `purchases.products.acknowledge`. Its description ("View orders, refund
+     orders, and cancel subscriptions") grants more than the relay actually
+     uses — `functions/src/billing.js` never refunds or cancels anything —
+     but Play Console offers no narrower checkbox between "read-only" and
+     "orders in general," so this is the correct practical choice, not merely
+     an acceptable one.
 
 ## 8. The two Play Store products
 
