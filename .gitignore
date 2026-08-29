@@ -17,6 +17,8 @@ android/local.properties
 android/.kotlin/
 android/probe/build/
 android/data/build/
+# Signed AAB/APK exported for Play Console upload — a build output, not source.
+android/app/release/
 
 # Firebase — names the project, has no reason to be public
 android/app/google-services.json

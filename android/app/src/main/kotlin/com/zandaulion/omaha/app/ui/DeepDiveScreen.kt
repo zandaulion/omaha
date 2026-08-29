@@ -42,29 +42,33 @@ import com.zandaulion.omaha.design.toTextStyle
 /**
  * The deep dive, matching `#viewDeepDive`.
  *
- * The PWA carries six sub-tabs. Overview and the checklist are built here; the
- * rest name the phase that fills them, on the same reasoning as the shell —
- * a scheduled slice reads as work remaining, "coming soon" reads as a dead end.
- *
- * Gemini is absent rather than placeholdered: it is a paid feature gated on
- * billing and a relay, which is phase 6, and a tab that cannot work even in
- * principle yet would be the wrong promise.
+ * The PWA carries six sub-tabs. All six are built now that phase 6 (the AI
+ * relay and billing) has landed — Overview, the checklist and Gemini read
+ * live data; DCF and trends work from the same scored payload.
  */
 enum class DeepDiveTab(val label: String) {
     Overview("Overview"),
     Checklist("12-Pt Checklist"),
     Trends("5Y Trends"),
     Dcf("DCF Sandbox"),
-    Thesis("My Thesis")
+    Thesis("My Thesis"),
+    Ai("Gemini")
 }
 
 @Composable
 fun DeepDiveScreen(
     state: DeepDiveUiState,
     thesis: com.zandaulion.omaha.data.Thesis?,
+    aiState: AiUiState,
+    aiCreditPackPrice: String?,
     onRetry: () -> Unit,
     onThesisChange: (com.zandaulion.omaha.data.Thesis) -> Unit,
-    onAddJournal: (String) -> Unit
+    onAddJournal: (String) -> Unit,
+    onAiSignIn: () -> Unit,
+    onAiGenerate: () -> Unit,
+    onAiClaimFreeGrant: () -> Unit,
+    onAiPurchase: () -> Unit,
+    onAiDismissError: () -> Unit
 ) {
     when (state) {
         is DeepDiveUiState.Empty -> CentredMessage(
@@ -85,7 +89,19 @@ fun DeepDiveScreen(
         )
 
         is DeepDiveUiState.Ready ->
-            Loaded(state.detail, thesis, onThesisChange, onAddJournal)
+            Loaded(
+                state.detail,
+                thesis,
+                aiState,
+                aiCreditPackPrice,
+                onThesisChange,
+                onAddJournal,
+                onAiSignIn,
+                onAiGenerate,
+                onAiClaimFreeGrant,
+                onAiPurchase,
+                onAiDismissError
+            )
     }
 }
 
@@ -93,8 +109,15 @@ fun DeepDiveScreen(
 private fun Loaded(
     stock: StockDetail,
     thesis: com.zandaulion.omaha.data.Thesis?,
+    aiState: AiUiState,
+    aiCreditPackPrice: String?,
     onThesisChange: (com.zandaulion.omaha.data.Thesis) -> Unit,
-    onAddJournal: (String) -> Unit
+    onAddJournal: (String) -> Unit,
+    onAiSignIn: () -> Unit,
+    onAiGenerate: () -> Unit,
+    onAiClaimFreeGrant: () -> Unit,
+    onAiPurchase: () -> Unit,
+    onAiDismissError: () -> Unit
 ) {
     var tab by rememberSaveable(stock.ticker) { mutableStateOf(DeepDiveTab.Overview) }
 
@@ -154,6 +177,40 @@ private fun Loaded(
                         )
                     } else {
                         ThesisSection(thesis, onThesisChange, onAddJournal)
+                    }
+                }
+            }
+            DeepDiveTab.Ai -> {
+                when (aiState) {
+                    AiUiState.Loading -> item {
+                        Card {
+                            BasicText(
+                                "Checking for a saved analysis…",
+                                style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textTertiary)
+                            )
+                        }
+                    }
+                    is AiUiState.Ready -> {
+                        item {
+                            Card {
+                                AiStatusSection(
+                                    aiState,
+                                    aiCreditPackPrice,
+                                    onAiSignIn,
+                                    onAiGenerate,
+                                    onAiClaimFreeGrant,
+                                    onAiPurchase,
+                                    onAiDismissError
+                                )
+                            }
+                        }
+                        aiState.summary?.let { summary ->
+                            item { Card { AiVerdictCard(summary) } }
+                            item { Card { AiRatingsCard(summary) } }
+                            item { Card { AiStrengthsRisksCard(summary) } }
+                            item { Card { AiBuyZoneCard(summary) } }
+                            item { Card { AiCaveatsCard(summary) } }
+                        }
                     }
                 }
             }

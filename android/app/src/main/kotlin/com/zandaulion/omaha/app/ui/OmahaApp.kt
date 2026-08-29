@@ -1,5 +1,6 @@
 package com.zandaulion.omaha.app.ui
 
+import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
@@ -102,10 +103,12 @@ fun OmahaApp(
 ) {
     var tab by rememberSaveable { mutableStateOf(OmahaTab.Watchlist) }
     val deepDive: DeepDiveViewModel = viewModel()
+    val ai: AiViewModel = viewModel()
 
     LaunchedEffect(initialTicker) {
         val ticker = initialTicker ?: return@LaunchedEffect
         deepDive.open(ticker)
+        ai.open(ticker)
         tab = OmahaTab.Scorecard
         // Cleared so returning to the app later does not re-open the same
         // company over whatever the person navigated to since.
@@ -137,6 +140,7 @@ fun OmahaApp(
                         onRetry = { vm.load() },
                         onSelect = { ticker ->
                             deepDive.open(ticker)
+                            ai.open(ticker)
                             tab = OmahaTab.Scorecard
                         },
                         onSelectList = { vm.select(it) },
@@ -148,12 +152,25 @@ fun OmahaApp(
                 OmahaTab.Scorecard -> {
                     val ui by deepDive.state.collectAsState()
                     val thesis by deepDive.thesis.collectAsState()
+                    val aiState by ai.state.collectAsState()
+                    val context = LocalContext.current
                     DeepDiveScreen(
                         state = ui,
                         thesis = thesis,
+                        aiState = aiState,
+                        // Play's formatted price for the credit pack isn't queried
+                        // yet — the "Buy" button falls back to its plain label
+                        // rather than block on a QueryProductDetails round trip
+                        // just to open this tab.
+                        aiCreditPackPrice = null,
                         onRetry = { deepDive.retry() },
                         onThesisChange = { deepDive.updateThesis(it) },
-                        onAddJournal = { deepDive.addJournalEntry(it) }
+                        onAddJournal = { deepDive.addJournalEntry(it) },
+                        onAiSignIn = { ai.signIn() },
+                        onAiGenerate = { ai.generate() },
+                        onAiClaimFreeGrant = { ai.claimFreeGrant() },
+                        onAiPurchase = { (context as? Activity)?.let { ai.purchase(it) } },
+                        onAiDismissError = { ai.dismissError() }
                     )
                 }
                 OmahaTab.Filter -> {
@@ -165,7 +182,11 @@ fun OmahaApp(
                     FilterScreen(
                         state = ui,
                         onRetry = { vm.load() },
-                        onSelect = { ticker -> deepDive.open(ticker); tab = OmahaTab.Scorecard }
+                        onSelect = { ticker ->
+                            deepDive.open(ticker)
+                            ai.open(ticker)
+                            tab = OmahaTab.Scorecard
+                        }
                     )
                 }
                 OmahaTab.Compare -> {

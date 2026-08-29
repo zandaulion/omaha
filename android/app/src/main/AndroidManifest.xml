@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Market data leaves the device; personal data does not. Doc 13 §6 lists
-         what crosses the boundary, exhaustively. -->
+    <!-- Market data always leaves the device; personal data only when the AI
+         analysis feature is used, and then only what doc 13 §6 lists,
+         exhaustively — the financial data package always, the thesis and
+         journal only if the privacy toggle allows it. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 

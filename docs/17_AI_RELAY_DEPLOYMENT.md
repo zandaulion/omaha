@@ -238,13 +238,13 @@ code calls it:
   Functions testing tool, or `curl` against its HTTPS trigger URL with
   `{"data": {"ticker": "AAPL"}}` — expect `{"result": {"summary": null}}` on
   a fresh project with nothing cached yet.
-- **`generateAiSummary`**, **`redeemPurchase`** and **`claimFreeGrant`** all
-  require a real Firebase Auth ID token, which needs a signed-in Google
-  account — these are realistically only testable once the Android client
-  exists to produce one, or via the Firebase emulator suite with the Auth
-  emulator's token-minting shortcuts. `claimFreeGrant` takes no other
-  arguments, so a minted token is the entire test input once the emulator can
-  produce one.
+- **`generateAiSummary`**, **`redeemPurchase`**, **`claimFreeGrant`** and
+  **`getBalance`** all require a real Firebase Auth ID token, which needs a
+  signed-in Google account — these are realistically only testable once the
+  Android client exists to produce one, or via the Firebase emulator suite
+  with the Auth emulator's token-minting shortcuts. `claimFreeGrant` and
+  `getBalance` take no other arguments, so a minted token is the entire test
+  input for either once the emulator can produce one.
 
 The unit-testable pieces — `functions/src/products.js`,
 `functions/src/play-verify.js`, `functions/src/cache-key.js`,

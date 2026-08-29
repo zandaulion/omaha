@@ -40,10 +40,14 @@ export const getAiSummary = onCall(async (request) => {
 });
 
 /**
- * `{ticker: string, stock: object, thesis: object|null}` in, the generated
- * summary out. Requires an authenticated (Google Sign-In) caller and spends
- * one credit — refunded if the Gemini call itself fails, since the credit is
- * for a successful analysis, not for an attempt.
+ * `{ticker: string, stock: object, thesis: object|null}` in,
+ * `{summary: object, credits: number}` out. Requires an authenticated
+ * (Google Sign-In) caller and spends one credit — refunded if the Gemini call
+ * itself fails, since the credit is for a successful analysis, not for an
+ * attempt. On failure nothing is returned at all (the call throws), so a
+ * client that needs the balance after an error calls `getBalance`
+ * (`balance.js`) separately rather than reading it off a response that never
+ * arrives.
  *
  * `secrets: ['GEMINI_API_KEY']` is not decoration. A function does not get a
  * secret injected into `process.env` just because it exists in Secret
@@ -74,13 +78,14 @@ export const generateAiSummary = onCall({ secrets: ['GEMINI_API_KEY'] }, async (
   // "do I have credits" check before either spends one; a transactional
   // decrement up front is what makes the balance a real limit rather than an
   // advisory one.
-  await db.runTransaction(async (tx) => {
+  const afterSpend = await db.runTransaction(async (tx) => {
     const snap = await tx.get(balanceRef);
     const credits = snap.exists ? Number(snap.data().credits || 0) : 0;
     if (credits < 1) {
       throw new HttpsError('resource-exhausted', 'no credits remaining');
     }
     tx.set(balanceRef, { credits: credits - 1 }, { merge: true });
+    return credits - 1;
   });
 
   let result;
@@ -103,5 +108,8 @@ export const generateAiSummary = onCall({ secrets: ['GEMINI_API_KEY'] }, async (
     await db.doc(location.path).set(result);
   }
 
-  return { summary: result };
+  // credits included so the client can update the balance it shows without a
+  // second round trip — see functions/src/balance.js's header for why that
+  // round trip is otherwise the only way to know it.
+  return { summary: result, credits: afterSpend };
 });
