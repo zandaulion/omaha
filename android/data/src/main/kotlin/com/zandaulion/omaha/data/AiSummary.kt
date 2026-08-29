@@ -4,11 +4,15 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.addJsonObject
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.putJsonObject
 
 /**
  * One Gemini analysis, as `core/analysis/prompt.js`'s `RESPONSE_SCHEMA`
@@ -62,7 +66,10 @@ data class AiSummary(
      * still be able to say what it actually was.
      */
     val includedNotes: Boolean,
-    val generatedAt: String?
+    val generatedAt: String?,
+    /** What this analysis was reasoned against — `assessStaleness` compares both against the current stock to decide whether the analysis still describes it. */
+    val fiscalPeriodEnd: String?,
+    val priceAtGeneration: Double?
 )
 
 /**
@@ -72,6 +79,11 @@ data class AiSummary(
  */
 fun parseAiSummary(root: JsonObject): AiSummary? {
     val d = root["summary"] as? JsonObject ?: return null
+    return parseAiSummaryObject(d)
+}
+
+/** The same parse, unwrapped — for [AiSummaryDao]'s cache row, which stores this shape directly rather than the relay's `{summary: ...}` envelope. */
+fun parseAiSummaryObject(d: JsonObject): AiSummary {
     return AiSummary(
         verdict = d.text("verdict") ?: "",
         verdictGrade = d.text("verdictGrade") ?: "INSUFFICIENT_DATA",
@@ -111,8 +123,61 @@ fun parseAiSummary(root: JsonObject): AiSummary? {
         whatToWatch = (d["whatToWatch"] as? JsonArray).orEmpty()
             .mapNotNull { (it as? JsonPrimitive)?.contentOrNull },
         includedNotes = d.bool("includedNotes") ?: false,
-        generatedAt = d.text("generatedAt")
+        generatedAt = d.text("generatedAt"),
+        fiscalPeriodEnd = d.text("fiscalPeriodEnd"),
+        priceAtGeneration = d.dbl("priceAtGeneration")
     )
+}
+
+/** The inverse of [parseAiSummaryObject] — round-trips through [AiSummaryDao]'s stored text. Only the fields [AiSummary] carries survive; nothing downstream reads past it anyway. */
+fun AiSummary.toJsonObject(): JsonObject = buildJsonObject {
+    put("verdict", verdict)
+    put("verdictGrade", verdictGrade)
+    put("verdictBadge", verdictBadge)
+    put("buffettPrinciple", buffettPrinciple)
+    put("executiveSummary", executiveSummary)
+    put("moatAndProfitability", moatAndProfitability.toJsonObject())
+    put("solvencyAndSafety", solvencyAndSafety.toJsonObject())
+    put("valuationAndDCF", valuationAndDCF.toJsonObject())
+    putJsonArray("keyStrengths") { keyStrengths.forEach { add(it.toJsonObject()) } }
+    putJsonArray("keyRisks") { keyRisks.forEach { add(it.toJsonObject()) } }
+    putJsonObject("contextFromModelKnowledge") {
+        put("hasContext", modelContext.hasContext)
+        modelContext.asOfCaveat?.let { put("asOfCaveat", it) }
+        putJsonArray("points") {
+            modelContext.points.forEach { p ->
+                addJsonObject {
+                    put("claim", p.claim)
+                    put("confidence", p.confidence)
+                }
+            }
+        }
+    }
+    putJsonArray("dataLimitations") { dataLimitations.forEach { add(it) } }
+    put("conclusion", conclusion)
+    putJsonObject("buyZone") {
+        put("maxPrice", buyZone.maxPrice)
+        put("currency", buyZone.currency)
+        buyZone.impliedDiscountToFairValuePct?.let { put("impliedDiscountToFairValuePct", it) }
+        put("alreadyInZone", buyZone.alreadyInZone)
+        put("perspective", buyZone.perspective)
+    }
+    putJsonArray("whatToWatch") { whatToWatch.forEach { add(it) } }
+    put("includedNotes", includedNotes)
+    generatedAt?.let { put("generatedAt", it) }
+    fiscalPeriodEnd?.let { put("fiscalPeriodEnd", it) }
+    priceAtGeneration?.let { put("priceAtGeneration", it) }
+}
+
+private fun Rating.toJsonObject(): JsonObject = buildJsonObject {
+    put("rating", rating)
+    put("ratingLabel", ratingLabel)
+    put("explanation", explanation)
+}
+
+private fun StrengthOrRisk.toJsonObject(): JsonObject = buildJsonObject {
+    put("title", title)
+    put("detail", detail)
 }
 
 private fun JsonObject.rating(key: String): Rating {

@@ -18,12 +18,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.zandaulion.omaha.data.AiSummary
 import com.zandaulion.omaha.data.Rating
+import com.zandaulion.omaha.data.StalenessAssessment
 import com.zandaulion.omaha.data.StrengthOrRisk
 import com.zandaulion.omaha.design.Omaha
 import com.zandaulion.omaha.design.OmahaColors
@@ -152,6 +154,25 @@ private fun messagesFor(kind: AiBusyKind): List<String> = when (kind) {
     )
 }
 
+/**
+ * `.ai-origin-tag`: says the surface is model output at the point where it
+ * starts, not only in a footer disclaimer. Play requires the disclosure;
+ * `web/app.css`'s own comment states the deeper reason — a reader who has
+ * scrolled into the moat reasoning has already begun trusting it.
+ */
+@Composable
+private fun AiOriginTag() {
+    Box(
+        Modifier
+            .clip(RoundedCornerShape(OmahaRadius.pill))
+            .background(Omaha.colors.brandViolet.copy(alpha = 0.12f))
+            .border(1.dp, Omaha.colors.brandViolet.copy(alpha = 0.3f), RoundedCornerShape(OmahaRadius.pill))
+            .padding(horizontal = 9.dp, vertical = 3.dp)
+    ) {
+        BasicText("✨ AI-GENERATED", style = OmahaType.caption.toTextStyle(color = Omaha.colors.brandViolet))
+    }
+}
+
 @Composable
 private fun PillButton(label: String, enabled: Boolean, onClick: () -> Unit) {
     Box(
@@ -170,22 +191,57 @@ private fun PillButton(label: String, enabled: Boolean, onClick: () -> Unit) {
     }
 }
 
+/**
+ * `.staleness-notice`: told plainly and near the top, on `assessStaleness`'s
+ * own reasoning — a reader who has scrolled into the moat reasoning has
+ * already begun trusting it. Never auto-regenerates; only offers to.
+ */
+@Composable
+fun AiStalenessCard(assessment: StalenessAssessment, onReanalyze: () -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+        BasicText(
+            if (assessment.scope == "all") "📄" else "📉",
+            style = OmahaType.title2.toTextStyle(color = Omaha.colors.healthModerate)
+        )
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            BasicText(
+                assessment.headline ?: "",
+                style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.healthModerate)
+            )
+            BasicText(
+                assessment.detail ?: "",
+                style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary)
+            )
+            Box(Modifier.height(2.dp))
+            Row {
+                PillButton("🔄 Re-analyze", enabled = true, onClick = onReanalyze)
+            }
+        }
+    }
+}
+
 /** `.ai-verdict-card`: the one-line moat verdict, its grade, and the executive summary. */
 @Composable
 fun AiVerdictCard(summary: AiSummary) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         val (fg, bg, border) = gradeColors(summary.verdictGrade, Omaha.colors)
-        Box(
-            Modifier
-                .clip(RoundedCornerShape(OmahaRadius.pill))
-                .background(bg)
-                .border(1.dp, border, RoundedCornerShape(OmahaRadius.pill))
-                .padding(horizontal = 10.dp, vertical = 4.dp)
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            BasicText(
-                summary.verdictBadge.ifBlank { summary.verdictGrade },
-                style = OmahaType.caption.toTextStyle(color = fg)
-            )
+            Box(
+                Modifier
+                    .clip(RoundedCornerShape(OmahaRadius.pill))
+                    .background(bg)
+                    .border(1.dp, border, RoundedCornerShape(OmahaRadius.pill))
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
+            ) {
+                BasicText(
+                    summary.verdictBadge.ifBlank { summary.verdictGrade },
+                    style = OmahaType.caption.toTextStyle(color = fg)
+                )
+            }
+            AiOriginTag()
         }
         BasicText(
             "“${summary.verdict}”",

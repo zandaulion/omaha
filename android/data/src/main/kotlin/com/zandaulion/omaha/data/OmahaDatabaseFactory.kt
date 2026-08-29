@@ -90,10 +90,27 @@ object OmahaDatabaseFactory {
         }
     }
 
+    /**
+     * 3 → 4: `ai_summaries`.
+     *
+     * Additive, and re-fetchable — a lost row costs a relay round trip on the
+     * next open, never material only this device held. No index beyond the
+     * primary key: reads are always by ticker, one row at a time.
+     */
+    val MIGRATION_3_4 = object : Migration(3, 4) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `ai_summaries` (" +
+                    "`ticker` TEXT NOT NULL, `summaryJson` TEXT NOT NULL, " +
+                    "`cachedAt` TEXT NOT NULL, PRIMARY KEY(`ticker`))"
+            )
+        }
+    }
+
     fun open(context: Context, name: String = NAME): OmahaStore =
         OmahaStore(
             Room.databaseBuilder(context.applicationContext, OmahaDatabase::class.java, name)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .build()
         )
 }
@@ -112,6 +129,7 @@ class OmahaStore internal constructor(private val db: OmahaDatabase) {
     val stockCache: StockCacheDao get() = db.stockCache()
     val appSettings: AppSettingsDao get() = db.appSettings()
     val alerts: AlertsDao get() = db.alerts()
+    val aiSummaries: AiSummaryDao get() = db.aiSummaries()
 
     fun close() = db.close()
 }

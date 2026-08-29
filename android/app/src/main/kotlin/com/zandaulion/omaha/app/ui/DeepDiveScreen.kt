@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.zandaulion.omaha.data.Check
 import com.zandaulion.omaha.data.StockDetail
+import com.zandaulion.omaha.data.assessStaleness
 import com.zandaulion.omaha.design.Omaha
 import com.zandaulion.omaha.design.OmahaRadius
 import com.zandaulion.omaha.design.OmahaType
@@ -205,6 +206,10 @@ private fun Loaded(
                             }
                         }
                         aiState.summary?.let { summary ->
+                            val staleness = assessStaleness(summary, stock)
+                            if (staleness.stale) {
+                                item { Card { AiStalenessCard(staleness, onReanalyze = onAiGenerate) } }
+                            }
                             item { Card { AiVerdictCard(summary) } }
                             item { Card { AiRatingsCard(summary) } }
                             item { Card { AiStrengthsRisksCard(summary) } }

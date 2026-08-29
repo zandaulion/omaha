@@ -94,7 +94,7 @@ object OmahaEngine {
             auth = AuthRepository(app),
             billing = BillingRepository(app),
             relay = relay,
-            ai = AiRepository(details, theses, settings, relay)
+            ai = AiRepository(details, theses, settings, relay, store.aiSummaries)
         )
     }
 }

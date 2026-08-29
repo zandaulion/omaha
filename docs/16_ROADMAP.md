@@ -542,7 +542,7 @@ No server, and nothing transmitted beyond market data.
 > compiles; **it has not yet been run**, since running it needs a connected
 > device or emulator and this session had neither. Worth doing before phase 6.
 
-### Phase 6 — Paid AI (doc 13 step 6) — **backend started 2026-08-28**
+### Phase 6 — Paid AI (doc 13 step 6) — **done 2026-08-29**
 
 - Room: `ai_summaries` — the cache **is** the primary cost control, not a
   performance nicety.
@@ -590,11 +590,57 @@ against a live Firebase project:
   credentials this assistant does not have, the same reason the PWA is
   deployed by hand.
 
-**Not yet built:** anything on the Android side — Play Billing wiring,
-Firebase Auth, the `ai_summaries` Room table, the AI tab itself. The relay
-has no caller yet. **Not yet verified by anything:** the actual Firestore
-transactions and the actual Play Developer API call, since neither can run
-in this repository's test environment — see doc 17 §7.
+> **The Android side landed 2026-08-29** — `AuthRepository` (Credential
+> Manager sign-in), `BillingRepository` (Play Billing v9 for
+> `omaha_credits_10`), `RelayRepository` (the five callables), `AiRepository`
+> (assembles `generateAiSummary`'s payload, owns the on-device cache), and
+> the Gemini tab itself in the deep dive. Verified against the live relay on
+> a real device, not just compiled: sign-in, the free-grant claim, and
+> `generateAiSummary` all exercised end to end — Firestore transactions and
+> the Play Developer API call included, closing the "not yet verified by
+> anything" line this section used to carry. **Not yet exercised live: a
+> real Play purchase through `redeemPurchase`** — `BillingRepository` is
+> built and the code path is the same as the tested ones, but nobody has
+> actually bought a credit pack yet.
+>
+> Two real-device findings, neither visible from the code alone. **Credential
+> Manager's `GetGoogleIdOption`, even with `setFilterByAuthorizedAccounts(false)`,
+> threw `NoCredentialException` on a first-ever sign-in** — Android's own
+> current guidance is `GetSignInWithGoogleOption` instead, which always shows
+> the account chooser rather than depending on Play Services' "previously
+> authorized" bookkeeping; also the better fit here, since this flow was
+> already an explicit button tap rather than a silent one-tap auto-select.
+> And **the release build was silently signing with the debug keystore**
+> rather than the real Play Store upload key (`zandaulion`) — invisible until
+> checked, because a debug-signed AAB still builds, still installs, and only
+> fails at the point of trying to upload a second release with a different
+> certificate than the first. Fixed by reading the real keystore from a
+> gitignored `android/keystore.properties` rather than the build file, so
+> `./gradlew :app:bundleRelease` alone now produces what Android Studio's
+> Generate Signed Bundle dialog used to be the only way to get.
+>
+> **The `ai_summaries` Room table landed too**, closing the phase 6 note
+> below — schema version 4, `MIGRATION_3_4`, verified against a realistic
+> version-3 database on two real devices (a Xiaomi and a Samsung Fold, not
+> the same one both times). `AiRepository.cachedSummary` checks it before
+> the relay's own shared-by-ticker cache, and both `cachedSummary` and
+> `generate` write through to it — the relay round trip is now the second
+> tier, not the only one, the same relationship `StockDetailRepository`'s
+> warm cache already has with a cold fetch.
+>
+> **Staleness surfacing landed as a deliberate native port**, not a call
+> through `core/analysis/staleness.js` — the one other exception to "one
+> implementation" besides the DCF sandbox, and for a similar reason: the
+> computation is four field comparisons over data already on screen, not
+> worth a QuickJS bundle and an engine wrapper for what a Gradle unit test
+> can keep honest against the JS source just as well. `StalenessTest` mirrors
+> `staleness.test.js`'s own vectors.
+>
+> **`AlertMigrationTest`, open since phase 5** ("compiles; has not yet been
+> run"), **finally ran** — 2026-08-29, same device session. Passed first try,
+> confirming `MIGRATION_2_3` actually opens against a realistic version-2
+> database, which is the exact scenario the crash it was written to catch
+> needed.
 - **Credit pack: 10 for $0.99** — decided 2026-08-28, measurement below.
 - The phase 1 notes toggle must be honoured on this path too.
 
@@ -690,9 +736,9 @@ The state to hold each client against. "Inherits" means the work lands in
 | Backup export/import + merge | ✅ | ✅ | done |
 | Notes opt-in toggle | ✅ | ✅ | done |
 | Screener → Filter rename | ✅ | ✅ built as Filter | done |
-| Disclaimer, AI labelling | ✅ | ✅ disclaimer; AI label with phase 6 | 6 |
+| Disclaimer, AI labelling | ✅ | ✅ | done |
 | EDGAR statements | ✅ | ✅ inherited | done |
-| AI staleness flag | ✅ | core inherited; surfaces with the AI tab | 6 |
+| AI staleness flag | ✅ | ✅ native port, see phase 6 note | done |
 | Watchlist view | ✅ | ✅ | done |
 | Deep Dive: pillars, checklist, charts | ✅ | ✅ | done |
 | DCF sandbox | ✅ | ✅ | done |
@@ -702,7 +748,7 @@ The state to hold each client against. "Inherits" means the work lands in
 | Alerts | ✅ push | ✅ local, WorkManager | done |
 | Alert centre / history | ✅ | ✅ in Settings | done |
 | Sunday digest | ✅ push — **fixed 2026-08-27**, had never sent | ✅ local | done; email in backlog |
-| AI analysis | ✅ free | ❌ | 6 |
+| AI analysis | ✅ free | ✅ paid, sign-in + billing, see phase 6 note | done |
 | Home-screen widget | n/a | ❌ | 7 — **named exception** |
 | Invites, devices, push subs | ✅ | n/a by design | — |
 
