@@ -717,6 +717,12 @@ function evaluatePurchase(purchase) {
   };
 }
 
+// functions/src/settlement.js
+function settlementFor(product, evaluated) {
+  if (product.consumable) return "consume";
+  return evaluated.needsAcknowledgement ? "acknowledge" : "none";
+}
+
 // functions/src/billing.js
 var PACKAGE_NAME = "com.zandaulion.omaha";
 var cachedClient = null;
@@ -751,10 +757,10 @@ var redeemPurchase = onCall2(async (request) => {
   const db = getFirestore2();
   const redemptionRef = db.doc(`redeemedPurchases/${evaluated.orderId}`);
   const balanceRef = db.doc(`users/${uid}`);
-  const newBalance = await db.runTransaction(async (tx) => {
+  const { newBalance, alreadyRedeemed } = await db.runTransaction(async (tx) => {
     const [redemption, balance] = await Promise.all([tx.get(redemptionRef), tx.get(balanceRef)]);
     const currentCredits = Number(balance.data()?.credits || 0);
-    if (redemption.exists) return currentCredits;
+    if (redemption.exists) return { newBalance: currentCredits, alreadyRedeemed: true };
     tx.set(redemptionRef, {
       uid,
       productId,
@@ -762,15 +768,24 @@ var redeemPurchase = onCall2(async (request) => {
       redeemedAt: FieldValue2.serverTimestamp()
     });
     tx.set(balanceRef, { credits: FieldValue2.increment(product.credits) }, { merge: true });
-    return currentCredits + product.credits;
+    return { newBalance: currentCredits + product.credits, alreadyRedeemed: false };
   });
-  if (evaluated.needsAcknowledgement) {
-    await publisher.purchases.products.acknowledge({
-      packageName: PACKAGE_NAME,
-      productId,
-      token: purchaseToken,
-      requestBody: {}
-    });
+  if (!alreadyRedeemed) {
+    const settlement = settlementFor(product, evaluated);
+    if (settlement === "consume") {
+      await publisher.purchases.products.consume({
+        packageName: PACKAGE_NAME,
+        productId,
+        token: purchaseToken
+      });
+    } else if (settlement === "acknowledge") {
+      await publisher.purchases.products.acknowledge({
+        packageName: PACKAGE_NAME,
+        productId,
+        token: purchaseToken,
+        requestBody: {}
+      });
+    }
   }
   return { credits: newBalance, productLabel: product.label };
 });

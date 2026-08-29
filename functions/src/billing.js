@@ -6,7 +6,11 @@
  * alike, since both are Play products now (docs/13_ANDROID_ARCHITECTURE.md
  * §7) and both go through the identical verify-then-credit path. The only
  * thing that differs between them is which row of `products.js` the product
- * ID resolves to.
+ * ID resolves to — and, since 2026-08-29, that difference now does real work
+ * at the very end of this function: Play Console's one-time-products model
+ * dropped the "consumable" product type entirely, so whether a purchase can
+ * be repurchased is decided by which API call is made here, `consume` or
+ * `acknowledge`, not by anything configured in Play Console.
  *
  * Nothing here trusts the client's word for what was purchased. The purchase
  * token is opaque to the client; only the Play Developer API, called
@@ -19,6 +23,7 @@ import { google } from 'googleapis';
 
 import { productFor } from './products.js';
 import { evaluatePurchase } from './play-verify.js';
+import { settlementFor } from './settlement.js';
 
 /**
  * The app's own package name, i.e. the applicationId in
@@ -39,10 +44,12 @@ let cachedClient = null;
  * JSON stored as a secret — is a long-lived credential that has to be
  * rotated and can leak; Application Default Credentials means there is
  * nothing to leak, because the function's identity *is* the credential.
- * Setup is one step in Play Console instead: grant this service account
- * "View app information" and "Manage orders and subscriptions" under
- * Setup → API access. See the deployment doc for exact steps, since Play
- * Console's wording for that page has moved before and may again.
+ * Setup is one step in Play Console instead: invite this service account's
+ * own email as a user, under Users and permissions, and grant it "View
+ * financial data, orders, and cancellation survey responses" plus "Manage
+ * orders and subscriptions." See `docs/17_AI_RELAY_DEPLOYMENT.md` §7 for the
+ * confirmed current steps — Play Console's own wording and navigation for
+ * this have moved more than once already.
  */
 async function androidPublisher() {
   if (cachedClient) return cachedClient;
@@ -90,11 +97,11 @@ export const redeemPurchase = onCall(async (request) => {
   // Both reads happen before either write: a Firestore transaction refuses a
   // read issued after a write in the same transaction, so the reported
   // balance is computed from what was already read, not re-fetched.
-  const newBalance = await db.runTransaction(async (tx) => {
+  const { newBalance, alreadyRedeemed } = await db.runTransaction(async (tx) => {
     const [redemption, balance] = await Promise.all([tx.get(redemptionRef), tx.get(balanceRef)]);
     const currentCredits = Number(balance.data()?.credits || 0);
 
-    if (redemption.exists) return currentCredits;
+    if (redemption.exists) return { newBalance: currentCredits, alreadyRedeemed: true };
 
     tx.set(redemptionRef, {
       uid,
@@ -104,19 +111,34 @@ export const redeemPurchase = onCall(async (request) => {
     });
     tx.set(balanceRef, { credits: FieldValue.increment(product.credits) }, { merge: true });
 
-    return currentCredits + product.credits;
+    return { newBalance: currentCredits + product.credits, alreadyRedeemed: false };
   });
 
-  if (evaluated.needsAcknowledgement) {
-    // After crediting, not before. A crash between acknowledging and
-    // crediting would leave Play thinking the purchase is settled while the
-    // account never got its credits — the worse of the two possible orderings.
-    await publisher.purchases.products.acknowledge({
-      packageName: PACKAGE_NAME,
-      productId,
-      token: purchaseToken,
-      requestBody: {}
-    });
+  // Skipped on a retry — Play has already been told once, and repeating the
+  // call is exactly the kind of thing that risks whatever "already consumed"
+  // or "already acknowledged" error the API returns for a redundant call.
+  // The Firestore transaction above is the single source of truth for
+  // whether this order has been processed; the Play call follows it, not
+  // `needsAcknowledgement` alone.
+  if (!alreadyRedeemed) {
+    // After crediting, not before. A crash between this call and crediting
+    // would leave Play thinking the purchase is settled while the account
+    // never got its credits — the worse of the two possible orderings.
+    const settlement = settlementFor(product, evaluated);
+    if (settlement === 'consume') {
+      await publisher.purchases.products.consume({
+        packageName: PACKAGE_NAME,
+        productId,
+        token: purchaseToken
+      });
+    } else if (settlement === 'acknowledge') {
+      await publisher.purchases.products.acknowledge({
+        packageName: PACKAGE_NAME,
+        productId,
+        token: purchaseToken,
+        requestBody: {}
+      });
+    }
   }
 
   return { credits: newBalance, productLabel: product.label };
