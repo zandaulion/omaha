@@ -78,10 +78,38 @@ interface PersonalDataDao {
     }
 }
 
+/**
+ * A generated AI analysis, cached on-device so opening the AI tab does not
+ * always cost a network round trip to the relay's own cache.
+ *
+ * [summaryJson] is [AiSummary.toJsonObject]'s output, stored as text — the
+ * same shape [parseAiSummaryObject] reads, so there is one parse path rather
+ * than a second one that only runs against this table. Keyed by ticker like
+ * [StockCacheRow]: a fetch-again cache, not a backup, so it is not carried by
+ * `core/backup.js` and a device with two Google accounts simply shows
+ * whichever account last generated or fetched each ticker.
+ */
+@Entity(tableName = "ai_summaries")
+data class AiSummaryRow(
+    @PrimaryKey val ticker: String,
+    val summaryJson: String,
+    val cachedAt: String
+)
+
+@Dao
+interface AiSummaryDao {
+    @Query("SELECT * FROM ai_summaries WHERE ticker = :ticker")
+    suspend fun find(ticker: String): AiSummaryRow?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(row: AiSummaryRow)
+}
+
 @Database(
     entities = [
         ThesisRow::class, WatchlistRow::class, StockCacheRow::class, AppSettingRow::class,
-        SnapshotRow::class, NotificationSettingsRow::class, NotificationRow::class
+        SnapshotRow::class, NotificationSettingsRow::class, NotificationRow::class,
+        AiSummaryRow::class
     ],
     // 2: app_settings, for the Settings view. Room has no data to preserve
     // that a re-fetch cannot replace, but theses and watchlists are not
@@ -91,7 +119,10 @@ interface PersonalDataDao {
     // 3: the three alert tables. `notification_history` is the one with real
     // weight — the cooldown floor is enforced against it, so losing it would
     // let every standing condition re-announce itself on the next sweep.
-    version = 3,
+    //
+    // 4: ai_summaries. Additive, and re-fetchable like stock_cache — losing it
+    // costs a relay round trip, never material a person wrote.
+    version = 4,
     exportSchema = false
 )
 abstract class OmahaDatabase : RoomDatabase() {
@@ -107,4 +138,6 @@ abstract class OmahaDatabase : RoomDatabase() {
     abstract fun appSettings(): AppSettingsDao
 
     abstract fun alerts(): AlertsDao
+
+    abstract fun aiSummaries(): AiSummaryDao
 }

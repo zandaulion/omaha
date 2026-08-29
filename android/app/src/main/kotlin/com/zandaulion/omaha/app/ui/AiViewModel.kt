@@ -55,7 +55,8 @@ class AiViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             // The cached read needs no sign-in — getAiSummary is public, so a
             // previously generated summary shows even before anyone signs in.
-            val summary = runCatching { handles.relay.getCachedSummary(ticker) }.getOrNull()
+            // ai.cachedSummary checks the on-device cache before the relay's.
+            val summary = runCatching { handles.ai.cachedSummary(ticker) }.getOrNull()
             val user = handles.auth.currentUser()
             val credits = user?.let { runCatching { handles.relay.getBalance() }.getOrNull() }
             _state.value = AiUiState.Ready(ticker, summary, user, credits, busy = null, error = null)
