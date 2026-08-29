@@ -1,0 +1,28 @@
+# Line endings are normalized to LF for every text file, in the repo and on
+# checkout — overrides core.autocrlf (set to true system-wide by the Git for
+# Windows installer on this machine), which is what let core/dist/*.bundle.js,
+# web/tokens.css and Tokens.kt drift into a permanent false "modified" state:
+# the Node/Gradle tools that generate them write LF, autocrlf wanted to check
+# them out as CRLF, and every regeneration re-triggered the mismatch.
+* text=auto eol=lf
+
+# Binary — never run through the text/eol filter regardless of extension
+# detection. .aab/.apk/.keystore/.jks/.db/.sqlite are gitignored, not
+# tracked, but listed here so that changes if a build ever does track one.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.jar binary
+*.keystore binary
+*.jks binary
+*.aab binary
+*.apk binary
+*.db binary
+*.sqlite binary
