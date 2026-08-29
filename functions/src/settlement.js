@@ -3,14 +3,16 @@
  *
  * Found live, 2026-08-29: Play Console's one-time-products model has no
  * "consumable" product type any more. There is nothing in Play Console that
- * makes `omaha_credits_10` repurchasable and `omaha_credits_free_5` a
- * one-time grant — that entire guarantee is now made by which of these two
- * calls the relay makes, and nothing else. `consume` frees a purchase for a
- * repurchase and implicitly acknowledges it; `acknowledge` alone leaves it
+ * makes a product repurchasable or not — that guarantee is now made entirely
+ * by which of these two calls the relay makes. `consume` frees a purchase for
+ * a repurchase and implicitly acknowledges it; `acknowledge` alone leaves it
  * permanently owned. Get `products.js`'s `consumable` flag right and call the
  * wrong function here anyway, and the guarantee is still broken — this is the
  * function that turns that flag into the actual outcome, so it is worth
  * testing on its own rather than trusting the inline branch it replaced.
+ * (The free grant used this same reasoning until later the same day, when it
+ * turned out Play would not accept a $0.00 price at all — see `free-grant.js`.
+ * `settlementFor` itself needed no change; only `omaha_credits_10` calls it now.)
  *
  * @see functions/src/billing.js, which is what actually calls the API.
  */

@@ -2,17 +2,17 @@
 // Do not edit — edit the source and run `npm run build` in functions/.
 
 
-// functions/src/index.js
+// src/index.js
 import { initializeApp } from "firebase-admin/app";
 
-// functions/src/analyze.js
+// src/analyze.js
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 
-// server/gemini-client.js
+// ../server/gemini-client.js
 import dotenv from "dotenv";
 
-// core/format.js
+// ../core/format.js
 var BITS = new DataView(new ArrayBuffer(8));
 function decompose(magnitude) {
   BITS.setFloat64(0, magnitude);
@@ -50,7 +50,7 @@ function fixed(value, digits = 0) {
   return negative ? `-${s}` : s;
 }
 
-// core/scoring.js
+// ../core/scoring.js
 var CURRENCY_SYMBOLS = {
   USD: "$",
   EUR: "\u20AC",
@@ -83,7 +83,7 @@ function formatMoney(value, currency = "USD") {
   return `${sign}${sym}${fixed(abs, 2)}`;
 }
 
-// core/analysis/prompt.js
+// ../core/analysis/prompt.js
 function buildComprehensivePayload(stock, thesis = null) {
   const sum = stock.summary || {};
   const m = sum.metrics || {};
@@ -529,7 +529,7 @@ ${JSON.stringify(payloadData, null, 2)}
 `.trim();
 }
 
-// server/gemini-client.js
+// ../server/gemini-client.js
 dotenv.config();
 var ENDPOINT_BASE = "https://generativelanguage.googleapis.com/v1beta/models/";
 function getGeminiApiKey() {
@@ -623,7 +623,7 @@ async function callGemini(stock, thesis = null) {
   };
 }
 
-// functions/src/cache-key.js
+// src/cache-key.js
 function cacheLocationFor({ ticker, includedNotes }, uid = null) {
   const symbol = String(ticker || "").toUpperCase();
   if (!symbol) return { scope: "unreachable", reason: "no ticker" };
@@ -636,7 +636,7 @@ function cacheLocationFor({ ticker, includedNotes }, uid = null) {
   return { scope: "private", path: `users/${uid}/aiCache/${symbol}` };
 }
 
-// functions/src/analyze.js
+// src/analyze.js
 var getAiSummary = onCall(async (request) => {
   const ticker = String(request.data?.ticker || "").trim();
   if (!ticker) throw new HttpsError("invalid-argument", "ticker is required");
@@ -683,21 +683,21 @@ var generateAiSummary = onCall({ secrets: ["GEMINI_API_KEY"] }, async (request) 
   return { summary: result };
 });
 
-// functions/src/billing.js
+// src/billing.js
 import { HttpsError as HttpsError2, onCall as onCall2 } from "firebase-functions/v2/https";
 import { FieldValue as FieldValue2, getFirestore as getFirestore2 } from "firebase-admin/firestore";
 import { google } from "googleapis";
 
-// functions/src/products.js
+// src/products.js
 var PRODUCTS = {
-  omaha_credits_10: { credits: 10, consumable: true, label: "10 analysis credits" },
-  omaha_credits_free_5: { credits: 5, consumable: false, label: "5 free analysis credits" }
+  omaha_credits_10: { credits: 10, consumable: true, label: "10 analysis credits" }
 };
 function productFor(productId) {
   return PRODUCTS[productId] ?? null;
 }
+var FREE_GRANT = { credits: 5, label: "5 free analysis credits" };
 
-// functions/src/play-verify.js
+// src/play-verify.js
 var PURCHASE_STATE_PURCHASED = 0;
 var ACKNOWLEDGEMENT_STATE_NOT_ACKNOWLEDGED = 0;
 function evaluatePurchase(purchase) {
@@ -717,13 +717,13 @@ function evaluatePurchase(purchase) {
   };
 }
 
-// functions/src/settlement.js
+// src/settlement.js
 function settlementFor(product, evaluated) {
   if (product.consumable) return "consume";
   return evaluated.needsAcknowledgement ? "acknowledge" : "none";
 }
 
-// functions/src/billing.js
+// src/billing.js
 var PACKAGE_NAME = "com.zandaulion.omaha";
 var cachedClient = null;
 async function androidPublisher() {
@@ -790,9 +790,38 @@ var redeemPurchase = onCall2(async (request) => {
   return { credits: newBalance, productLabel: product.label };
 });
 
-// functions/src/index.js
+// src/free-grant.js
+import { HttpsError as HttpsError3, onCall as onCall3 } from "firebase-functions/v2/https";
+import { FieldValue as FieldValue3, getFirestore as getFirestore3 } from "firebase-admin/firestore";
+var claimFreeGrant = onCall3(async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError3("unauthenticated", "sign in to claim the free grant");
+  const db = getFirestore3();
+  const balanceRef = db.doc(`users/${uid}`);
+  const { newBalance, granted } = await db.runTransaction(async (tx) => {
+    const balance = await tx.get(balanceRef);
+    const data = balance.data() || {};
+    const currentCredits = Number(data.credits || 0);
+    if (data.freeGrantClaimedAt) {
+      return { newBalance: currentCredits, granted: false };
+    }
+    tx.set(
+      balanceRef,
+      {
+        credits: FieldValue3.increment(FREE_GRANT.credits),
+        freeGrantClaimedAt: FieldValue3.serverTimestamp()
+      },
+      { merge: true }
+    );
+    return { newBalance: currentCredits + FREE_GRANT.credits, granted: true };
+  });
+  return { credits: newBalance, granted, productLabel: FREE_GRANT.label };
+});
+
+// src/index.js
 initializeApp();
 export {
+  claimFreeGrant,
   generateAiSummary,
   getAiSummary,
   redeemPurchase
