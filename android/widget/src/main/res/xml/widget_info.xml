@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Dimensions give the two size variants PocketOmahaWidget's SizeMode.Responsive
-  renders between (see that file — SMALL/LARGE match minWidth/minHeight and
-  maxResizeWidth/maxResizeHeight here as closely as a home-screen grid allows).
+  minWidth/minHeight match PocketOmahaWidget's SMALL DpSize; maxResizeWidth/
+  maxResizeHeight match its LARGE one — the largest bucket, which shows the
+  full holding list, is the one a resize should actually be able to reach.
+  Some launchers (Samsung's One UI among them) compute their own effective
+  resize ceiling from the grid regardless of these two, so the declared
+  values are a floor for stricter launchers rather than a hard promise.
 
   updatePeriodMillis is 0 — deliberately not relied on. Glance's own guidance
   is that anything under ~30 minutes or needing network belongs in
@@ -18,7 +21,7 @@
     android:targetCellWidth="2"
     android:targetCellHeight="1"
     android:maxResizeWidth="250dp"
-    android:maxResizeHeight="180dp"
+    android:maxResizeHeight="380dp"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
     android:updatePeriodMillis="0"

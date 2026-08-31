@@ -47,4 +47,9 @@ dependencies {
     // dependency in this project — no version catalog, no floating range.
     implementation("androidx.glance:glance:1.2.0")
     implementation("androidx.glance:glance-appwidget:1.2.0")
+
+    // For the manual-refresh tap only — enqueues :app's WidgetRefreshWorker
+    // by class name (see RefreshWidgetAction) rather than a compile-time
+    // dependency on :app, which would invert this module's whole point.
+    implementation("androidx.work:work-runtime-ktx:2.10.1")
 }

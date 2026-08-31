@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="GradleMigrationSettings" migrationVersion="1" />
   <component name="GradleSettings">
     <option name="linkedExternalProjectsSettings">
       <GradleProjectSettings>
@@ -15,6 +16,7 @@
             <option value="$PROJECT_DIR$/engine-android" />
             <option value="$PROJECT_DIR$/probe" />
             <option value="$PROJECT_DIR$/selftest" />
+            <option value="$PROJECT_DIR$/widget" />
           </set>
         </option>
       </GradleProjectSettings>
