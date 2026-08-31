@@ -18,12 +18,16 @@ import kotlinx.serialization.json.put
 
 data class WidgetMover(val ticker: String, val delta: Int)
 
+data class WidgetHolding(val ticker: String, val score: Int?, val tier: String)
+
 data class WidgetSnapshot(
     val watchlistName: String,
     val compositeScore: Int?,
     val previousCompositeScore: Int?,
     val tier: String,
-    val movers: List<WidgetMover>
+    val movers: List<WidgetMover>,
+    /** Every holding, in watchlist order — the widget's largest size shows this instead of only the ranked movers. */
+    val holdings: List<WidgetHolding>
 )
 
 /**
@@ -79,7 +83,8 @@ class WidgetRepository(
             compositeScore = view.health.compositeScore,
             previousCompositeScore = previousComposite,
             tier = view.health.tier,
-            movers = movers
+            movers = movers,
+            holdings = view.holdings.map { WidgetHolding(it.ticker, it.healthScore, it.healthTier) }
         )
     }
 }

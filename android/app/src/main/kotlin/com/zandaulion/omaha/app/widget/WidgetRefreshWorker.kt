@@ -67,6 +67,9 @@ class WidgetRefreshWorker(
                 ?: prefs.remove(WidgetKeys.previousScore)
             prefs[WidgetKeys.tier] = snapshot.tier
             prefs[WidgetKeys.moversText] = snapshot.movers.joinToString(";") { "${it.ticker}|${it.delta}" }
+            prefs[WidgetKeys.holdingsText] = snapshot.holdings.joinToString(";") {
+                "${it.ticker}|${it.score ?: ""}|${it.tier}"
+            }
         }
         PocketOmahaWidget().update(applicationContext, id)
     }
