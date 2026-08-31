@@ -5,10 +5,12 @@ import {
   COOLDOWN_DAYS,
   DEFAULT_COOLDOWN_DAYS,
   DEFAULT_NOTIFICATION_SETTINGS,
+  DIGEST_MOVER_THRESHOLD,
   buildDigest,
   cooldownDays,
   isSweepAbandonError,
   isWithinCooldown,
+  movers,
   snapshotOf,
   sweepDecision
 } from './sweep.js';
@@ -171,6 +173,36 @@ test('an unscored list produces no digest at all', () => {
     buildDigest({ listName: 'Unscored', holdings: [{ ticker: 'X', healthScore: null }] }),
     null
   );
+});
+
+// ------------------------------------------------------------------ movers
+
+test('movers is sorted by |delta|, largest first', () => {
+  const m = movers([
+    { ticker: 'A', healthScore: 60, previousScore: 55 },
+    { ticker: 'B', healthScore: 40, previousScore: 60 },
+    { ticker: 'C', healthScore: 70, previousScore: 69 }
+  ]);
+  assert.deepStrictEqual(m.map((mv) => mv.ticker), ['B', 'A'], 'C is below threshold');
+  assert.strictEqual(m[0].delta, -20);
+});
+
+test('movers respects the exact threshold, inclusive', () => {
+  const at = movers([{ ticker: 'A', healthScore: 62, previousScore: 60 }]);
+  assert.strictEqual(at.length, 1, `delta of exactly ${DIGEST_MOVER_THRESHOLD} should count`);
+
+  const under = movers([{ ticker: 'A', healthScore: 61, previousScore: 60 }]);
+  assert.strictEqual(under.length, 0);
+});
+
+test('movers drops a holding with no baseline rather than treating it as a full-score move', () => {
+  const m = movers([{ ticker: 'NEW', healthScore: 66, previousScore: null }]);
+  assert.strictEqual(m.length, 0);
+});
+
+test('movers on an empty or missing list is an empty list, not an exception', () => {
+  assert.deepStrictEqual(movers([]), []);
+  assert.deepStrictEqual(movers(undefined), []);
 });
 
 test('holdings with no known capitalisation still average', () => {

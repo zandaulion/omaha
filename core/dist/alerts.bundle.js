@@ -2722,13 +2722,16 @@ function rollBaseline(previous, nowIso) {
   const adopting = previous?.health_score ?? null;
   return adopting === null ? { score: null, at: null } : { score: adopting, at: nowIso };
 }
+function movers(holdings) {
+  return (holdings || []).filter((r) => typeof r.healthScore === "number" && typeof r.previousScore === "number").map((r) => ({ ticker: r.ticker, delta: r.healthScore - r.previousScore })).filter((mv) => Math.abs(mv.delta) >= DIGEST_MOVER_THRESHOLD).sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+}
 function buildDigest({ listName, holdings } = {}) {
   const rows = (holdings || []).filter((h) => typeof h.healthScore === "number");
   if (!rows.length) return null;
   const totalCap = rows.reduce((s, r) => s + (r.marketCap || 0), 0);
   const composite = totalCap ? Math.round(rows.reduce((s, r) => s + r.healthScore * (r.marketCap || 0), 0) / totalCap) : Math.round(rows.reduce((s, r) => s + r.healthScore, 0) / rows.length);
-  const movers = rows.filter((r) => typeof r.previousScore === "number").map((r) => ({ ticker: r.ticker, delta: r.healthScore - r.previousScore })).filter((mv) => Math.abs(mv.delta) >= DIGEST_MOVER_THRESHOLD).sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
-  const moverText = movers.length ? ` Movers: ${movers.slice(0, 3).map((mv) => `${mv.ticker} ${mv.delta > 0 ? "+" : ""}${mv.delta}`).join(", ")}.` : " No material health changes this week.";
+  const rowMovers = movers(rows);
+  const moverText = rowMovers.length ? ` Movers: ${rowMovers.slice(0, 3).map((mv) => `${mv.ticker} ${mv.delta > 0 ? "+" : ""}${mv.delta}`).join(", ")}.` : " No material health changes this week.";
   return {
     type: "WEEKLY_DIGEST",
     ticker: "",
@@ -2807,6 +2810,9 @@ function done(ticker, action, reason) {
 function digest(input) {
   return buildDigest(input);
 }
+function movers2(holdings) {
+  return movers(holdings);
+}
 function cooledDown(alert, lastDeliveredAt) {
   return isWithinCooldown(alert, lastDeliveredAt ?? null);
 }
@@ -2816,6 +2822,7 @@ export {
   digest,
   digestSlot,
   intervalMs,
+  movers2 as movers,
   spacingMs,
   sweepTicker
 };

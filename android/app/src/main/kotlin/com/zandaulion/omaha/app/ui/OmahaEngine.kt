@@ -15,6 +15,7 @@ import com.zandaulion.omaha.data.StockDetailRepository
 import com.zandaulion.omaha.data.StockEngine
 import com.zandaulion.omaha.data.ThesisRepository
 import com.zandaulion.omaha.data.WatchlistRepository
+import com.zandaulion.omaha.data.WidgetRepository
 import com.zandaulion.omaha.data.BackupIo
 import com.zandaulion.omaha.data.PersonalDataStore
 import com.zandaulion.omaha.engine.BackupEngine
@@ -46,7 +47,8 @@ object OmahaEngine {
         val auth: AuthRepository,
         val billing: BillingRepository,
         val relay: RelayRepository,
-        val ai: AiRepository
+        val ai: AiRepository,
+        val widget: WidgetRepository
     )
 
     @Synchronized
@@ -76,10 +78,11 @@ object OmahaEngine {
         val theses = ThesisRepository(store.personalData)
         val settings = com.zandaulion.omaha.data.AppSettings(store.appSettings)
         val relay = RelayRepository()
+        val watchlists = WatchlistRepository(store.personalData, engine)
 
         return Handles(
             store = store,
-            watchlists = WatchlistRepository(store.personalData, engine),
+            watchlists = watchlists,
             details = details,
             theses = theses,
             settings = settings,
@@ -94,7 +97,8 @@ object OmahaEngine {
             auth = AuthRepository(app),
             billing = BillingRepository(app),
             relay = relay,
-            ai = AiRepository(details, theses, settings, relay, store.aiSummaries)
+            ai = AiRepository(details, theses, settings, relay, store.aiSummaries),
+            widget = WidgetRepository(watchlists, store.alerts, alertEngine)
         )
     }
 }

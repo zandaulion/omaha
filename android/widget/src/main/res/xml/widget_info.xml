@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Dimensions give the two size variants PocketOmahaWidget's SizeMode.Responsive
+  renders between (see that file — SMALL/LARGE match minWidth/minHeight and
+  maxResizeWidth/maxResizeHeight here as closely as a home-screen grid allows).
+
+  updatePeriodMillis is 0 — deliberately not relied on. Glance's own guidance
+  is that anything under ~30 minutes or needing network belongs in
+  WorkManager; WidgetRefreshWorker (in :app, hourly) is the only refresh path.
+
+  configure points at :app's WidgetConfigActivity because configuration is
+  mandatory here, not optional: the widget has no default watchlist to fall
+  back to, unlike a price widget that could default to "whatever's first."
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="110dp"
+    android:minHeight="60dp"
+    android:targetCellWidth="2"
+    android:targetCellHeight="1"
+    android:maxResizeWidth="250dp"
+    android:maxResizeHeight="180dp"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:updatePeriodMillis="0"
+    android:configure="com.zandaulion.omaha.app.widget.WidgetConfigActivity"
+    android:initialLayout="@layout/glance_default_loading_layout" />

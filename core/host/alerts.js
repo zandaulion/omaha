@@ -31,6 +31,7 @@ import {
   buildDigest,
   isSweepAbandonError,
   isWithinCooldown,
+  movers as sweepMovers,
   rollBaseline,
   snapshotOf,
   sweepDecision
@@ -178,6 +179,17 @@ function done(ticker, action, reason) {
  */
 export function digest(input) {
   return buildDigest(input);
+}
+
+/**
+ * Ranked score movers for a set of holdings — the same list `digest` embeds
+ * as prose, structured for a host that wants to render it itself (the
+ * Android widget) rather than only ever show it inside a notification body.
+ *
+ * @param {Array<{ticker: string, healthScore: number, previousScore?: number|null}>} holdings
+ */
+export function movers(holdings) {
+  return sweepMovers(holdings);
 }
 
 /**

@@ -99,11 +99,26 @@ fun OmahaApp(
      * selected, and the scorecard can show any of them.
      */
     initialTicker: String? = null,
-    onTickerConsumed: () -> Unit = {}
+    onTickerConsumed: () -> Unit = {},
+    /**
+     * The watchlist a home-screen widget tap was about.
+     *
+     * Handled here rather than left to whatever the Watchlist tab already
+     * has selected — a widget is bound to a specific list at configuration
+     * time, and that may not be the one this activity last had active. See
+     * `MainActivity.EXTRA_WATCHLIST_ID`.
+     */
+    initialWatchlistId: String? = null,
+    onWatchlistConsumed: () -> Unit = {}
 ) {
     var tab by rememberSaveable { mutableStateOf(OmahaTab.Watchlist) }
     val deepDive: DeepDiveViewModel = viewModel()
     val ai: AiViewModel = viewModel()
+    // The same instance every OmahaTab.Watchlist/Filter/Compare branch below
+    // resolves via its own viewModel() call — Compose scopes it to this
+    // activity regardless of call site, so selecting here is selecting for
+    // all three.
+    val watchlist: WatchlistViewModel = viewModel()
 
     LaunchedEffect(initialTicker) {
         val ticker = initialTicker ?: return@LaunchedEffect
@@ -113,6 +128,13 @@ fun OmahaApp(
         // Cleared so returning to the app later does not re-open the same
         // company over whatever the person navigated to since.
         onTickerConsumed()
+    }
+
+    LaunchedEffect(initialWatchlistId) {
+        val id = initialWatchlistId ?: return@LaunchedEffect
+        watchlist.select(id)
+        tab = OmahaTab.Watchlist
+        onWatchlistConsumed()
     }
 
     Column(
