@@ -30,5 +30,16 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- android/widget/src/main/res/xml/widget_info.xml's android:configure
+             target — shown once, when PocketOmahaWidget is placed. Not exported:
+             only the widget-placement flow launches it. -->
+        <activity
+            android:name=".widget.WidgetConfigActivity"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
     </application>
 </manifest>

@@ -66,7 +66,7 @@ export const DIGEST_WEEKDAY = 0; // Sunday
 export const DIGEST_HOUR = 9;
 
 /** A health move smaller than this is not worth naming in the digest. */
-const DIGEST_MOVER_THRESHOLD = 2;
+export const DIGEST_MOVER_THRESHOLD = 2;
 
 /**
  * How old the digest's comparison point is allowed to get before it is reset.
@@ -251,6 +251,26 @@ export function rollBaseline(previous, nowIso) {
 // ----------------------------------------------------------------- digest
 
 /**
+ * Ranked score movers within a set of holdings.
+ *
+ * Extracted from `buildDigest`, 2026-08-29, so the Android widget can show
+ * the same ranked list the Sunday digest names in prose, without a second
+ * definition of "worth naming" — a future change to the threshold or the
+ * sort here reaches both callers, rather than one of them silently
+ * disagreeing with the other about the same list on the same day.
+ *
+ * @param {Array<{ticker: string, healthScore: number, previousScore?: number|null}>} holdings
+ * @returns {Array<{ticker: string, delta: number}>} sorted by |delta|, largest first
+ */
+export function movers(holdings) {
+  return (holdings || [])
+    .filter((r) => typeof r.healthScore === 'number' && typeof r.previousScore === 'number')
+    .map((r) => ({ ticker: r.ticker, delta: r.healthScore - r.previousScore }))
+    .filter((mv) => Math.abs(mv.delta) >= DIGEST_MOVER_THRESHOLD)
+    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+}
+
+/**
  * The Sunday summary, from holdings already scored during the week's sweeps.
  *
  * Deliberately reads the cache rather than re-fetching. A digest that triggers
@@ -275,14 +295,10 @@ export function buildDigest({ listName, holdings } = {}) {
     ? Math.round(rows.reduce((s, r) => s + r.healthScore * (r.marketCap || 0), 0) / totalCap)
     : Math.round(rows.reduce((s, r) => s + r.healthScore, 0) / rows.length);
 
-  const movers = rows
-    .filter((r) => typeof r.previousScore === 'number')
-    .map((r) => ({ ticker: r.ticker, delta: r.healthScore - r.previousScore }))
-    .filter((mv) => Math.abs(mv.delta) >= DIGEST_MOVER_THRESHOLD)
-    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+  const rowMovers = movers(rows);
 
-  const moverText = movers.length
-    ? ` Movers: ${movers.slice(0, 3).map((mv) => `${mv.ticker} ${mv.delta > 0 ? '+' : ''}${mv.delta}`).join(', ')}.`
+  const moverText = rowMovers.length
+    ? ` Movers: ${rowMovers.slice(0, 3).map((mv) => `${mv.ticker} ${mv.delta > 0 ? '+' : ''}${mv.delta}`).join(', ')}.`
     : ' No material health changes this week.';
 
   return {

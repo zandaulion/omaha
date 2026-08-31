@@ -121,6 +121,10 @@ interface AlertsDao {
     @Query("SELECT * FROM stock_snapshots WHERE ticker = :ticker")
     suspend fun snapshot(ticker: String): SnapshotRow?
 
+    /** A whole watchlist's worth in one query, for the widget's movers list — the digest reads one ticker at a time because it walks a single default list; a widget may be bound to any list. */
+    @Query("SELECT * FROM stock_snapshots WHERE ticker IN (:tickers)")
+    suspend fun snapshots(tickers: List<String>): List<SnapshotRow>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun putSnapshot(row: SnapshotRow)
 

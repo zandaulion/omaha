@@ -56,6 +56,9 @@ class AlertEngine private constructor(private val bridge: JsBridge) {
     /** Compose the Sunday summary from rows the host has already stored. */
     suspend fun digest(inputJson: String): String = bridge.call("digest", inputJson)
 
+    /** Ranked score movers for a set of holdings — the same list [digest] embeds as prose, structured for the widget. */
+    suspend fun movers(holdingsJson: String): String = bridge.call("movers", holdingsJson)
+
     /** Whether an alert composed outside a sweep is still inside its window. */
     suspend fun cooledDown(alertJson: String, lastDeliveredAt: String?): String =
         bridge.call(

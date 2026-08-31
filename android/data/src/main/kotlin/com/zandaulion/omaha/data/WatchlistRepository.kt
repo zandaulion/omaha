@@ -321,23 +321,41 @@ class WatchlistRepository(
      * banner can say what it is an average of.
      */
     private fun composite(name: String, holdings: List<Holding>): PortfolioHealth {
-        val scores = holdings.mapNotNull { it.healthScore }
-        val average = if (scores.isEmpty()) null else scores.sum() / scores.size
+        val (average, scoredCount) = meanScore(holdings.map { it.healthScore })
 
         return PortfolioHealth(
             watchlistName = name,
             holdingCount = holdings.size,
             compositeScore = average,
-            tier = when {
-                average == null -> "risk"
-                average >= 85 -> "pristine"
-                average >= 70 -> "good"
-                average >= 50 -> "moderate"
-                else -> "risk"
-            },
-            scoredCount = scores.size
+            tier = tierFor(average),
+            scoredCount = scoredCount
         )
     }
+}
+
+/**
+ * The plain mean over whatever could be scored, and how many that was.
+ *
+ * Extracted from [WatchlistRepository.composite] so [WidgetRepository] can
+ * compute the same mean over a baseline reading — `SnapshotRow.baselineScore`
+ * rather than `Holding.healthScore` — without a second definition. Both must
+ * stay this exact function: `core/alerts/sweep.js`'s digest computes a
+ * *different*, capitalisation-weighted composite for its own purposes, and
+ * mixing the two would make a single screen's current score and its own
+ * delta disagree about what "the composite" means.
+ */
+internal fun meanScore(scores: List<Int?>): Pair<Int?, Int> {
+    val measured = scores.mapNotNull { it }
+    val average = if (measured.isEmpty()) null else measured.sum() / measured.size
+    return average to measured.size
+}
+
+internal fun tierFor(average: Int?): String = when {
+    average == null -> "risk"
+    average >= 85 -> "pristine"
+    average >= 70 -> "good"
+    average >= 50 -> "moderate"
+    else -> "risk"
 }
 
 private fun JsonPrimitive.booleanOrNull(): Boolean? =

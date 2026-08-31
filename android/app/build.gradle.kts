@@ -93,6 +93,16 @@ tasks.matching { it.name.startsWith("generate") || it.name.startsWith("merge") }
 dependencies {
     implementation(project(":design"))
     implementation(project(":data"))
+    // The widget's rendering surface. :widget is deliberately data-free (see
+    // its own build.gradle.kts), so this module owns the refresh worker, the
+    // configuration activity, and the one OmahaEngine.get() call site the
+    // widget's data ever passes through.
+    implementation(project(":widget"))
+    // Gradle's `implementation` does not leak transitively — :widget depends
+    // on Glance for its own rendering, but WidgetRefreshWorker and
+    // WidgetConfigActivity here call GlanceAppWidgetManager/updateAppWidgetState
+    // directly too, so this module needs the same coordinate declared again.
+    implementation("androidx.glance:glance-appwidget:1.2.0")
 
     implementation(platform("androidx.compose:compose-bom:2025.09.00"))
     implementation("androidx.compose.foundation:foundation")

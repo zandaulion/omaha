@@ -31,6 +31,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.zandaulion.omaha.app.alerts.AlertNotifier
 import com.zandaulion.omaha.app.alerts.AlertSweepWorker
+import com.zandaulion.omaha.app.widget.WidgetRefreshWorker
 import com.zandaulion.omaha.app.ui.OmahaApp
 import com.zandaulion.omaha.app.ui.SettingsViewModel
 import com.zandaulion.omaha.design.OmahaTheme
@@ -56,6 +57,9 @@ class MainActivity : ComponentActivity() {
      */
     private var pendingTicker by mutableStateOf<String?>(null)
 
+    /** Same shape as [pendingTicker], for a widget tap — see [EXTRA_WATCHLIST_ID]. */
+    private var pendingWatchlistId by mutableStateOf<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -67,6 +71,7 @@ class MainActivity : ComponentActivity() {
         val crash = CrashLog.consumePending(this)
 
         pendingTicker = intent?.getStringExtra(EXTRA_TICKER)
+        pendingWatchlistId = intent?.getStringExtra(EXTRA_WATCHLIST_ID)
 
         // Channels before any alert can be posted, and the schedule on every
         // launch — WorkManager keeps an existing one, so this re-establishes
@@ -88,6 +93,13 @@ class MainActivity : ComponentActivity() {
                 AlertSweepWorker.schedule(this@MainActivity)
             } catch (err: Throwable) {
                 Log.e("OmahaStartup", "could not schedule the alert sweep", err)
+            }
+        }
+        lifecycleScope.launch {
+            try {
+                WidgetRefreshWorker.schedule(this@MainActivity)
+            } catch (err: Throwable) {
+                Log.e("OmahaStartup", "could not schedule the widget refresh", err)
             }
         }
 
@@ -114,7 +126,9 @@ class MainActivity : ComponentActivity() {
             ) {
                 OmahaApp(
                     initialTicker = pendingTicker,
-                    onTickerConsumed = { pendingTicker = null }
+                    onTickerConsumed = { pendingTicker = null },
+                    initialWatchlistId = pendingWatchlistId,
+                    onWatchlistConsumed = { pendingWatchlistId = null }
                 )
             }
         }
@@ -124,11 +138,22 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         pendingTicker = intent.getStringExtra(EXTRA_TICKER)
+        pendingWatchlistId = intent.getStringExtra(EXTRA_WATCHLIST_ID)
     }
 
     companion object {
         /** The ticker an alert was about. See `AlertNotifier.show`. */
         const val EXTRA_TICKER = "com.zandaulion.omaha.TICKER"
+
+        /**
+         * The watchlist a home-screen widget tap was about — see
+         * `PocketOmahaWidget`'s tap intent, `:widget` module. Not the
+         * currently-active watchlist: a widget is bound to a specific list at
+         * configuration time, possibly not whichever one the app last had
+         * selected, and opening the wrong one on tap would be exactly the
+         * kind of two-numbers-for-one-thing mismatch this app avoids.
+         */
+        const val EXTRA_WATCHLIST_ID = "com.zandaulion.omaha.WATCHLIST_ID"
     }
 }
 
