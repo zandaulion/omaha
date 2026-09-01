@@ -1049,6 +1049,12 @@ function renderWatchlistCards() {
             <span class="ticker-symbol mono">${stock.ticker}</span>
             <span class="company-name">${stock.name}</span>
           </div>
+          ${(stock.industry || stock.sector) ? `
+          <div class="company-industry">${
+            stock.sector && stock.industry && stock.sector !== stock.industry
+              ? `${stock.sector} · ${stock.industry}`
+              : (stock.industry || stock.sector)
+          }</div>` : ''}
           <div class="stock-metrics-row mono">
             <span>P/E: ${fmtNum(stock.summary?.ratios?.pe, 1, 'x')}</span>
             <span>•</span>
@@ -2296,7 +2302,7 @@ function applyFilters() {
     if (!isNum(s.health_score) || s.health_score < minHealth) return false;
     if (minPiotroski > 0 && (!isNum(s.piotroski_score) || s.piotroski_score < minPiotroski)) return false;
     if (minRoic > 0 && (!isNum(s.roic_pct) || s.roic_pct < minRoic)) return false;
-    if (sector !== 'all' && s.sector !== sector) return false;
+    if (sector !== 'all' && s.sector !== sector && s.industry !== sector) return false;
     if (netCashOnly && !(isNum(s.net_cash_b) && s.net_cash_b > 0)) return false;
     if (fcfPositive && !(isNum(s.free_cash_flow) && s.free_cash_flow > 0)) return false;
     if (maxDe < 5) {
@@ -2316,6 +2322,12 @@ function applyFilters() {
         <td>
           <span class="mono" style="font-weight: 700;">${s.ticker}</span>
           <div style="font-size: 11px; color: var(--text-secondary);">${s.name}</div>
+          ${(s.industry || s.sector) ? `
+          <div style="font-size: 10px; color: var(--text-tertiary); margin-top: 1px;">${
+            s.sector && s.industry && s.sector !== s.industry
+              ? `${s.sector} · ${s.industry}`
+              : (s.industry || s.sector)
+          }</div>` : ''}
         </td>
         <td class="mono">${fmtPrice(s.price, s.currency)}</td>
         <td>
@@ -2397,6 +2409,9 @@ async function runComparison() {
                 isNum(s.health_score) ? `${s.health_score}/100` : 'N/A'
               }</span></td>`).join('')}
             </tr>
+            ${row('Industry', (s) => (s.sector && s.industry && s.sector !== s.industry
+              ? `${s.sector} · ${s.industry}`
+              : (s.industry || s.sector || EM_DASH)))}
             ${row('Altman Z-Score', (s) => fmtNum(s.altman_z, 2))}
             ${row('Piotroski F-Score', (s) => (isNum(s.piotroski_score) ? `${s.piotroski_score}/9` : EM_DASH))}
             ${row('ROIC', (s) => fmtPct(s.roic_pct, 1, { alreadyPercent: true }))}
@@ -2648,7 +2663,11 @@ async function handleSearchInput() {
             <div class="search-result-header">
               <span class="search-result-ticker mono">${r.ticker}</span>
               ${r.exchange ? `<span class="search-result-exchange">${r.exchange}</span>` : ''}
-              ${r.sector ? `<span class="search-result-meta">• ${r.sector}</span>` : ''}
+              ${(r.industry || r.sector) ? `<span class="search-result-meta">• ${
+                r.sector && r.industry && r.sector !== r.industry
+                  ? `${r.sector} · ${r.industry}`
+                  : (r.industry || r.sector)
+              }</span>` : ''}
               ${r.health_score ? `<span class="score-badge pristine" style="font-size: 11px; padding: 2px 6px;">${r.health_score}/100</span>` : ''}
             </div>
             <div class="search-result-name">${r.name}</div>

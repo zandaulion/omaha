@@ -44,6 +44,8 @@ data class Holding(
     val isFinancial: Boolean,
     val topCatalyst: String?,
     val topRisk: String?,
+    val sector: String? = null,
+    val industry: String? = null,
     /** Set when this ticker could not be loaded at all; everything else is null. */
     val error: String? = null,
     /** Queued, not yet scored. Distinct from failed, and from scored-as-null. */
@@ -307,7 +309,9 @@ class WatchlistRepository(
             peRatio = ratios?.num("pe"),
             isFinancial = metrics?.get("isFinancial")?.jsonPrimitive?.booleanOrNull() ?: false,
             topCatalyst = firstTitle("catalysts"),
-            topRisk = firstTitle("risks")
+            topRisk = firstTitle("risks"),
+            sector = data.str("sector"),
+            industry = data.str("industry")
         )
     }
 

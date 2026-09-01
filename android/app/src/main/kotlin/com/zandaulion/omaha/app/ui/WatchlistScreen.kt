@@ -238,6 +238,21 @@ private fun HoldingCard(holding: Holding, onClick: () -> Unit, onRemove: () -> U
                         )
                     }
                 }
+                val ind = when {
+                    !holding.sector.isNullOrBlank() && !holding.industry.isNullOrBlank() && holding.sector != holding.industry ->
+                        "${holding.sector} · ${holding.industry}"
+                    !holding.industry.isNullOrBlank() -> holding.industry
+                    !holding.sector.isNullOrBlank() -> holding.sector
+                    else -> null
+                }
+                if (ind != null) {
+                    Box(Modifier.height(2.dp))
+                    BasicText(
+                        ind,
+                        style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary),
+                        maxLines = 1
+                    )
+                }
                 Box(Modifier.height(6.dp))
                 // The web card shows P/E, ROIC and then Altman Z — or ROE for a
                 // financial, since Altman Z does not apply to a bank.

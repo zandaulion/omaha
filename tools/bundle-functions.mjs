@@ -35,6 +35,7 @@ const BANNER =
 
 async function render() {
   const result = await build({
+    absWorkingDir: path.join(ROOT, 'functions'),
     entryPoints: [ENTRY],
     bundle: true,
     format: 'esm',
