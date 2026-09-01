@@ -249,6 +249,20 @@ private fun FilterRow(h: Holding, onClick: () -> Unit) {
                 style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary),
                 maxLines = 1
             )
+            val ind = when {
+                !h.sector.isNullOrBlank() && !h.industry.isNullOrBlank() && h.sector != h.industry ->
+                    "${h.sector} · ${h.industry}"
+                !h.industry.isNullOrBlank() -> h.industry
+                !h.sector.isNullOrBlank() -> h.sector
+                else -> null
+            }
+            if (ind != null) {
+                BasicText(
+                    ind,
+                    style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary),
+                    maxLines = 1
+                )
+            }
         }
         BasicText(
             "ROIC ${fmtPercent(h.roicPct)}",

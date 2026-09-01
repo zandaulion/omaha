@@ -136,6 +136,15 @@ private fun Loaded(holdings: List<Holding>) {
         ) {
             CompareRow("", chosen.map { it.ticker }, header = true)
             Divider()
+            CompareRow("Industry", chosen.map { h ->
+                when {
+                    !h.sector.isNullOrBlank() && !h.industry.isNullOrBlank() && h.sector != h.industry ->
+                        "${h.sector} · ${h.industry}"
+                    !h.industry.isNullOrBlank() -> h.industry
+                    !h.sector.isNullOrBlank() -> h.sector
+                    else -> EM_DASH
+                }
+            })
             CompareRow("Health", chosen.map { h -> h.healthScore?.let { "$it/100" } ?: EM_DASH })
             CompareRow("Price", chosen.map { fmtPrice(it.price, it.currency) })
             CompareRow("Change", chosen.map { fmtPercent(it.changePct, 2, signed = true) })

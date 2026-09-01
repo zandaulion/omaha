@@ -431,6 +431,15 @@ body {
   max-width: 180px;
 }
 
+.company-industry {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
 .stock-metrics-row {
   display: flex;
   align-items: center;
