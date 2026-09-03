@@ -1,3 +1,4 @@
+import { installUpdates } from '/pwa-update.js';
 import {
   dcfBaselines,
   presetAssumptions,
@@ -3242,3 +3243,9 @@ async function handleTestPush() {
     btn.disabled = false;
   }
 }
+
+
+installUpdates({
+  appName: 'Pocket Omaha',
+  toast: (message) => showToast(message, '✓')
+});
