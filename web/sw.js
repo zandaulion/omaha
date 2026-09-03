@@ -1,4 +1,6 @@
-const CACHE_NAME = 'pocket-omaha-v2.4.0';
+// Stamped at boot from the contents of web/, by server/serve-sw.js. A
+// version nobody has to remember to bump cannot be forgotten.
+const CACHE_NAME = 'pocket-omaha-__BUILD_VERSION__';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -21,6 +23,8 @@ const STATIC_ASSETS = [
   '/icons/badge-96.png'
 ];
 
+importScripts('/sw-update.js');
+
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
@@ -30,18 +34,15 @@ self.addEventListener('install', (event) => {
   );
 });
 
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
-        })
-      );
-    }).then(() => self.clients.claim())
-  );
+self.addEventListener('activate', (e) => {
+  e.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)));
+    await self.clients.claim();
+    // Announce rather than navigate: forcing a reload discards whatever the
+    // person had on screen and not yet saved.
+    await announceUpdate();
+  })());
 });
 
 self.addEventListener('fetch', (event) => {

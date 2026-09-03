@@ -55,6 +55,17 @@ app.use(express.urlencoded({ extended: true }));
 
 // Serve static frontend files
 const WEB_DIR = path.join(__dirname, '../web');
+// Before express.static, or the unstamped worker wins.
+app.get('/bust', (req, res) => {
+  // The escape hatch for a client wedged on an old worker. Ahead of
+  // express.static so the file cannot be served without these headers, and
+  // sw.js refuses to intercept the path.
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  res.setHeader('Clear-Site-Data', '"cache"');
+  res.sendFile(path.join(WEB_DIR, 'bust.html'));
+});
+
+app.use(swVersion(WEB_DIR));
 app.use(express.static(WEB_DIR, {
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.html') || filePath.endsWith('.js') || filePath.endsWith('.css') || filePath.endsWith('.webmanifest')) {
