@@ -34,6 +34,12 @@ import {
   getNotificationHistory,
   markNotificationsRead
 } from './alerts.js';
+// The self-update commit called swVersion without bringing the module that
+// defines it, so the server would not boot at all on the next rebuild --
+// the running container simply predated the change. deploy.sh stamps the
+// copy under /var/www, but the container serves web/ out of the image,
+// where __BUILD_VERSION__ is still a literal.
+import { swVersion } from './serve-sw.js';
 
 dotenv.config();
 
