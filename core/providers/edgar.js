@@ -136,6 +136,18 @@ const US_GAAP = {
   currentLiabilities: [INSTANT, ['LiabilitiesCurrent']],
   inventory: [INSTANT, ['InventoryNet']],
   retainedEarnings: [INSTANT, ['RetainedEarningsAccumulatedDeficit']],
+
+  // For book-value businesses. EDGAR has no tangible-book concept -- unlike
+  // Yahoo, which serves one directly -- so the pieces are filed separately and
+  // subtracted in assembly. JPM reached the balance-sheet model through this
+  // provider and got nothing, because the fields had only been added to Yahoo.
+  goodwill: [INSTANT, ['Goodwill']],
+  otherIntangibles: [INSTANT, [
+    'IntangibleAssetsNetExcludingGoodwill',
+    'FiniteLivedIntangibleAssetsNet'
+  ]],
+  preferredEquity: [INSTANT, ['PreferredStockValue', 'PreferredStockLiquidationPreferenceValue']],
+  netIncomeToCommon: [DURATION, ['NetIncomeLossAvailableToCommonStockholdersBasic']],
   cash: [INSTANT, [
     'CashAndCashEquivalentsAtCarryingValue',
     'CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents'

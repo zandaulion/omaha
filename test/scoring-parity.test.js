@@ -55,10 +55,18 @@ test('the fixtures cover materially different engine paths', () => {
   assert.equal(jpm.altmanZ ?? null, null, 'JPM is a lender: Altman Z inapplicable');
   assert.ok(typeof aapl.altmanZ === 'number', 'AAPL has a computable Altman Z');
 
+  // Which valuation ran is the sharper test of coverage than the score is.
+  // Distinct scores were the old proxy, and it broke the first time two
+  // unrelated companies happened to land on 52 -- a coincidence in live data,
+  // not a sign the fixtures stopped covering different branches.
+  assert.equal(jpm.dcf?.method, 'return-on-tangible-equity', 'JPM is valued on its book');
+  assert.equal(aapl.dcf?.method, 'discounted-cash-flow', 'AAPL is valued on its cash flows');
+  assert.equal(nok.dcf?.method, 'discounted-cash-flow');
+
   const scores = [nok, aapl, jpm].map((s) => s.compositeScore ?? s.healthScore ?? null);
-  assert.equal(
-    new Set(scores).size,
-    3,
-    `expected three distinct composite scores, saw ${JSON.stringify(scores)}`
+  assert.ok(
+    scores.every((v) => typeof v === 'number'),
+    `every fixture must score, saw ${JSON.stringify(scores)}`
   );
+  assert.ok(new Set(scores).size >= 2, `fixtures must not all score alike: ${JSON.stringify(scores)}`);
 });

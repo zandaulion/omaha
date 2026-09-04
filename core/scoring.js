@@ -204,6 +204,202 @@ export function estimateWACC({ beta, marketCap, totalDebt, interestExpense, taxR
 }
 
 // =====================================================================
+// 3b. Return on tangible equity, for book-value businesses
+// =====================================================================
+
+/**
+ * Gathers what the balance-sheet model needs out of the filed years.
+ *
+ * ROTE is computed per year against that year's own tangible equity, so a bank
+ * that raised or burned capital is not measured against a base it did not have
+ * at the time.
+ */
+function bankInput(model, metrics) {
+  const years = model.annual || [];
+  const roteHistory = [];
+  for (const y of years) {
+    const profit = num(y.netIncomeToCommon) ?? num(y.netIncome);
+    const tangible = tangibleEquityOf(y);
+    if (profit === null || tangible === null || tangible <= 0) continue;
+    roteHistory.push(profit / tangible);
+  }
+
+  const latest = model.latest || {};
+  // Dividends are filed as a negative outflow; the sign is dropped rather than
+  // trusted, since providers disagree about it.
+  const dividends = Math.abs(num(latest.dividendsPaid) ?? 0);
+  const profit = num(latest.netIncomeToCommon) ?? num(latest.netIncome);
+  const payoutRatio = profit && profit > 0 ? dividends / profit : null;
+
+  return {
+    roteHistory,
+    tangibleBookValue: tangibleEquityOf(latest),
+    sharesOutstanding: metrics.sharesOutstanding,
+    payoutRatio
+  };
+}
+
+/**
+ * Tangible common equity for one filed year.
+ *
+ * Yahoo serves the figure directly and, checked against a French and an
+ * American bank, already nets off both intangibles and preferred stock.
+ * EDGAR has no such concept, so the pieces are subtracted here instead.
+ *
+ * A filing with no intangible information at all returns null rather than
+ * assuming none. Treating an unfiled goodwill balance as zero would inflate
+ * tangible book for exactly the acquisitive banks where it matters most, and
+ * this file already refuses to fill a gap with the convenient number.
+ */
+function tangibleEquityOf(year) {
+  if (!year) return null;
+  const direct = num(year.tangibleBookValue);
+  if (direct !== null) return direct;
+
+  const equity = num(year.equity);
+  if (equity === null) return null;
+
+  const combined = num(year.goodwillAndIntangibles);
+  const goodwill = num(year.goodwill);
+  const other = num(year.otherIntangibles);
+  if (combined === null && goodwill === null && other === null) return null;
+
+  const intangible = combined !== null ? combined : (goodwill ?? 0) + (other ?? 0);
+  return equity - intangible - (num(year.preferredEquity) ?? 0);
+}
+
+
+/**
+ * What a bank is worth, from what it earns on the capital it keeps.
+ *
+ * A discounted cash flow says nothing about a bank. Its "free cash flow" is
+ * deposits and the loan book moving between periods -- Société Générale filed
+ * minus 29 billion euros of it in a perfectly ordinary year -- and its "cash"
+ * is other people's money while its "debt" is the raw material of the
+ * business. Feeding those to a DCF produces a confident number about nothing.
+ *
+ * The standard alternative values the balance sheet instead. Applying Gordon
+ * growth to book value gives a justified multiple of tangible equity:
+ *
+ *     P/TBV = (ROTE - g) / (COE - g)
+ *
+ * which says the plain thing: a bank earning more on its capital than the
+ * capital costs is worth more than that capital, and by exactly how much more.
+ * Multiply by tangible book value per share and the answer is a price.
+ *
+ * ROTE is taken as the median of the filed years rather than the latest.
+ * Bank earnings are cyclical, one year is not a run rate, and the median is
+ * the same choice the growth estimate already makes elsewhere in this file.
+ *
+ * The growth rate is what the bank can fund from retained profit -- ROTE times
+ * the share it keeps -- capped, because nothing compounds above the economy it
+ * lends to forever.
+ */
+export function calculateBankFairValue(params) {
+  const {
+    roteHistory = [], tangibleBookValue, sharesOutstanding,
+    payoutRatio, costOfEquity = 0.095, maxGrowth = 0.04
+  } = params;
+
+  const tbv = num(tangibleBookValue);
+  const shares = num(sharesOutstanding);
+
+  const rotes = roteHistory.map(num).filter((r) => r !== null && Number.isFinite(r));
+  if (!rotes.length) {
+    return { applicable: false, reason: 'no-return-history', fairValuePerShare: null };
+  }
+  // Negative tangible equity is not a cheap bank, it is an insolvent one, and
+  // the ratio would flip sign and read as value.
+  if (tbv === null || tbv <= 0) {
+    return { applicable: false, reason: 'no-tangible-equity', fairValuePerShare: null };
+  }
+  if (shares === null || shares <= 0) {
+    return { applicable: false, reason: 'no-share-count', fairValuePerShare: null };
+  }
+
+  const median = (xs) => {
+    const sorted = [...xs].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  };
+
+  // Every filed year, including the bad ones. This is the single largest
+  // judgement in the model and it is deliberately the conservative end of it:
+  // JPM's filed history runs from 4% in 2008 to 22% in 2021, and taking the
+  // median of all eighteen years values it at 175 a share where the last five
+  // years alone would say 305. A lender's cycle includes its crises -- that is
+  // what being a lender is -- so the whole record is the run rate.
+  //
+  // The recent figure is reported next to it rather than argued with. Where
+  // the two disagree the disagreement is the finding, and hiding it inside a
+  // window parameter would present one opinion as arithmetic.
+  const rote = median(rotes);
+  const roteRecent = rotes.length > 5 ? median(rotes.slice(-5)) : null;
+  const roteLatest = rotes[rotes.length - 1];
+
+  if (rote <= 0) {
+    return { applicable: false, reason: 'not-earning-on-equity', fairValuePerShare: null, rote: round(rote, 4) };
+  }
+
+  // A payout that cannot be read is assumed to be half, which is ordinary for
+  // a bank and errs towards less growth rather than more.
+  const payout = (() => {
+    const p = num(payoutRatio);
+    if (p === null || !Number.isFinite(p)) return 0.5;
+    return Math.min(1, Math.max(0, p));
+  })();
+
+  const rawGrowth = rote * (1 - payout);
+  const growth = Math.min(rawGrowth, maxGrowth);
+
+  // Gordon growth is undefined once growth reaches the discount rate, and just
+  // below it the multiple runs away to infinity. Refusing is the honest answer.
+  if (growth >= costOfEquity) {
+    return {
+      applicable: false, reason: 'growth-exceeds-cost-of-equity',
+      fairValuePerShare: null, rote: round(rote, 4), growth: round(growth, 4)
+    };
+  }
+
+  const justifiedPTBV = (rote - growth) / (costOfEquity - growth);
+  const tbvPerShare = tbv / shares;
+
+  // The same arithmetic at the worst and best years the bank actually filed.
+  //
+  // Gordon growth divides one small difference by another, so when the return
+  // sits near the growth rate a modest change in either moves the answer a
+  // long way. Société Générale's filed returns run from 3.0% to 9.7% and the
+  // fair value that follows runs from about 6 to 66 euros a share. Publishing
+  // the midpoint alone would be a precision the inputs do not have.
+  const priceAt = (r) => {
+    const g = Math.min(r * (1 - payout), maxGrowth);
+    if (r <= 0 || g >= costOfEquity) return null;
+    return round(tbvPerShare * ((r - g) / (costOfEquity - g)));
+  };
+
+  return {
+    applicable: true,
+    reason: null,
+    fairValuePerShare: round(tbvPerShare * justifiedPTBV),
+    fairValueAtWorstYear: priceAt(Math.min(...rotes)),
+    fairValueAtBestYear: priceAt(Math.max(...rotes)),
+    rote: round(rote, 4),
+    roteLatest: round(roteLatest, 4),
+    roteRecent: roteRecent === null ? null : round(roteRecent, 4),
+    roteYears: rotes.length,
+    roteLow: round(Math.min(...rotes), 4),
+    roteHigh: round(Math.max(...rotes), 4),
+    payoutRatio: round(payout, 4),
+    growthRate: round(growth, 4),
+    growthBeforeCap: round(rawGrowth, 4),
+    costOfEquity,
+    justifiedPTBV: round(justifiedPTBV, 3),
+    tangibleBookValuePerShare: round(tbvPerShare),
+    tangibleBookValue: round(tbv)
+  };
+}
+
+// =====================================================================
 // 4. Two-stage DCF
 // =====================================================================
 
@@ -1204,10 +1400,15 @@ export function computeComprehensiveHealth(model = {}) {
   };
 
   // A bank's free cash flow is not owner earnings — deposits and loan books
-  // move it around with no relation to value — so the model is not run.
-  const dcf = model.isFinancial
-    ? { applicable: false, reason: 'not-meaningful-for-financials', fairValuePerShare: null }
-    : calculateDCFFairValue(dcfInput);
+  // move it around with no relation to value — so the discounted model is not
+  // run. Banks and insurers get the balance-sheet model instead; the rest of
+  // the financial sector gets neither, and is told which of the two reasons
+  // applies rather than one word covering both.
+  const dcf = !model.isFinancial
+    ? calculateDCFFairValue(dcfInput)
+    : model.isBookValueBusiness
+      ? calculateBankFairValue(bankInput(model, metrics))
+      : { applicable: false, reason: 'no-model-for-this-balance-sheet', fairValuePerShare: null };
 
   let dcfDiscountPct = null;
   let premiumToFairValuePct = null;
@@ -1368,6 +1569,18 @@ export function computeComprehensiveHealth(model = {}) {
     dcf: {
       applicable: dcf.applicable,
       reason: dcf.reason || null,
+      // Which model produced the number, since two of them now can. A reader
+      // comparing a bank against an industrial is comparing two different
+      // claims, and the label is what says so.
+      //
+      // Null where neither applies. The first version read "is it a book-value
+      // business, else discounted cash flow", which labelled an asset manager
+      // -- valued by nothing at all -- as a DCF.
+      method: !model.isFinancial
+        ? 'discounted-cash-flow'
+        : model.isBookValueBusiness
+          ? 'return-on-tangible-equity'
+          : null,
       fairValue: dcf.fairValuePerShare,
       currentPrice: metrics.price,
       marginOfSafetyPct: dcfDiscountPct,
@@ -1379,17 +1592,45 @@ export function computeComprehensiveHealth(model = {}) {
       cashReserves: metrics.cash,
       totalDebt: metrics.totalDebt,
       sharesOutstanding: metrics.sharesOutstanding,
-      assumptions: {
-        growthRate: dcfInput.growthRate,
-        growthBasis: growth.basis,
-        growthBeforeBounding: growth.unbounded,
-        terminalMultiple: dcfInput.terminalMultiple,
-        discountRate: dcfInput.discountRate,
-        cashFlowBase: cashFlowBase.value,
-        cashFlowBasis: cashFlowBase.basis,
-        latestFiledCashFlow: cashFlowBase.latest,
-        normalisedCashFlow: cashFlowBase.normalised
-      },
+      // Present only for the balance-sheet model, and null-free rather than
+      // absent, so a reader can see the whole working: what it earns on its
+      // capital, what that capital is assumed to cost, and the multiple of
+      // book those two justify.
+      rote: dcf.rote ?? null,
+      roteLatest: dcf.roteLatest ?? null,
+      roteRecent: dcf.roteRecent ?? null,
+      roteYears: dcf.roteYears ?? null,
+      roteLow: dcf.roteLow ?? null,
+      roteHigh: dcf.roteHigh ?? null,
+      justifiedPTBV: dcf.justifiedPTBV ?? null,
+      fairValueAtWorstYear: dcf.fairValueAtWorstYear ?? null,
+      fairValueAtBestYear: dcf.fairValueAtBestYear ?? null,
+      tangibleBookValuePerShare: dcf.tangibleBookValuePerShare ?? null,
+      // Per method. The block used to be the DCF's assumptions whatever ran,
+      // so a bank came back carrying a cash flow base of minus 29 billion --
+      // the very number the balance-sheet model exists to avoid using.
+      assumptions: model.isBookValueBusiness
+        ? {
+            basis: 'return on tangible equity against its cost',
+            costOfEquity: dcf.costOfEquity ?? null,
+            growthRate: dcf.growthRate ?? null,
+            growthBasis: 'retained share of return on tangible equity, capped at 4%',
+            growthBeforeBounding: dcf.growthBeforeCap ?? null,
+            payoutRatio: dcf.payoutRatio ?? null,
+            tangibleBookValue: dcf.tangibleBookValue ?? null
+          }
+        : {
+            basis: 'discounted free cash flow',
+            growthRate: dcfInput.growthRate,
+            growthBasis: growth.basis,
+            growthBeforeBounding: growth.unbounded,
+            terminalMultiple: dcfInput.terminalMultiple,
+            discountRate: dcfInput.discountRate,
+            cashFlowBase: cashFlowBase.value,
+            cashFlowBasis: cashFlowBase.basis,
+            latestFiledCashFlow: cashFlowBase.latest,
+            normalisedCashFlow: cashFlowBase.normalised
+          },
       impliedGrowthRate: impliedGrowth,
       divergenceFactor,
       divergenceWarning,

@@ -27,6 +27,14 @@ export function buildModel(quote, fundamentals) {
       quote.industry || ''
     );
 
+  // Not every financial is the same shape. A bank or an insurer earns a return
+  // on capital it must hold, so its book value is the business and a justified
+  // price-to-book says something. An asset manager holds almost no capital and
+  // a REIT carries property at cost rather than worth, so book value means
+  // something different in each -- neither belongs in that model, and saying so
+  // is better than lending them a number built for somebody else.
+  const isBookValueBusiness = /bank|insurance|insurer/i.test(quote.industry || '');
+
   return {
     quote,
     latest,
@@ -35,6 +43,7 @@ export function buildModel(quote, fundamentals) {
     quarterly: fundamentals.quarterly || [],
     latestReported: fundamentals.latestReported || {},
     isFinancial,
+    isBookValueBusiness,
     reportingCurrency: fundamentals.reportingCurrency || quote.currency || null,
     history: buildHistory(annual)
   };

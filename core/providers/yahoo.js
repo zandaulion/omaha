@@ -166,6 +166,24 @@ const FIELD_MAP = {
   currentLiabilities: ['CurrentLiabilities'],
   inventory: ['Inventory'],
   retainedEarnings: ['RetainedEarnings'],
+
+  // For book-value businesses. TangibleBookValue is taken directly rather than
+  // derived: checked against both a French and an American bank, Yahoo's
+  // figure is exactly equity minus goodwill-and-intangibles minus preferred --
+  // 70,144 - 8,251 - 0 = 61,893 for GLE.PA, and 303,243 - 69,021 - 25,992 =
+  // 208,230 for BAC. That is tangible *common* equity, which is the
+  // denominator return on tangible equity actually wants, and deriving it by
+  // hand would only reintroduce the preferred-stock step Yahoo already took.
+  // The components come too, so the number can be shown its working.
+  tangibleBookValue: ['TangibleBookValue'],
+  goodwillAndIntangibles: ['GoodwillAndOtherIntangibleAssets'],
+  goodwill: ['Goodwill'],
+  preferredEquity: ['PreferredStockEquity'],
+  // Distinct from netIncome, whose first alias is NetIncome -- that is before
+  // preferred dividends and includes minority interests, so it overstates what
+  // the common shareholder earned. Only the return-on-tangible-equity model
+  // uses this; nothing else changes.
+  netIncomeToCommon: ['NetIncomeCommonStockholders'],
   cash: ['CashAndCashEquivalents'],
   shortTermInvestments: ['OtherShortTermInvestments', 'AvailableForSaleSecurities'],
   totalDebt: ['TotalDebt'],

@@ -2,12 +2,17 @@
   "altman_z": null,
   "catalysts": [
     {
+      "icon": "🚀",
+      "text": "ROIC of 691.4%, 682.3 points above its estimated 9.1% cost of capital.",
+      "title": "Elite capital efficiency"
+    },
+    {
       "icon": "📈",
       "text": "Diluted share count fell 3.4% year on year.",
       "title": "Accretive buybacks"
     }
   ],
-  "change_pct": -1.6490001,
+  "change_pct": -0.94459,
   "checklist": [
     {
       "benchmark": "Z ≥ 3.0",
@@ -42,8 +47,8 @@
       "explanation": "Leverage against book equity. Negative equity — usually from sustained buybacks — is reported as its own state rather than scored as low leverage.",
       "id": 4,
       "name": "Debt to Equity",
-      "status": "pass",
-      "value": "Net cash $342.82B"
+      "status": "na",
+      "value": "Not reported"
     },
     {
       "benchmark": "Positive every filed year",
@@ -51,8 +56,8 @@
       "explanation": "Owner earnings after the capital spending needed to keep the business running, across every filed year.",
       "id": 5,
       "name": "Free Cash Flow History",
-      "status": "fail",
-      "value": "2 of 4 years positive"
+      "status": "na",
+      "value": "Not reported"
     },
     {
       "benchmark": "≥ 7 of 9 points",
@@ -61,7 +66,7 @@
       "id": 6,
       "name": "Piotroski F-Score",
       "status": "fail",
-      "value": "3/7 (4/9 scaled)"
+      "value": "2/6 (3/9 scaled)"
     },
     {
       "benchmark": "ROIC ≥ WACC + 5 pts",
@@ -69,8 +74,8 @@
       "explanation": "Return on invested capital against an estimated WACC (CAPM cost of equity from the stock beta, plus its actual cost of debt). A durable moat earns well above its cost of capital.",
       "id": 7,
       "name": "ROIC vs. Cost of Capital",
-      "status": "na",
-      "value": "Not reported"
+      "status": "pass",
+      "value": "691.4% vs 9.1% WACC"
     },
     {
       "benchmark": "Expanding or steady",
@@ -96,8 +101,8 @@
       "explanation": "How much reported profit arrives as cash. A persistent gap points to aggressive accrual accounting.",
       "id": 10,
       "name": "FCF / Net Income Quality",
-      "status": "fail",
-      "value": "-259% conversion"
+      "status": "na",
+      "value": "Not reported"
     },
     {
       "benchmark": "PEG ≤ 1.50",
@@ -106,7 +111,7 @@
       "id": 11,
       "name": "Valuation PEG Ratio",
       "status": "watch",
-      "value": "1.77×"
+      "value": "1.65×"
     },
     {
       "benchmark": "> 8% CAGR",
@@ -114,23 +119,23 @@
       "explanation": "Compound revenue growth across the filed years.",
       "id": 12,
       "name": "Revenue Growth",
-      "status": "pass",
-      "value": "+12.5% CAGR (3Y)"
+      "status": "watch",
+      "value": "+5.3% CAGR (18Y)"
     }
   ],
   "currency": "USD",
-  "fcf_conversion_pct": -259,
+  "fcf_conversion_pct": null,
   "financials": {
     "capitalExpenditures": null,
-    "cashAndEquivalents": 842801000000,
+    "cashAndEquivalents": 343338000000,
     "currentAssets": null,
     "currentLiabilities": null,
     "dilutedEPS": 20.02,
     "dilutedShares": 2781500000,
-    "ebit": null,
-    "ebitda": null,
+    "ebit": 168038000000,
+    "ebitda": 176859000000,
     "fiscalPeriodEnd": "2025-12-31",
-    "freeCashFlow": -147782000000,
+    "freeCashFlow": null,
     "fx": {
       "available": true,
       "from": "USD",
@@ -141,42 +146,132 @@
     "grossMargin": null,
     "grossProfit": null,
     "historical": {
-      "cagrYears": 3,
+      "cagrYears": 18,
       "cash": [
-        763.93,
-        816.64,
-        866.01,
-        842.8
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        391.15,
+        431.3,
+        278.79,
+        263.63,
+        527.61,
+        740.83,
+        567.23,
+        624.15,
+        469.32,
+        343.34
       ],
       "dilutedEPS": [
+        4.33,
+        1.35,
+        2.26,
+        3.96,
+        4.48,
+        5.2,
+        4.34,
+        5.29,
+        6,
+        6.19,
+        6.31,
+        9,
+        10.72,
+        8.88,
+        15.36,
         12.09,
         16.23,
         19.75,
         20.02
       ],
-      "epsCAGR": 0.1831,
+      "epsCAGR": 0.0888,
       "fcfPerShareCAGR": null,
       "freeCashFlow": [
-        107.12,
-        12.97,
-        -42.01,
-        -147.78
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
       ],
-      "freeCashFlowLatest": -147782000000,
-      "freeCashFlowNormalised": -42012000000,
+      "freeCashFlowLatest": null,
+      "freeCashFlowNormalised": null,
       "grossMarginPct": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
         null,
         null,
         null,
         null
       ],
       "netIncome": [
-        37.68,
-        49.55,
-        58.47,
-        57.05
+        15.37,
+        5.61,
+        11.73,
+        17.37,
+        18.98,
+        21.28,
+        17.89,
+        21.75,
+        24.44,
+        24.73,
+        24.44,
+        32.47,
+        36.43,
+        29.13,
+        48.3,
+        37.7,
+        49.6,
+        58.5,
+        57
       ],
       "operatingCashFlow": [
+        -110.56,
+        23.93,
+        122.8,
+        -3.75,
+        95.93,
+        25.08,
+        107.95,
+        36.59,
+        73.47,
+        21.88,
+        -10.83,
+        15.61,
+        4.09,
+        -79.91,
+        78.08,
         107.12,
         12.97,
         -42.01,
@@ -185,69 +280,159 @@
       "operatingMarginPct": [
         null,
         null,
-        null,
-        null
+        66.9,
+        73.9,
+        76.6,
+        76.1,
+        71.9,
+        78.2,
+        79.3,
+        83.5,
+        85.4,
+        88.1,
+        88.2,
+        75.3,
+        92,
+        87.7,
+        95.4,
+        94.4,
+        92.1
       ],
       "periods": [
+        "2007-12-31",
+        "2008-12-31",
+        "2009-12-31",
+        "2010-12-31",
+        "2011-12-31",
+        "2012-12-31",
+        "2013-12-31",
+        "2014-12-31",
+        "2015-12-31",
+        "2016-12-31",
+        "2017-12-31",
+        "2018-12-31",
+        "2019-12-31",
+        "2020-12-31",
+        "2021-12-31",
         "2022-12-31",
         "2023-12-31",
         "2024-12-31",
         "2025-12-31"
       ],
       "revenue": [
-        127.73,
-        154.95,
-        169.44,
-        181.85
+        71.37,
+        67.25,
+        100.43,
+        102.69,
+        97.23,
+        97.03,
+        97.37,
+        95.11,
+        93.54,
+        96.57,
+        100.7,
+        108.78,
+        115.72,
+        119.95,
+        121.65,
+        128.69,
+        158.1,
+        177.56,
+        182.45
       ],
-      "revenueCAGR": 0.125,
-      "revenueChangeLatest": 0.0732,
+      "revenueCAGR": 0.0535,
+      "revenueChangeLatest": 0.0275,
       "revenueChangeYears": 1,
       "shareChangeIsAnnual": true,
       "shareChangeYears": 1,
       "shareChangeYoY": -0.0339,
       "sharesOutstanding": [
+        3.44,
+        3.52,
+        3.88,
+        3.98,
+        3.92,
+        3.82,
+        3.81,
+        3.8,
+        3.77,
+        3.69,
+        3.58,
+        3.41,
+        3.23,
+        3.09,
+        3.03,
         2.97,
         2.94,
         2.88,
         2.78
       ],
       "totalDebt": [
-        339.89,
-        436.54,
-        454.31,
-        499.98
+        null,
+        270.68,
+        266.32,
+        270.65,
+        256.77,
+        249.02,
+        267.89,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
       ],
       "years": [
+        2007,
+        2008,
+        2009,
+        2010,
+        2011,
+        2012,
+        2013,
+        2014,
+        2015,
+        2016,
+        2017,
+        2018,
+        2019,
+        2020,
+        2021,
         2022,
         2023,
         2024,
         2025
       ]
     },
-    "interestExpense": 97898000000,
+    "interestExpense": 95443000000,
     "inventory": null,
     "isFinancial": true,
-    "netIncome": 57048000000,
+    "netIncome": 57000000000,
     "operatingCashFlow": -147782000000,
     "operatingIncome": null,
-    "operatingMargin": null,
+    "operatingMargin": 0.9210236397419524,
     "reportingCurrency": "USD",
     "retainedEarnings": 416055000000,
-    "revenue": 181847000000,
+    "revenue": 182447000000,
     "totalAssets": 4424900000000,
-    "totalDebt": 499982000000,
+    "totalDebt": null,
     "totalLiabilities": 4062462000000,
     "totalStockholderEquity": 362438000000,
     "tradedCurrency": "USD"
   },
   "financials_fetched_at": "<redacted>",
-  "health_score": 53,
+  "health_score": 47,
   "industry": "Banks - Diversified",
   "last_fetched_at": "<redacted>",
-  "market_cap": 949663629312,
-  "name": "JP Morgan Chase & Co.",
-  "net_cash_b": 342.82,
+  "market_cap": 953331941376,
+  "name": "JPMorgan Chase & Co.",
+  "net_cash_b": null,
   "pillars": [
     {
       "items": [
@@ -271,7 +456,7 @@
           "available": true,
           "max": 5,
           "name": "Piotroski F-Score",
-          "points": 2
+          "points": 0
         },
         {
           "available": true,
@@ -280,18 +465,18 @@
           "points": 5
         },
         {
-          "available": true,
+          "available": false,
           "max": 5,
           "name": "Free cash flow conversion",
-          "points": 0
+          "points": null
         }
       ],
       "max": 20,
-      "measured": 3,
+      "measured": 2,
       "name": "Profitability & Moat Quality",
       "of": 3,
-      "pct": 47,
-      "score": 9.3
+      "pct": 50,
+      "score": 10
     },
     {
       "items": [
@@ -308,16 +493,16 @@
           "points": 3.5
         },
         {
-          "available": true,
-          "max": 5,
-          "name": "EV / free cash flow yield",
-          "points": 0
-        },
-        {
           "available": false,
           "max": 5,
-          "name": "Discount to DCF fair value",
+          "name": "EV / free cash flow yield",
           "points": null
+        },
+        {
+          "available": true,
+          "max": 5,
+          "name": "Discount to DCF fair value",
+          "points": 0
         }
       ],
       "max": 20,
@@ -333,21 +518,21 @@
           "available": true,
           "max": 5,
           "name": "Revenue CAGR",
-          "points": 3.5
+          "points": 2
         },
         {
           "available": true,
           "max": 5,
           "name": "Diluted EPS CAGR",
-          "points": 3.5
+          "points": 1.5
         }
       ],
       "max": 20,
       "measured": 2,
       "name": "Growth & Operating Leverage",
       "of": 2,
-      "pct": 70,
-      "score": 14
+      "pct": 35,
+      "score": 7
     },
     {
       "items": [
@@ -378,101 +563,104 @@
       "score": 10.8
     }
   ],
-  "piotroski_score": 4,
-  "price": 357.26,
-  "risks": [
-    {
-      "icon": "⚠️",
-      "text": "Only -259% of net income converted to free cash flow.",
-      "title": "Weak cash conversion"
-    }
-  ],
-  "roic_pct": null,
+  "piotroski_score": 3,
+  "price": 358.64,
+  "risks": [],
+  "roic_pct": 691.37,
   "sector": "Financial Services",
   "stale": false,
   "staleReason": null,
   "summary": {
     "checklistSummary": {
-      "failCount": 3,
-      "naCount": 5,
-      "passCount": 3,
-      "passPct": 43,
-      "scored": 7,
+      "failCount": 1,
+      "naCount": 7,
+      "passCount": 2,
+      "passPct": 40,
+      "scored": 5,
       "total": 12,
-      "watchCount": 1
+      "watchCount": 2
     },
     "coverage": {
-      "measured": 11,
-      "pct": 85,
+      "measured": 10,
+      "pct": 77,
       "sufficient": true,
       "total": 13
     },
     "dcf": {
-      "applicable": false,
+      "applicable": true,
       "assumptions": {
-        "cashFlowBase": -147782000000,
-        "cashFlowBasis": "latest filed year",
-        "discountRate": 0.095,
-        "growthBasis": "median of the filed compound growth rates",
-        "growthBeforeBounding": 0.1541,
-        "growthRate": 0.1541,
-        "latestFiledCashFlow": -147782000000,
-        "normalisedCashFlow": -42012000000,
-        "terminalMultiple": 16
+        "basis": "return on tangible equity against its cost",
+        "costOfEquity": 0.095,
+        "growthBasis": "retained share of return on tangible equity, capped at 4%",
+        "growthBeforeBounding": 0.0902,
+        "growthRate": 0.04,
+        "payoutRatio": 0.2986,
+        "tangibleBookValue": 288307000000
       },
-      "cashReserves": 842801000000,
+      "cashReserves": 343338000000,
       "cumulativePV": null,
-      "currentPrice": 357.26,
-      "divergenceFactor": null,
+      "currentPrice": 358.64,
+      "divergenceFactor": 0.49,
       "divergenceWarning": false,
       "equityValue": null,
-      "fairValue": null,
+      "fairValue": 174.78,
+      "fairValueAtBestYear": 360.71,
+      "fairValueAtWorstYear": 19.28,
       "impliedGrowthRate": null,
-      "marginOfSafetyPct": null,
-      "premiumToFairValuePct": null,
+      "justifiedPTBV": 1.612,
+      "marginOfSafetyPct": -105.2,
+      "method": "return-on-tangible-equity",
+      "premiumToFairValuePct": 105.2,
       "pvCashFlows": [],
       "pvTerminalValue": null,
-      "reason": "not-meaningful-for-financials",
+      "reason": null,
+      "rote": 0.1286,
+      "roteHigh": 0.2229,
+      "roteLatest": 0.1931,
+      "roteLow": 0.0399,
+      "roteRecent": 0.1945,
+      "roteYears": 18,
       "sharesOutstanding": 2658186195,
+      "tangibleBookValuePerShare": 108.46,
       "terminalValue": null,
-      "totalDebt": 499982000000
+      "totalDebt": null
     },
-    "healthGrade": "MODERATE",
-    "healthLabel": "Mixed — watch the flagged items",
-    "healthTier": "moderate",
+    "healthGrade": "RISK",
+    "healthLabel": "High leverage or distress risk",
+    "healthTier": "risk",
     "metrics": {
       "altmanZ": null,
       "appliedTaxRate": 0.21416075487292513,
-      "assetTurnover": 0.041096295961490656,
+      "assetTurnover": 0.04123189224615246,
       "beta": 0.977,
       "betaClamped": false,
-      "cagrYears": 3,
-      "cash": 842801000000,
+      "cagrYears": 18,
+      "cash": 343338000000,
       "currentRatio": null,
-      "dcfDiscountPct": null,
-      "debtToEquity": 1.379496631147948,
+      "dcfDiscountPct": -105.2,
+      "debtToEquity": null,
       "dividendPayoutOnFcf": null,
-      "dividendStreakYears": 4,
-      "dividendYield": 0.0165,
-      "ebit": null,
-      "ebitda": null,
+      "dividendStreakYears": 19,
+      "dividendYield": 0.0166,
+      "ebit": 168038000000,
+      "ebitda": 176859000000,
       "effectiveTaxRate": 0.21416075487292513,
-      "enterpriseValue": 606844629312,
-      "epsCAGR": 0.1831,
+      "enterpriseValue": null,
+      "epsCAGR": 0.0888,
       "equity": 362438000000,
       "equityToAssets": 0.08190874370042261,
-      "evToFcfYield": -0.24352526637262223,
-      "fcfConversion": -2.5904852054410323,
-      "fcfMargin": -0.812672191457654,
+      "evToFcfYield": null,
+      "fcfConversion": null,
+      "fcfMargin": null,
       "fcfPerShareCAGR": null,
-      "fcfPositiveYears": 2,
-      "fcfReportedYears": 4,
-      "fcfYield": -0.15561509932423462,
+      "fcfPositiveYears": 0,
+      "fcfReportedYears": 0,
+      "fcfYield": null,
       "fiscalPeriodEnd": "2025-12-31",
-      "forwardPE": 14.286406,
-      "freeCashFlow": -147782000000,
-      "freeCashFlowLatest": -147782000000,
-      "freeCashFlowNormalised": -42012000000,
+      "forwardPE": 14.341591,
+      "freeCashFlow": null,
+      "freeCashFlowLatest": null,
+      "freeCashFlowNormalised": null,
       "fx": {
         "available": true,
         "from": "USD",
@@ -484,22 +672,22 @@
       "grossMarginChangeBps": null,
       "interestCoverage": null,
       "interestCoverageUnburdened": false,
-      "interestExpense": 97898000000,
+      "interestExpense": 95443000000,
       "interestExpenseAsOf": "2025-12-31",
       "interestExpenseCarried": false,
       "isFinancial": true,
-      "marketCap": 949663629312,
+      "marketCap": 953331941376,
       "marketCapDerived": false,
       "negativeEquity": false,
-      "netCash": 342819000000,
-      "netCashB": 342.82,
+      "netCash": null,
+      "netCashB": null,
       "netDebtToEbitda": null,
-      "netIncome": 57048000000,
+      "netIncome": 57000000000,
       "operatingCashFlow": -147782000000,
-      "operatingMargin": null,
-      "operatingMarginChangeBps": null,
-      "peVsHistoryPct": 16.1,
-      "pegRatio": 1.77,
+      "operatingMargin": 0.9210236397419524,
+      "operatingMarginChangeBps": -233,
+      "peVsHistoryPct": 18.2,
+      "pegRatio": 1.65,
       "piotroski": {
         "details": [
           {
@@ -527,10 +715,10 @@
             "passed": false
           },
           {
-            "available": true,
+            "available": false,
             "id": "f5",
             "name": "Leverage steady or lower",
-            "passed": true
+            "passed": null
           },
           {
             "available": false,
@@ -558,23 +746,23 @@
           }
         ],
         "maxScore": 9,
-        "normalised": 4,
-        "score": 3,
-        "testable": 7
+        "normalised": 3,
+        "score": 2,
+        "testable": 6
       },
-      "price": 357.26,
-      "priceToBook": 2.686024,
+      "price": 358.64,
+      "priceToBook": 2.6963995,
       "quarterlyGrossMarginTrend": null,
       "quickRatio": null,
       "reportingCurrency": "USD",
-      "revenue": 181847000000,
-      "revenueCAGR": 0.125,
-      "revenueChangeLatest": 0.0732,
+      "revenue": 182447000000,
+      "revenueCAGR": 0.0535,
+      "revenueChangeLatest": 0.0275,
       "revenueChangeYears": 1,
-      "roa": 0.01289249474564397,
-      "roe": 0.1574007140531622,
-      "roic": null,
-      "roicSpread": null,
+      "roa": 0.012881647042871026,
+      "roe": 0.15726827760886,
+      "roic": 691.37,
+      "roicSpread": 682.28,
       "sectorMedianAssetTurnover": null,
       "shareChangeAnnualisedPct": -3.39,
       "shareChangeIsAnnual": true,
@@ -582,29 +770,89 @@
       "shareChangeYoY": -0.0339,
       "sharesOutstanding": 2658186195,
       "taxRateEstimated": false,
-      "totalDebt": 499982000000,
+      "totalDebt": null,
       "totalLiabilities": 4062462000000,
       "totalLiabilitiesDerived": false,
       "tradedCurrency": "USD",
-      "tradedPrice": 357.26,
-      "trailingPE": 15.553331,
-      "wacc": 11.26,
+      "tradedPrice": 358.64,
+      "trailingPE": 15.359315,
+      "wacc": 9.09,
       "workingCapital": null
     },
     "peHistory": {
       "available": true,
-      "current": 15.55,
-      "epsPeriods": 4,
-      "max": 17.85,
-      "median": 13.4,
-      "min": 10.74,
-      "months": 45,
-      "p20": 12,
+      "current": 15.36,
+      "epsPeriods": 19,
+      "max": 19.13,
+      "median": 12.99,
+      "min": 6.8,
+      "months": 61,
+      "p20": 10.74,
       "p80": 15.65,
-      "percentile": 80,
+      "percentile": 77,
       "reason": null,
       "scoreable": true,
       "series": [
+        {
+          "date": "2021-10-01",
+          "pe": 19.13
+        },
+        {
+          "date": "2021-11-01",
+          "pe": 17.89
+        },
+        {
+          "date": "2021-12-01",
+          "pe": 17.83
+        },
+        {
+          "date": "2022-01-01",
+          "pe": 9.67
+        },
+        {
+          "date": "2022-02-01",
+          "pe": 9.23
+        },
+        {
+          "date": "2022-03-01",
+          "pe": 8.88
+        },
+        {
+          "date": "2022-04-01",
+          "pe": 7.77
+        },
+        {
+          "date": "2022-05-01",
+          "pe": 8.61
+        },
+        {
+          "date": "2022-06-01",
+          "pe": 7.33
+        },
+        {
+          "date": "2022-07-01",
+          "pe": 7.51
+        },
+        {
+          "date": "2022-08-01",
+          "pe": 7.4
+        },
+        {
+          "date": "2022-09-01",
+          "pe": 6.8
+        },
+        {
+          "date": "2022-10-01",
+          "pe": 8.2
+        },
+        {
+          "date": "2022-11-01",
+          "pe": 9
+        },
+        {
+          "date": "2022-12-01",
+          "pe": 8.73
+        },
         {
           "date": "2023-01-01",
           "pe": 11.58
@@ -779,22 +1027,26 @@
         },
         {
           "date": "2026-08-01",
-          "pe": 17.85
+          "pe": 17.78
         },
         {
-          "date": "2026-08-19",
-          "pe": 17.85
+          "date": "2026-09-01",
+          "pe": 18.08
+        },
+        {
+          "date": "2026-09-04",
+          "pe": 17.91
         }
       ],
-      "vsMedianPct": 16.1
+      "vsMedianPct": 18.2
     },
     "ratios": {
       "beta": 0.977,
-      "dividendYield": 0.0165,
-      "forwardPE": 14.286406,
-      "pe": 15.553331,
-      "peg": 1.77,
-      "priceToBook": 2.686024
+      "dividendYield": 0.0166,
+      "forwardPE": 14.341591,
+      "pe": 15.359315,
+      "peg": 1.65,
+      "priceToBook": 2.6963995
     }
   },
   "ticker": "JPM"

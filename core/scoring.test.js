@@ -18,6 +18,7 @@ import {
   calculatePiotroskiFScore,
   calculateROIC,
   calculateDCFFairValue,
+  calculateBankFairValue,
   estimateWACC
 } from './scoring.js';
 
@@ -262,10 +263,101 @@ test('the terminal multiple does not follow the share price', () => {
   );
 });
 
-test('the DCF is not run for banks', () => {
+test('the discounted model is not run for banks', () => {
+  // Still true, and still the point: a bank's free cash flow is deposits
+  // moving. What changed is that a bank now gets a model of its own rather
+  // than nothing, so the refusal is checked on a financial that is not a bank.
+  const r = computeComprehensiveHealth(healthyModel({ isFinancial: true }));
+  assert.notEqual(r.dcf.method, 'discounted-cash-flow');
+});
+
+test('a financial that is not a book-value business gets neither model', () => {
+  // An asset manager holds almost no capital, so a justified price-to-book
+  // says nothing about it either. Two refusals, told apart.
   const r = computeComprehensiveHealth(healthyModel({ isFinancial: true }));
   assert.equal(r.dcf.applicable, false);
-  assert.equal(r.dcf.reason, 'not-meaningful-for-financials');
+  assert.equal(r.dcf.reason, 'no-model-for-this-balance-sheet');
+});
+
+// =====================================================================
+// Return on tangible equity
+// =====================================================================
+
+test('a bank earning above its cost of equity is worth more than its book', () => {
+  const r = calculateBankFairValue({
+    roteHistory: [0.14, 0.145, 0.135],
+    tangibleBookValue: 200e9,
+    sharesOutstanding: 2e9,
+    payoutRatio: 0.4,
+    costOfEquity: 0.095
+  });
+  assert.equal(r.applicable, true);
+  assert.ok(r.justifiedPTBV > 1, `14% on 9.5% capital must justify a premium: ${r.justifiedPTBV}`);
+  assert.ok(r.fairValuePerShare > r.tangibleBookValuePerShare);
+});
+
+test('a bank earning below its cost of equity is worth less than its book', () => {
+  // The whole reason the model is worth having: Société Générale's own filed
+  // numbers -- 5.282bn to common on 61.893bn of tangible equity -- say a bank
+  // returning 8.5% on capital that costs 9.5% should trade at a discount.
+  const r = calculateBankFairValue({
+    roteHistory: [5.282 / 61.893],
+    tangibleBookValue: 61.893e9,
+    sharesOutstanding: 730546445,
+    payoutRatio: 0.5,
+    costOfEquity: 0.095
+  });
+  assert.equal(r.applicable, true);
+  assert.ok(r.justifiedPTBV < 1, `8.5% on 9.5% capital cannot justify book: ${r.justifiedPTBV}`);
+  assert.ok(r.fairValuePerShare < r.tangibleBookValuePerShare);
+});
+
+test('the median is taken across the filed years, not the latest', () => {
+  // One good year in a cycle is not a run rate.
+  const spiky = calculateBankFairValue({
+    roteHistory: [0.05, 0.06, 0.30], tangibleBookValue: 100e9,
+    sharesOutstanding: 1e9, payoutRatio: 0.5
+  });
+  assert.equal(spiky.rote, 0.06);
+});
+
+test('a loss-making or insolvent bank is refused, not valued', () => {
+  const losing = calculateBankFairValue({
+    roteHistory: [-0.04, -0.02], tangibleBookValue: 50e9, sharesOutstanding: 1e9
+  });
+  assert.equal(losing.applicable, false);
+  assert.equal(losing.reason, 'not-earning-on-equity');
+
+  // Negative tangible equity would flip the ratio's sign and read as value.
+  const insolvent = calculateBankFairValue({
+    roteHistory: [0.12], tangibleBookValue: -3e9, sharesOutstanding: 1e9
+  });
+  assert.equal(insolvent.applicable, false);
+  assert.equal(insolvent.reason, 'no-tangible-equity');
+});
+
+test('growth is capped, and refused outright if it reaches the cost of equity', () => {
+  // Gordon growth runs away to infinity as g approaches the discount rate.
+  const capped = calculateBankFairValue({
+    roteHistory: [0.25], tangibleBookValue: 100e9, sharesOutstanding: 1e9, payoutRatio: 0
+  });
+  assert.equal(capped.growthRate, 0.04, 'nothing compounds above the economy it lends to');
+  assert.equal(capped.growthBeforeCap, 0.25);
+
+  const runaway = calculateBankFairValue({
+    roteHistory: [0.25], tangibleBookValue: 100e9, sharesOutstanding: 1e9,
+    payoutRatio: 0, maxGrowth: 0.2, costOfEquity: 0.095
+  });
+  assert.equal(runaway.applicable, false);
+  assert.equal(runaway.reason, 'growth-exceeds-cost-of-equity');
+});
+
+test('a bank with no filed tangible equity is refused rather than guessed at', () => {
+  const r = calculateBankFairValue({
+    roteHistory: [], tangibleBookValue: 60e9, sharesOutstanding: 1e9
+  });
+  assert.equal(r.applicable, false);
+  assert.equal(r.reason, 'no-return-history');
 });
 
 // =====================================================================
@@ -695,4 +787,43 @@ test('a single-currency company is unaffected by the conversion path', () => {
   assert.equal(r.metrics.price, 150);
   assert.equal(r.metrics.marketCap, 600e9);
   assert.ok(r.altmanZ !== null);
+});
+
+test('the range across filed years is reported, because the model is fragile', () => {
+  // Gordon growth divides one small difference by another. When the return sits
+  // near the growth rate the answer swings hard, and a single figure would
+  // claim a precision the inputs do not have.
+  const r = calculateBankFairValue({
+    roteHistory: [0.0303, 0.041, 0.0553, 0.097],
+    tangibleBookValue: 61.893e9,
+    sharesOutstanding: 730546445,
+    payoutRatio: 0.282
+  });
+  assert.ok(r.fairValueAtWorstYear < r.fairValuePerShare);
+  assert.ok(r.fairValueAtBestYear > r.fairValuePerShare);
+  // Nearly nine times, on the same balance sheet.
+  assert.ok(r.fairValueAtBestYear / r.fairValueAtWorstYear > 5);
+});
+
+test('a year that cannot be valued reports null rather than a floor', () => {
+  const r = calculateBankFairValue({
+    roteHistory: [-0.025, 0.0817, 0.154],
+    tangibleBookValue: 208e9, sharesOutstanding: 7e9, payoutRatio: 0.3
+  });
+  assert.equal(r.fairValueAtWorstYear, null, 'a loss-making year has no justified multiple');
+  assert.ok(r.fairValueAtBestYear > 0);
+});
+
+test('the assumptions reported match the model that ran', () => {
+  // A bank used to come back carrying the DCF's cash flow base -- the very
+  // number the balance-sheet model exists to avoid using.
+  const bank = computeComprehensiveHealth(
+    healthyModel({ isFinancial: true, isBookValueBusiness: true })
+  );
+  assert.equal(bank.dcf.assumptions.basis, 'return on tangible equity against its cost');
+  assert.equal(bank.dcf.assumptions.cashFlowBase, undefined);
+
+  const industrial = computeComprehensiveHealth(healthyModel());
+  assert.equal(industrial.dcf.assumptions.basis, 'discounted free cash flow');
+  assert.ok('cashFlowBase' in industrial.dcf.assumptions);
 });
