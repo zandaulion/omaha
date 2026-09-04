@@ -119,8 +119,12 @@ test('an industrial with full coverage scores on every sub-score', async () => {
 
   assert.equal(aapl.checklist.filter((c) => c.status === 'na').length, 0);
   assert.ok(typeof aapl.altman_z === 'number' && aapl.altman_z > 0);
-  assert.ok(
-    aapl.summary?.metrics?.fiscalPeriodEnd?.endsWith('-09-30'),
+  // September, not the 30th. Apple's year ends on the last Saturday of the
+  // month, so it moved to the 27th the first time these fixtures were
+  // re-recorded — the hardcoded day was pinning the calendar, not the claim.
+  assert.match(
+    aapl.summary?.metrics?.fiscalPeriodEnd ?? '',
+    /-09-\d\d$/,
     'AAPL files on a September year end — the model must not assume December'
   );
 });

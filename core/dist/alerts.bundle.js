@@ -368,6 +368,115 @@ function estimateWACC({ beta, marketCap, totalDebt, interestExpense, taxRate }) 
   const wacc = costOfEquity * (equityValue / total) + afterTaxDebt * (debt / total);
   return round(Math.max(MIN_WACC, wacc) * 100);
 }
+function bankInput(model, metrics) {
+  const years = model.annual || [];
+  const roteHistory = [];
+  for (const y of years) {
+    const profit2 = num(y.netIncomeToCommon) ?? num(y.netIncome);
+    const tangible = tangibleEquityOf(y);
+    if (profit2 === null || tangible === null || tangible <= 0) continue;
+    roteHistory.push(profit2 / tangible);
+  }
+  const latest = model.latest || {};
+  const dividends = Math.abs(num(latest.dividendsPaid) ?? 0);
+  const profit = num(latest.netIncomeToCommon) ?? num(latest.netIncome);
+  const payoutRatio = profit && profit > 0 ? dividends / profit : null;
+  return {
+    roteHistory,
+    tangibleBookValue: tangibleEquityOf(latest),
+    sharesOutstanding: metrics.sharesOutstanding,
+    payoutRatio
+  };
+}
+function tangibleEquityOf(year) {
+  if (!year) return null;
+  const direct = num(year.tangibleBookValue);
+  if (direct !== null) return direct;
+  const equity = num(year.equity);
+  if (equity === null) return null;
+  const combined = num(year.goodwillAndIntangibles);
+  const goodwill = num(year.goodwill);
+  const other = num(year.otherIntangibles);
+  if (combined === null && goodwill === null && other === null) return null;
+  const intangible = combined !== null ? combined : (goodwill ?? 0) + (other ?? 0);
+  return equity - intangible - (num(year.preferredEquity) ?? 0);
+}
+function calculateBankFairValue(params) {
+  const {
+    roteHistory = [],
+    tangibleBookValue,
+    sharesOutstanding,
+    payoutRatio,
+    costOfEquity = 0.095,
+    maxGrowth = 0.04
+  } = params;
+  const tbv = num(tangibleBookValue);
+  const shares = num(sharesOutstanding);
+  const rotes = roteHistory.map(num).filter((r) => r !== null && Number.isFinite(r));
+  if (!rotes.length) {
+    return { applicable: false, reason: "no-return-history", fairValuePerShare: null };
+  }
+  if (tbv === null || tbv <= 0) {
+    return { applicable: false, reason: "no-tangible-equity", fairValuePerShare: null };
+  }
+  if (shares === null || shares <= 0) {
+    return { applicable: false, reason: "no-share-count", fairValuePerShare: null };
+  }
+  const median = (xs) => {
+    const sorted = [...xs].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  };
+  const rote = median(rotes);
+  const roteRecent = rotes.length > 5 ? median(rotes.slice(-5)) : null;
+  const roteLatest = rotes[rotes.length - 1];
+  if (rote <= 0) {
+    return { applicable: false, reason: "not-earning-on-equity", fairValuePerShare: null, rote: round(rote, 4) };
+  }
+  const payout = (() => {
+    const p = num(payoutRatio);
+    if (p === null || !Number.isFinite(p)) return 0.5;
+    return Math.min(1, Math.max(0, p));
+  })();
+  const rawGrowth = rote * (1 - payout);
+  const growth = Math.min(rawGrowth, maxGrowth);
+  if (growth >= costOfEquity) {
+    return {
+      applicable: false,
+      reason: "growth-exceeds-cost-of-equity",
+      fairValuePerShare: null,
+      rote: round(rote, 4),
+      growth: round(growth, 4)
+    };
+  }
+  const justifiedPTBV = (rote - growth) / (costOfEquity - growth);
+  const tbvPerShare = tbv / shares;
+  const priceAt = (r) => {
+    const g = Math.min(r * (1 - payout), maxGrowth);
+    if (r <= 0 || g >= costOfEquity) return null;
+    return round(tbvPerShare * ((r - g) / (costOfEquity - g)));
+  };
+  return {
+    applicable: true,
+    reason: null,
+    fairValuePerShare: round(tbvPerShare * justifiedPTBV),
+    fairValueAtWorstYear: priceAt(Math.min(...rotes)),
+    fairValueAtBestYear: priceAt(Math.max(...rotes)),
+    rote: round(rote, 4),
+    roteLatest: round(roteLatest, 4),
+    roteRecent: roteRecent === null ? null : round(roteRecent, 4),
+    roteYears: rotes.length,
+    roteLow: round(Math.min(...rotes), 4),
+    roteHigh: round(Math.max(...rotes), 4),
+    payoutRatio: round(payout, 4),
+    growthRate: round(growth, 4),
+    growthBeforeCap: round(rawGrowth, 4),
+    costOfEquity,
+    justifiedPTBV: round(justifiedPTBV, 3),
+    tangibleBookValuePerShare: round(tbvPerShare),
+    tangibleBookValue: round(tbv)
+  };
+}
 function calculateDCFFairValue(params) {
   const {
     trailingFCF,
@@ -1144,7 +1253,7 @@ function computeComprehensiveHealth(model = {}) {
     totalDebt: metrics.totalDebt ?? 0,
     sharesOutstanding: metrics.sharesOutstanding
   };
-  const dcf = model.isFinancial ? { applicable: false, reason: "not-meaningful-for-financials", fairValuePerShare: null } : calculateDCFFairValue(dcfInput);
+  const dcf = !model.isFinancial ? calculateDCFFairValue(dcfInput) : model.isBookValueBusiness ? calculateBankFairValue(bankInput(model, metrics)) : { applicable: false, reason: "no-model-for-this-balance-sheet", fairValuePerShare: null };
   let dcfDiscountPct = null;
   let premiumToFairValuePct = null;
   if (dcf.applicable && dcf.fairValuePerShare !== null && metrics.price !== null) {
@@ -1270,6 +1379,14 @@ function computeComprehensiveHealth(model = {}) {
     dcf: {
       applicable: dcf.applicable,
       reason: dcf.reason || null,
+      // Which model produced the number, since two of them now can. A reader
+      // comparing a bank against an industrial is comparing two different
+      // claims, and the label is what says so.
+      //
+      // Null where neither applies. The first version read "is it a book-value
+      // business, else discounted cash flow", which labelled an asset manager
+      // -- valued by nothing at all -- as a DCF.
+      method: !model.isFinancial ? "discounted-cash-flow" : model.isBookValueBusiness ? "return-on-tangible-equity" : null,
       fairValue: dcf.fairValuePerShare,
       currentPrice: metrics.price,
       marginOfSafetyPct: dcfDiscountPct,
@@ -1281,7 +1398,33 @@ function computeComprehensiveHealth(model = {}) {
       cashReserves: metrics.cash,
       totalDebt: metrics.totalDebt,
       sharesOutstanding: metrics.sharesOutstanding,
-      assumptions: {
+      // Present only for the balance-sheet model, and null-free rather than
+      // absent, so a reader can see the whole working: what it earns on its
+      // capital, what that capital is assumed to cost, and the multiple of
+      // book those two justify.
+      rote: dcf.rote ?? null,
+      roteLatest: dcf.roteLatest ?? null,
+      roteRecent: dcf.roteRecent ?? null,
+      roteYears: dcf.roteYears ?? null,
+      roteLow: dcf.roteLow ?? null,
+      roteHigh: dcf.roteHigh ?? null,
+      justifiedPTBV: dcf.justifiedPTBV ?? null,
+      fairValueAtWorstYear: dcf.fairValueAtWorstYear ?? null,
+      fairValueAtBestYear: dcf.fairValueAtBestYear ?? null,
+      tangibleBookValuePerShare: dcf.tangibleBookValuePerShare ?? null,
+      // Per method. The block used to be the DCF's assumptions whatever ran,
+      // so a bank came back carrying a cash flow base of minus 29 billion --
+      // the very number the balance-sheet model exists to avoid using.
+      assumptions: model.isBookValueBusiness ? {
+        basis: "return on tangible equity against its cost",
+        costOfEquity: dcf.costOfEquity ?? null,
+        growthRate: dcf.growthRate ?? null,
+        growthBasis: "retained share of return on tangible equity, capped at 4%",
+        growthBeforeBounding: dcf.growthBeforeCap ?? null,
+        payoutRatio: dcf.payoutRatio ?? null,
+        tangibleBookValue: dcf.tangibleBookValue ?? null
+      } : {
+        basis: "discounted free cash flow",
         growthRate: dcfInput.growthRate,
         growthBasis: growth.basis,
         growthBeforeBounding: growth.unbounded,
@@ -1482,6 +1625,23 @@ var FIELD_MAP = {
   currentLiabilities: ["CurrentLiabilities"],
   inventory: ["Inventory"],
   retainedEarnings: ["RetainedEarnings"],
+  // For book-value businesses. TangibleBookValue is taken directly rather than
+  // derived: checked against both a French and an American bank, Yahoo's
+  // figure is exactly equity minus goodwill-and-intangibles minus preferred --
+  // 70,144 - 8,251 - 0 = 61,893 for GLE.PA, and 303,243 - 69,021 - 25,992 =
+  // 208,230 for BAC. That is tangible *common* equity, which is the
+  // denominator return on tangible equity actually wants, and deriving it by
+  // hand would only reintroduce the preferred-stock step Yahoo already took.
+  // The components come too, so the number can be shown its working.
+  tangibleBookValue: ["TangibleBookValue"],
+  goodwillAndIntangibles: ["GoodwillAndOtherIntangibleAssets"],
+  goodwill: ["Goodwill"],
+  preferredEquity: ["PreferredStockEquity"],
+  // Distinct from netIncome, whose first alias is NetIncome -- that is before
+  // preferred dividends and includes minority interests, so it overstates what
+  // the common shareholder earned. Only the return-on-tangible-equity model
+  // uses this; nothing else changes.
+  netIncomeToCommon: ["NetIncomeCommonStockholders"],
   cash: ["CashAndCashEquivalents"],
   shortTermInvestments: ["OtherShortTermInvestments", "AvailableForSaleSecurities"],
   totalDebt: ["TotalDebt"],
@@ -1806,6 +1966,17 @@ var US_GAAP = {
   currentLiabilities: [INSTANT, ["LiabilitiesCurrent"]],
   inventory: [INSTANT, ["InventoryNet"]],
   retainedEarnings: [INSTANT, ["RetainedEarningsAccumulatedDeficit"]],
+  // For book-value businesses. EDGAR has no tangible-book concept -- unlike
+  // Yahoo, which serves one directly -- so the pieces are filed separately and
+  // subtracted in assembly. JPM reached the balance-sheet model through this
+  // provider and got nothing, because the fields had only been added to Yahoo.
+  goodwill: [INSTANT, ["Goodwill"]],
+  otherIntangibles: [INSTANT, [
+    "IntangibleAssetsNetExcludingGoodwill",
+    "FiniteLivedIntangibleAssetsNet"
+  ]],
+  preferredEquity: [INSTANT, ["PreferredStockValue", "PreferredStockLiquidationPreferenceValue"]],
+  netIncomeToCommon: [DURATION, ["NetIncomeLossAvailableToCommonStockholdersBasic"]],
   cash: [INSTANT, [
     "CashAndCashEquivalentsAtCarryingValue",
     "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents"
@@ -2087,6 +2258,7 @@ function buildModel(quote, fundamentals) {
   const isFinancial = NON_INDUSTRIAL_SECTORS.has(quote.sector || "") || /bank|insurance|capital market|reit|asset management/i.test(
     quote.industry || ""
   );
+  const isBookValueBusiness = /bank|insurance|insurer/i.test(quote.industry || "");
   return {
     quote,
     latest,
@@ -2095,6 +2267,7 @@ function buildModel(quote, fundamentals) {
     quarterly: fundamentals.quarterly || [],
     latestReported: fundamentals.latestReported || {},
     isFinancial,
+    isBookValueBusiness,
     reportingCurrency: fundamentals.reportingCurrency || quote.currency || null,
     history: buildHistory(annual)
   };

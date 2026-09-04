@@ -1,9 +1,9 @@
 {
-  "altmanZ": 11.98,
+  "altmanZ": 12.08,
   "catalysts": [
     {
       "icon": "🚀",
-      "text": "ROIC of 95.4%, 85.9 points above its estimated 9.5% cost of capital.",
+      "text": "ROIC of 102.3%, 92.8 points above its estimated 9.5% cost of capital.",
       "title": "Elite capital efficiency"
     },
     {
@@ -20,7 +20,7 @@
       "id": 1,
       "name": "Altman Z-Score",
       "status": "pass",
-      "value": "11.98"
+      "value": "12.08"
     },
     {
       "benchmark": "> 6.0× EBIT / interest",
@@ -47,7 +47,7 @@
       "id": 4,
       "name": "Debt to Equity",
       "status": "watch",
-      "value": "1.34×"
+      "value": "1.23×"
     },
     {
       "benchmark": "Positive every filed year",
@@ -56,7 +56,7 @@
       "id": 5,
       "name": "Free Cash Flow History",
       "status": "pass",
-      "value": "4 of 4 years positive"
+      "value": "12 of 12 years positive"
     },
     {
       "benchmark": "≥ 7 of 9 points",
@@ -74,7 +74,7 @@
       "id": 7,
       "name": "ROIC vs. Cost of Capital",
       "status": "pass",
-      "value": "95.4% vs 9.5% WACC"
+      "value": "102.3% vs 9.5% WACC"
     },
     {
       "benchmark": "Expanding or steady",
@@ -83,7 +83,7 @@
       "id": 8,
       "name": "Gross Margin Consistency",
       "status": "pass",
-      "value": "+357 bps over 5 quarters"
+      "value": "+1165 bps over 30 quarters"
     },
     {
       "benchmark": "Shrinking or < 0.5% a year",
@@ -110,7 +110,7 @@
       "id": 11,
       "name": "Valuation PEG Ratio",
       "status": "fail",
-      "value": "2.47×"
+      "value": "2.56×"
     },
     {
       "benchmark": "> 8% CAGR",
@@ -118,18 +118,18 @@
       "explanation": "Compound revenue growth across the filed years.",
       "id": 12,
       "name": "Revenue Growth",
-      "status": "fail",
-      "value": "+1.8% CAGR (3Y)"
+      "status": "watch",
+      "value": "+7.7% CAGR (8Y)"
     }
   ],
   "checklistSummary": {
-    "failCount": 3,
+    "failCount": 2,
     "naCount": 0,
     "passCount": 7,
     "passPct": 58,
     "scored": 12,
     "total": 12,
-    "watchCount": 2
+    "watchCount": 3
   },
   "coverage": {
     "measured": 19,
@@ -140,58 +140,70 @@
   "dcf": {
     "applicable": true,
     "assumptions": {
+      "basis": "discounted free cash flow",
       "cashFlowBase": 98767000000,
       "cashFlowBasis": "latest filed year",
       "discountRate": 0.095,
       "growthBasis": "median of the filed compound growth rates",
-      "growthBeforeBounding": 0.0181,
-      "growthRate": 0.0181,
+      "growthBeforeBounding": 0.0362,
+      "growthRate": 0.0362,
       "latestFiledCashFlow": 98767000000,
       "normalisedCashFlow": 99584000000,
       "terminalMultiple": 21
     },
     "cashReserves": 54697000000,
-    "cumulativePV": 399034916102.16,
-    "currentPrice": 316.83,
-    "divergenceFactor": 0.39,
+    "cumulativePV": 419751672183.07,
+    "currentPrice": 319.97,
+    "divergenceFactor": 0.42,
     "divergenceWarning": false,
-    "equityValue": 1796236737815.77,
-    "fairValue": 123.08,
-    "impliedGrowthRate": 0.2444,
-    "marginOfSafetyPct": -157.4,
-    "premiumToFairValuePct": 157.4,
+    "equityValue": 1957675621602.43,
+    "fairValue": 134.14,
+    "fairValueAtBestYear": null,
+    "fairValueAtWorstYear": null,
+    "impliedGrowthRate": 0.2465,
+    "justifiedPTBV": null,
+    "marginOfSafetyPct": -138.5,
+    "method": "discounted-cash-flow",
+    "premiumToFairValuePct": 138.5,
     "pvCashFlows": [
       {
-        "presentValue": 91830760456.621,
-        "projectedFCF": 100554682700,
+        "presentValue": 93463347397.26027,
+        "projectedFCF": 102342365400,
         "year": 1
       },
       {
-        "presentValue": 85381641297.61264,
-        "projectedFCF": 102374722456.87,
+        "presentValue": 88444493674.01013,
+        "projectedFCF": 106047159027.48,
         "year": 2
       },
       {
-        "presentValue": 79385432881.36934,
-        "projectedFCF": 104227704933.33934,
+        "presentValue": 83695145520.55643,
+        "projectedFCF": 109886066184.27477,
         "year": 3
       },
       {
-        "presentValue": 73810328051.6184,
-        "projectedFCF": 106114226392.63278,
+        "presentValue": 79200830856.98683,
+        "projectedFCF": 113863941780.14551,
         "year": 4
       },
       {
-        "presentValue": 68626753414.93395,
-        "projectedFCF": 108034893890.33943,
+        "presentValue": 74947854734.2555,
+        "projectedFCF": 117985816472.58678,
         "year": 5
       }
     ],
-    "pvTerminalValue": 1441161821713.61,
+    "pvTerminalValue": 1573904949419.37,
     "reason": null,
+    "rote": null,
+    "roteHigh": null,
+    "roteLatest": null,
+    "roteLow": null,
+    "roteRecent": null,
+    "roteYears": null,
     "sharesOutstanding": 14594180000,
-    "terminalValue": 2268732771697.13,
-    "totalDebt": 98657000000
+    "tangibleBookValuePerShare": null,
+    "terminalValue": 2477702145924.32,
+    "totalDebt": 90678000000
   },
   "fcfConversionPct": 88,
   "healthGrade": "MODERATE",
@@ -199,35 +211,35 @@
   "healthScore": 64,
   "healthTier": "moderate",
   "metrics": {
-    "altmanZ": 11.98,
+    "altmanZ": 12.08,
     "appliedTaxRate": 0.15610002335586043,
     "assetTurnover": 1.1584451663368045,
-    "beta": 1.086,
+    "beta": 1.085,
     "betaClamped": false,
-    "cagrYears": 3,
+    "cagrYears": 8,
     "cash": 54697000000,
     "currentRatio": 0.8932929222186667,
-    "dcfDiscountPct": -157.4,
-    "debtToEquity": 1.3380304612588665,
+    "dcfDiscountPct": -138.5,
+    "debtToEquity": 1.229815686327696,
     "dividendPayoutOnFcf": 0.1561351463545516,
-    "dividendStreakYears": 4,
-    "dividendYield": 0.0034,
+    "dividendStreakYears": 13,
+    "dividendYield": 0.0033000002,
     "ebit": 133050000000,
     "ebitda": 144748000000,
     "effectiveTaxRate": 0.15610002335586043,
-    "enterpriseValue": 4667834129920,
-    "epsCAGR": 0.0688,
+    "enterpriseValue": 4705681046848,
+    "epsCAGR": 0.0362,
     "equity": 73733000000,
     "equityToAssets": 0.20524661717342954,
-    "evToFcfYield": 0.021159063765124133,
+    "evToFcfYield": 0.02098888535298349,
     "fcfConversion": 0.8817694848674226,
     "fcfMargin": 0.23732882225869315,
-    "fcfPerShareCAGR": -0.012,
-    "fcfPositiveYears": 4,
-    "fcfReportedYears": 4,
-    "fcfYield": 0.02136022677626582,
-    "fiscalPeriodEnd": "2025-09-30",
-    "forwardPE": 33.213127,
+    "fcfPerShareCAGR": -0.0053,
+    "fcfPositiveYears": 12,
+    "fcfReportedYears": 12,
+    "fcfYield": 0.021150609034656674,
+    "fiscalPeriodEnd": "2025-09-27",
+    "forwardPE": 33.539375,
     "freeCashFlow": 98767000000,
     "freeCashFlowLatest": 98767000000,
     "freeCashFlowNormalised": 99584000000,
@@ -246,18 +258,18 @@
     "interestExpenseAsOf": "2023-09-30",
     "interestExpenseCarried": true,
     "isFinancial": false,
-    "marketCap": 4623874129920,
+    "marketCap": 4669700046848,
     "marketCapDerived": false,
     "negativeEquity": false,
-    "netCash": -43960000000,
-    "netCashB": -43.96,
-    "netDebtToEbitda": 0.3,
+    "netCash": -35981000000,
+    "netCashB": -35.98,
+    "netDebtToEbitda": 0.25,
     "netIncome": 112010000000,
     "operatingCashFlow": 111482000000,
     "operatingMargin": 0.31970799762591884,
     "operatingMarginChangeBps": 46,
-    "peVsHistoryPct": 3.6,
-    "pegRatio": 2.47,
+    "peVsHistoryPct": 15.4,
+    "pegRatio": 2.56,
     "piotroski": {
       "details": [
         {
@@ -320,30 +332,55 @@
       "score": 8,
       "testable": 9
     },
-    "price": 316.83,
-    "priceToBook": 43.04755,
+    "price": 319.97,
+    "priceToBook": 43.474186,
     "quarterlyGrossMarginTrend": {
-      "changeBps": 357,
-      "consecutiveDeclines": 0,
+      "changeBps": 1165,
+      "consecutiveDeclines": 11,
       "margins": [
+        38.4,
+        38.3,
+        38.3,
+        38.3,
+        38,
+        37.6,
+        37.6,
+        38,
+        38.4,
+        38.4,
+        38,
+        38.2,
+        39.8,
+        42.5,
+        43.3,
+        43.8,
+        43.7,
+        43.3,
+        43,
+        44.3,
+        44.5,
+        45.9,
+        46.6,
+        46.3,
+        46.9,
+        47.1,
         46.5,
-        47.2,
         48.2,
         49.3,
         50.1
       ],
-      "quarters": 5
+      "quarters": 30
     },
     "quickRatio": 0.858770399261008,
     "reportingCurrency": "USD",
     "revenue": 416161000000,
-    "revenueCAGR": 0.0181,
+    "revenueCAGR": 0.0774,
     "revenueChangeLatest": 0.0643,
     "revenueChangeYears": 1,
     "roa": 0.3117962593356549,
     "roe": 1.5191298333175105,
-    "roic": 95.4,
-    "roicSpread": 85.9,
+    "roic": 102.34,
+    "roicSpread": 92.83,
     "sectorMedianAssetTurnover": null,
     "shareChangeAnnualisedPct": -2.62,
     "shareChangeIsAnnual": true,
@@ -351,16 +388,16 @@
     "shareChangeYoY": -0.0262,
     "sharesOutstanding": 14594180000,
     "taxRateEstimated": false,
-    "totalDebt": 98657000000,
+    "totalDebt": 90678000000,
     "totalLiabilities": 285508000000,
     "totalLiabilitiesDerived": false,
     "tradedCurrency": "USD",
-    "tradedPrice": 316.83,
-    "trailingPE": 35.598877,
-    "wacc": 9.5,
+    "tradedPrice": 319.97,
+    "trailingPE": 36.65178,
+    "wacc": 9.51,
     "workingCapital": -17674000000
   },
-  "netCashB": -43.96,
+  "netCashB": -35.98,
   "pillars": [
     {
       "items": [
@@ -436,13 +473,13 @@
           "available": true,
           "max": 5,
           "name": "Forward P/E vs. own history",
-          "points": 3.5
+          "points": 2
         },
         {
           "available": true,
           "max": 5,
           "name": "PEG ratio",
-          "points": 2
+          "points": 0
         },
         {
           "available": true,
@@ -461,8 +498,8 @@
       "measured": 4,
       "name": "Valuation & Margin of Safety",
       "of": 4,
-      "pct": 38,
-      "score": 7.5
+      "pct": 20,
+      "score": 4
     },
     {
       "items": [
@@ -470,7 +507,7 @@
           "available": true,
           "max": 5,
           "name": "Revenue CAGR",
-          "points": 0
+          "points": 2
         },
         {
           "available": true,
@@ -495,8 +532,8 @@
       "measured": 4,
       "name": "Growth & Operating Leverage",
       "of": 4,
-      "pct": 33,
-      "score": 6.5
+      "pct": 43,
+      "score": 8.5
     },
     {
       "items": [
@@ -510,7 +547,7 @@
           "available": true,
           "max": 7,
           "name": "Dividend safety & coverage",
-          "points": 5.5
+          "points": 7
         },
         {
           "available": true,
@@ -523,8 +560,8 @@
       "measured": 3,
       "name": "Capital Allocation & Returns",
       "of": 3,
-      "pct": 93,
-      "score": 18.5
+      "pct": 100,
+      "score": 20
     }
   ],
   "piotroskiDetails": [
@@ -585,5 +622,5 @@
   ],
   "piotroskiScore": 8,
   "risks": [],
-  "roicPct": 95.4
+  "roicPct": 102.34
 }
