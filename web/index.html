@@ -572,11 +572,11 @@
           <div class="dcf-summary-card">
             <div class="dcf-values-row">
               <div class="dcf-val-item">
-                <span>Estimated Fair Value</span>
+                <span data-explain="Estimated Fair Value" tabindex="0">Estimated Fair Value</span>
                 <h3 class="mono text-cyan" id="dcfFairValueText">—</h3>
               </div>
               <div class="dcf-val-item">
-                <span>Current Price</span>
+                <span data-explain="Current Price" tabindex="0">Current Price</span>
                 <h3 class="mono" id="dcfCurrentPriceText">—</h3>
               </div>
             </div>
@@ -600,7 +600,7 @@
             
             <div class="slider-group">
               <div class="slider-label">
-                <span>1. 5-Year Annual FCF Growth:</span>
+                <span data-explain="dcf-growth" tabindex="0">1. 5-Year Annual FCF Growth:</span>
                 <span class="slider-val mono" id="dcfGrowthVal">18%</span>
               </div>
               <!-- Range reaches below zero: a shrinking business has its
@@ -610,7 +610,7 @@
 
             <div class="slider-group">
               <div class="slider-label">
-                <span>2. Terminal Exit Multiple (Year 5):</span>
+                <span data-explain="dcf-terminal-multiple" tabindex="0">2. Terminal Exit Multiple (Year 5):</span>
                 <span class="slider-val mono" id="dcfMultipleVal">24.0x</span>
               </div>
               <input type="range" class="range-slider" id="dcfMultipleSlider" min="8" max="45" value="24" step="1">
@@ -618,7 +618,7 @@
 
             <div class="slider-group">
               <div class="slider-label">
-                <span>3. Required Discount Rate (Hurdle):</span>
+                <span data-explain="dcf-discount-rate" tabindex="0">3. Required Discount Rate (Hurdle):</span>
                 <span class="slider-val mono" id="dcfDiscountVal">9.5%</span>
               </div>
               <input type="range" class="range-slider" id="dcfDiscountSlider" min="6" max="16" value="9.5" step="0.5">
@@ -802,14 +802,14 @@
         </div>
 
         <div class="card" style="margin-bottom: 16px;">
-          <div class="form-group">
-            <label class="form-label">Compare Tickers (up to 4, comma separated)</label>
-            <div style="display: flex; gap: 8px;">
-              <input type="text" id="compareInput" class="form-input mono" value="AAPL, MSFT, NVDA, GOOGL" placeholder="e.g. AAPL, MSFT, GOOGL">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">Compare &mdash; up to 5</label>
+            <div id="compareSlots" class="compare-slots"><!-- Rendered by JS --></div>
+            <div class="compare-actions">
+              <button class="btn-secondary" id="comparePickBtn">&#43; Add</button>
               <button class="btn-primary" id="compareRunBtn">Compare</button>
             </div>
           </div>
-          <div id="comparePeerChips" class="peer-chips"></div>
         </div>
 
         <!-- Comparison Matrix Container -->
@@ -1090,6 +1090,22 @@
       </div>
     </div>
 
+    <!-- Modal: pick tickers to compare, from what this install already knows -->
+    <div class="modal-backdrop" id="comparePickerModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">Add to comparison</h3>
+          <button class="icon-btn" id="closeComparePickerBtn">&#10005;</button>
+        </div>
+        <input type="text" id="comparePickerFilter" class="form-input" placeholder="Filter, or type a new symbol">
+        <div id="comparePickerBody" class="picker-body"><!-- Rendered by JS --></div>
+        <div class="picker-foot">
+          <span id="comparePickerCount" class="picker-count"></span>
+          <button class="btn-primary" id="comparePickerDoneBtn">Done</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal 5: Add Journal Note -->
     <div class="modal-backdrop" id="journalModal">
       <div class="modal-content">
@@ -1156,6 +1172,30 @@
     }, 8000);
   })();
   </script>
+  <!-- Long-press (or tap) any figure carrying data-explain. Filled by
+       web/explain.js from the glossary in core/. -->
+  <div class="explain-sheet" id="explainSheet" aria-hidden="true" role="dialog" aria-modal="true"
+       aria-labelledby="explainTitle">
+    <div class="explain-card" tabindex="-1">
+      <div class="explain-head">
+        <h3 class="explain-title" id="explainTitle"></h3>
+        <button class="icon-btn" type="button" data-explain-close aria-label="Close">&#10005;</button>
+      </div>
+      <section class="explain-part">
+        <div class="explain-label">What it means</div>
+        <p data-part="means"></p>
+      </section>
+      <section class="explain-part">
+        <div class="explain-label">Why it matters</div>
+        <p data-part="matters"></p>
+      </section>
+      <section class="explain-part">
+        <div class="explain-label">How Pocket Omaha computes it</div>
+        <p data-part="computes"></p>
+      </section>
+    </div>
+  </div>
+
   <!-- Stamped by deploy.sh from a hash of web/. The hand-written 2.1.1 was
        the same URL across every deploy, so Cloudflare kept serving whatever
        it had cached under it. -->

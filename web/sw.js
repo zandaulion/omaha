@@ -20,6 +20,13 @@ const STATIC_ASSETS = [
   // network-first for scripts and falls back to the cache, which cannot help
   // for a file that was never put in it.
   '/pwa-update.js',
+  // app.js imports this at module scope, so a fetch that fails leaves the
+  // import unresolved and the application never starts -- same reason as the
+  // two entries above.
+  '/explain.js',
+  // explain.js imports this. Bundled out of core/ by tools/bundle-core.mjs,
+  // because only web/ is served -- app.js cannot reach across to core/.
+  '/glossary.js',
   '/manifest.webmanifest',
   '/icons/icon.svg',
   '/icons/favicon.svg',

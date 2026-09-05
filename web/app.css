@@ -2759,3 +2759,175 @@ body {
 
 .push-test-status.is-ok { color: var(--health-pristine); }
 .push-test-status.is-error { color: var(--health-risk); }
+
+/* --- comparison picker ------------------------------------------------ */
+
+.compare-slots {
+  display: grid;
+  /* Three across, two rows. Five in a single row leaves ~63px per slot on a
+     phone, which clips a symbol like GLE.PA against the remove cross. */
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 38px;
+  padding: 0 6px;
+  border-radius: var(--radius-md);
+  font-size: 12.5px;
+  font-weight: 700;
+  /* Symbols vary in length; without this the four slots jitter as they fill. */
+  overflow: hidden;
+}
+
+.slot-filled {
+  border: 1px solid var(--brand-cyan);
+  background: var(--bg-surface-subtle);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.slot-filled:hover { border-color: var(--health-risk); }
+.slot-filled .mono { font-family: var(--font-mono); }
+.slot-x { color: var(--text-tertiary); font-size: 10px; }
+.slot-filled:hover .slot-x { color: var(--health-risk); }
+
+.slot-empty {
+  border: 1px dashed var(--border-subtle);
+  background: transparent;
+}
+
+.compare-actions { display: flex; gap: 8px; margin-top: 10px; }
+.compare-actions .btn-secondary { flex: 1; }
+.compare-actions button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.picker-body {
+  /* Bounded, so five watchlists plus the peers cannot push Done off screen. */
+  max-height: 46vh;
+  overflow-y: auto;
+  margin: 12px 0;
+  display: grid;
+  gap: 14px;
+}
+
+.picker-group-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 7px;
+}
+
+.peer-chip.is-picked {
+  border-color: var(--brand-cyan);
+  background: var(--brand-glow);
+  color: var(--brand-cyan);
+}
+
+.picker-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.picker-count { font-size: 12px; color: var(--text-tertiary); }
+.picker-empty { font-size: 12.5px; color: var(--text-tertiary); padding: 10px 0; }
+/* The group label already provides the gap; the shared rule would double it. */
+.picker-group .peer-chips { margin-top: 0; }
+
+/* --- explainers ------------------------------------------------------- */
+
+/* The affordance. Subtle on purpose: it has to appear beside forty labels
+   without turning the scorecard into a field of dotted lines. */
+[data-explain] {
+  text-decoration: underline dotted var(--text-tertiary);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  cursor: pointer;
+}
+
+[data-explain]:focus-visible {
+  outline: 2px solid var(--brand-cyan);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+.explain-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+
+.explain-sheet.open { opacity: 1; pointer-events: auto; }
+
+.explain-card {
+  width: min(560px, 100%);
+  max-height: 82vh;
+  overflow-y: auto;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-bottom: 0;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
+  transform: translateY(14px);
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  outline: none;
+}
+
+.explain-sheet.open .explain-card { transform: translateY(0); }
+
+.explain-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.explain-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-wrap: balance;
+}
+
+.explain-part { margin-bottom: 16px; }
+.explain-part:last-child { margin-bottom: 0; }
+
+.explain-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 5px;
+}
+
+.explain-part p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  /* Comfortable measure; the "how it computes" paragraphs are the long ones. */
+  max-width: 62ch;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .explain-sheet, .explain-card { transition: none; }
+  .explain-card { transform: none; }
+}

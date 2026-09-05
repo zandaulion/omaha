@@ -12,6 +12,7 @@ import {
   projectBank,
   BANK_BLOCKED_EXPLANATIONS
 } from './dcf.js?v=__BUILD_VERSION__';
+import { install as installExplainers } from '/explain.js?v=__BUILD_VERSION__';
 
 /**
  * Pocket Omaha — Core PWA Client Application Logic
@@ -107,6 +108,9 @@ const state = {
   watchlists: [],
   currentWatchlistData: null,
   allFilterStocks: [],
+  // The comparison is a set of up to four picked tickers, not a parsed string.
+  compareTickers: [],
+  compareCandidates: null,
   theme: localStorage.getItem('omaha_theme') || 'system',
   dcf: {
     growth: 18,
@@ -186,6 +190,10 @@ async function initApp() {
     }
   }
 }
+
+// Delegated from the document, so it covers markup that has not been rendered
+// yet and survives every innerHTML rebuild.
+installExplainers();
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initApp);
@@ -538,8 +546,8 @@ function switchView(viewId) {
     targetPanel.classList.add('fade-in');
   }
 
-  if (viewId === 'viewCompare' && state.currentTicker) {
-    loadPeerSuggestions(state.currentTicker);
+  if (viewId === 'viewCompare') {
+    initCompareView();
   }
 
   document.querySelectorAll('.nav-tab').forEach((tab) => {
@@ -910,6 +918,26 @@ function initEventListeners() {
 
   // Compare Runner
   document.getElementById('compareRunBtn')?.addEventListener('click', () => { haptic(); runComparison(); });
+  document.getElementById('comparePickBtn')?.addEventListener('click', () => {
+    haptic();
+    openModal('comparePickerModal');
+    renderComparePicker();
+    document.getElementById('comparePickerFilter')?.focus();
+  });
+  document.getElementById('closeComparePickerBtn')?.addEventListener('click', () => closeModal('comparePickerModal'));
+  document.getElementById('comparePickerDoneBtn')?.addEventListener('click', () => {
+    haptic();
+    closeModal('comparePickerModal');
+    if (state.compareTickers.length >= 2) runComparison();
+  });
+  document.getElementById('comparePickerFilter')?.addEventListener('input', renderComparePicker);
+  // Enter on a symbol the picker does not list is the fastest way to add one.
+  document.getElementById('comparePickerFilter')?.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const typed = e.target.value.trim().toUpperCase();
+    if (typed) { toggleCompareTicker(typed); e.target.value = ''; renderComparePicker(); }
+  });
 
   // Notification preferences
   document.querySelectorAll('[data-notify-pref]').forEach((box) => {
@@ -1005,7 +1033,7 @@ function renderWatchlistHero(data) {
     pillarsContainer.innerHTML = data.pillars.map(p => `
       <div class="pillar-meter-item">
         <div class="pillar-meter-label">
-          <span>${p.name}${p.measured < p.of ? ` <span class="pillar-partial">${p.measured}/${p.of}</span>` : ''}</span>
+          <span><span data-explain="${p.name}" tabindex="0">${p.name}</span>${p.measured < p.of ? ` <span class="pillar-partial">${p.measured}/${p.of}</span>` : ''}</span>
           <span class="mono">${p.score === null ? EM_DASH : `${p.score}/20`}</span>
         </div>
         <div class="pillar-meter-bar-bg">
@@ -1233,7 +1261,7 @@ function renderDeepDiveHero(stock) {
     pillarsContainer.innerHTML = stock.pillars.map(p => `
       <div class="pillar-meter-item">
         <div class="pillar-meter-label">
-          <span>${p.name}</span>
+          <span data-explain="${p.name}" tabindex="0">${p.name}</span>
           <span class="mono">${p.score}/20</span>
         </div>
         <div class="pillar-meter-bar-bg">
@@ -1345,7 +1373,7 @@ function renderOverviewSubtab(stock) {
 
     grid.innerHTML = items.map(it => `
       <div class="ratio-card">
-        <div class="ratio-card-label">${it.label}</div>
+        <div class="ratio-card-label" data-explain="${it.label}" tabindex="0">${it.label}</div>
         <div class="mono ratio-card-value ${
           it.good === null ? 'is-unavailable' : it.good ? 'is-good' : ''
         }">${it.val}</div>
@@ -1811,7 +1839,7 @@ function renderChecklistSubtab(stock) {
         <div class="checklist-left">
           <div class="status-dot ${item.status}"></div>
           <div>
-            <span class="checklist-name">${item.name}</span>
+            <span class="checklist-name" data-explain="${item.name}" tabindex="0">${item.name}</span>
             <span class="checklist-category">${item.category}</span>
           </div>
         </div>
@@ -2096,12 +2124,19 @@ function applyBankPreset(preset, stock) {
   set('dcfDiscountSlider', 'dcfDiscountVal', a.coePct, BANK_LIMITS.coePct, `${a.coePct.toFixed(1)}%`);
 
   const labels = document.querySelectorAll('#dcfControls .slider-label > span:first-child');
+  // The explainer key travels with the label. These three sliders mean
+  // something different for a bank than for an ordinary company, and a stale
+  // key would confidently explain the wrong one.
   const names = [
-    '1. Return on Tangible Equity:',
-    '2. Paid out as dividends:',
-    '3. Cost of Equity (Hurdle):'
+    ['1. Return on Tangible Equity:', 'return-on-tangible-equity'],
+    ['2. Paid out as dividends:', 'bank-payout'],
+    ['3. Cost of Equity (Hurdle):', 'cost-of-equity']
   ];
-  labels.forEach((el, i) => { if (names[i]) el.textContent = names[i]; });
+  labels.forEach((el, i) => {
+    if (!names[i]) return;
+    el.textContent = names[i][0];
+    el.dataset.explain = names[i][1];
+  });
 
   calculateClientBank();
 }
@@ -2195,15 +2230,18 @@ function calculateClientBank() {
  */
 function restoreDcfControls() {
   const spec = [
-    ['dcfGrowthSlider', -25, 45, 1, '1. 5-Year Annual FCF Growth:'],
-    ['dcfMultipleSlider', 8, 45, 1, '2. Terminal Exit Multiple (Year 5):'],
-    ['dcfDiscountSlider', 6, 16, 0.5, '3. Required Discount Rate (Hurdle):']
+    ['dcfGrowthSlider', -25, 45, 1, '1. 5-Year Annual FCF Growth:', 'dcf-growth'],
+    ['dcfMultipleSlider', 8, 45, 1, '2. Terminal Exit Multiple (Year 5):', 'dcf-terminal-multiple'],
+    ['dcfDiscountSlider', 6, 16, 0.5, '3. Required Discount Rate (Hurdle):', 'dcf-discount-rate']
   ];
   const labels = document.querySelectorAll('#dcfControls .slider-label > span:first-child');
-  spec.forEach(([id, min, max, step, name], i) => {
+  spec.forEach(([id, min, max, step, name, explainKey], i) => {
     const el = document.getElementById(id);
     if (el) { el.min = min; el.max = max; el.step = step; }
-    if (labels[i]) labels[i].textContent = name;
+    if (labels[i]) {
+      labels[i].textContent = name;
+      labels[i].dataset.explain = explainKey;
+    }
   });
 }
 
@@ -2558,8 +2596,12 @@ function setFilterPreset({
 
 // ----------------- PEER COMPARE MATRIX -----------------
 async function runComparison() {
-  const input = document.getElementById('compareInput')?.value || 'AAPL, MSFT, NVDA, GOOGL';
   const container = document.getElementById('compareMatrixContainer');
+  if (state.compareTickers.length < 2) {
+    container.innerHTML = '<div class="card chart-empty">Pick at least two to compare.</div>';
+    return;
+  }
+  const input = state.compareTickers.join(',');
 
   try {
     const res = await apiFetch(`/api/compare?tickers=${encodeURIComponent(input)}`);
@@ -2636,7 +2678,7 @@ function renderCompareRadar(stocks) {
   const plotted = stocks.filter((s) => Array.isArray(s.pillars) && s.pillars.some((p) => isNum(p.score)));
   if (!plotted.length) return '';
 
-  const COLORS = ['#38BDF8', '#10B981', '#F59E0B', '#A78BFA'];
+  const COLORS = ['#38BDF8', '#10B981', '#F59E0B', '#A78BFA', '#F472B6'];
   const size = 260;
   const c = size / 2;
   const rMax = c - 34;
@@ -2694,39 +2736,143 @@ function renderCompareRadar(stocks) {
     </div>`;
 }
 
-/** Peers Yahoo associates with the open ticker, offered as one-tap compares. */
-async function loadPeerSuggestions(ticker) {
-  const host = document.getElementById('comparePeerChips');
+const COMPARE_MAX = 5;
+
+/** The four slots, plus the empty ones, so the limit is visible before it bites. */
+function renderCompareSlots() {
+  const host = document.getElementById('compareSlots');
   if (!host) return;
-  host.innerHTML = '';
 
-  try {
-    const res = await apiFetch(`/api/stock/${encodeURIComponent(ticker)}/peers`);
-    if (!res.ok) return;
-    const { peers = [] } = await res.json();
-    if (!peers.length) return;
+  const filled = state.compareTickers.map((t) => `
+    <button type="button" class="slot slot-filled" data-drop="${t}" title="Remove ${t}">
+      <span class="mono">${t}</span><span class="slot-x">&#10005;</span>
+    </button>`).join('');
+  const empty = Array.from(
+    { length: COMPARE_MAX - state.compareTickers.length },
+    () => '<span class="slot slot-empty"></span>'
+  ).join('');
 
-    host.innerHTML =
-      `<span class="peer-chip-label">Peers of ${ticker}:</span>` +
-      peers.map((p) => `
-        <button type="button" class="peer-chip" data-peer="${p.ticker}">
-          ${p.ticker}${isNum(p.health_score) ? ` <span class="mono">${p.health_score}</span>` : ''}
-        </button>`).join('');
-
-    host.querySelectorAll('.peer-chip').forEach((chip) => {
-      chip.addEventListener('click', () => {
-        haptic();
-        const field = document.getElementById('compareInput');
-        const current = field.value.split(',').map((t) => t.trim().toUpperCase()).filter(Boolean);
-        const peer = chip.dataset.peer;
-        if (!current.includes(peer)) current.push(peer);
-        field.value = current.slice(0, 4).join(', ');
-        runComparison();
-      });
+  host.innerHTML = filled + empty;
+  host.querySelectorAll('[data-drop]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      haptic();
+      state.compareTickers = state.compareTickers.filter((t) => t !== btn.dataset.drop);
+      renderCompareSlots();
     });
-  } catch {
-    // Suggestions are a convenience; their absence is not worth an error.
+  });
+
+  const run = document.getElementById('compareRunBtn');
+  if (run) run.disabled = state.compareTickers.length < 2;
+  const add = document.getElementById('comparePickBtn');
+  if (add) add.disabled = state.compareTickers.length >= COMPARE_MAX;
+}
+
+/** Toggling is the only way in or out, so the count can never run past four. */
+function toggleCompareTicker(ticker) {
+  const sym = ticker.trim().toUpperCase();
+  if (!sym) return;
+  if (state.compareTickers.includes(sym)) {
+    state.compareTickers = state.compareTickers.filter((t) => t !== sym);
+  } else if (state.compareTickers.length < COMPARE_MAX) {
+    state.compareTickers.push(sym);
+  } else {
+    // Silently dropping the tap is what the old peer chips did, and it read as
+    // a dead button. Say which slot is in the way instead.
+    showToast(`${COMPARE_MAX} is the limit — remove one first`, '⚠️');
+    return;
   }
+  renderCompareSlots();
+  renderComparePicker();
+}
+
+/** Everything this install already knows about, grouped by where it came from. */
+async function loadCompareCandidates() {
+  const q = state.currentTicker ? `?ticker=${encodeURIComponent(state.currentTicker)}` : '';
+  try {
+    const res = await apiFetch(`/api/compare/candidates${q}`);
+    state.compareCandidates = res.ok ? await res.json() : null;
+  } catch {
+    state.compareCandidates = null;
+  }
+  renderComparePicker();
+}
+
+function renderComparePicker() {
+  const host = document.getElementById('comparePickerBody');
+  if (!host) return;
+
+  const data = state.compareCandidates;
+  if (!data) {
+    host.innerHTML = '<div class="picker-empty">Could not load your lists. Type a symbol above instead.</div>';
+    return;
+  }
+
+  const needle = (document.getElementById('comparePickerFilter')?.value || '').trim().toUpperCase();
+  const match = (c) =>
+    !needle || c.ticker.includes(needle) || (c.name || '').toUpperCase().includes(needle);
+
+  const chip = (c) => {
+    const on = state.compareTickers.includes(c.ticker);
+    const score = isNum(c.health_score)
+      ? `<span class="mono" style="color:${getScoreColor(c.health_score)}">${c.health_score}</span>`
+      : '';
+    return `
+      <button type="button" class="peer-chip${on ? ' is-picked' : ''}" data-pick="${c.ticker}"
+              title="${(c.name || c.ticker).replace(/"/g, '&quot;')}">
+        ${c.ticker} ${score}
+      </button>`;
+  };
+
+  const section = (label, list) => {
+    const shown = list.filter(match);
+    if (!shown.length) return '';
+    return `<div class="picker-group">
+        <div class="picker-group-label">${label}</div>
+        <div class="peer-chips">${shown.map(chip).join('')}</div>
+      </div>`;
+  };
+
+  const groups = [
+    ...(data.peers?.length ? [section(`Peers of ${data.ticker}`, data.peers)] : []),
+    ...(data.watchlists || []).map((w) => section(w.name, w.tickers)),
+    ...(data.seen?.length ? [section('Looked up before', data.seen)] : [])
+  ].filter(Boolean);
+
+  // A symbol nobody has heard of is still worth offering: /api/compare fetches
+  // on demand, so the picker must not become a cage around the cache.
+  const known = new Set([
+    ...(data.peers || []).map((p) => p.ticker),
+    ...(data.watchlists || []).flatMap((w) => w.tickers.map((t) => t.ticker)),
+    ...(data.seen || []).map((c) => c.ticker)
+  ]);
+  // Only when nothing else matched. Offering the partial alongside the real
+  // hit -- "NVD" next to NVDA -- reads as a second, wrong answer. Enter still
+  // adds whatever is typed, so a symbol that collides with a prefix is not
+  // unreachable, it just is not volunteered.
+  const freeform = needle && !groups.length && !known.has(needle)
+    ? section('Not in your lists', [{ ticker: needle, name: null, health_score: null }])
+    : '';
+
+  host.innerHTML = (freeform + groups.join('')) ||
+    '<div class="picker-empty">Nothing matches. Press Enter to compare it anyway.</div>';
+
+  host.querySelectorAll('[data-pick]').forEach((btn) => {
+    btn.addEventListener('click', () => { haptic(); toggleCompareTicker(btn.dataset.pick); });
+  });
+
+  const count = document.getElementById('comparePickerCount');
+  if (count) {
+    count.textContent = `${state.compareTickers.length} of ${COMPARE_MAX} picked`;
+  }
+}
+
+/** Arriving from a scorecard, the ticker you were reading is the subject. */
+function initCompareView() {
+  if (!state.compareTickers.length && state.currentTicker) {
+    state.compareTickers = [state.currentTicker];
+  }
+  renderCompareSlots();
+  loadCompareCandidates();
 }
 
 // ----------------- TOAST NOTIFICATIONS -----------------
