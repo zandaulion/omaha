@@ -1139,9 +1139,16 @@
       show('Unhandled rejection: ' + ((r && (r.stack || r.message)) || r));
     });
     // Nothing drawn after eight seconds is a failure that threw nothing.
+    //
+    // Measured as text on the page rather than the height of an app root. The
+    // first version watched #app, which is empty while the invite gate is up --
+    // so it told a perfectly healthy visitor sitting on the gate that the app
+    // could not start, which is worse than saying nothing at all. Any real
+    // content means the scripts ran.
     setTimeout(function () {
-      var app = document.querySelector('#app, main, .app-shell');
-      if (!document.getElementById('bootError') && (!app || app.getBoundingClientRect().height < 40)) {
+      if (document.getElementById('bootError')) return;
+      var text = (document.body && document.body.innerText || '').trim();
+      if (text.length < 40) {
         show('The page loaded but nothing rendered within 8 seconds.\n' +
              'serviceWorker: ' + (navigator.serviceWorker && navigator.serviceWorker.controller
                ? 'a worker is controlling this page' : 'none controlling'));

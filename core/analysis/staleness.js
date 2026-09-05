@@ -33,11 +33,12 @@ export const PRICE_DRIFT_THRESHOLD = 0.15;
  *   detail: string|null
  * }}
  */
-export function assessSummaryStaleness(summary, current) {
+export function assessSummaryStaleness(summary, current, promptVersion = 0) {
   const fresh = {
     stale: false,
     filingsChanged: false,
     priceDrifted: false,
+    supersededByNewerAnalysis: false,
     driftRatio: null,
     scope: 'none',
     headline: null,
@@ -72,30 +73,56 @@ export function assessSummaryStaleness(summary, current) {
   const priceDrifted =
     driftRatio !== null && Math.abs(driftRatio) >= PRICE_DRIFT_THRESHOLD - 1e-9;
 
-  if (!filingsChanged && !priceDrifted) return fresh;
+  // The app can learn to say something it could not say before while the
+  // filings sit still and the price does not move. An analysis written before
+  // the bank model existed carried no fair value for a lender at all, and
+  // nothing here could see that, so it was served as current indefinitely.
+  //
+  // A summary from before the stamp existed counts as superseded: it was
+  // certainly written against an older prompt, and treating unknown as current
+  // is the favourable reading rather than the true one.
+  const writtenWith = numberOrNull(summary.promptVersion);
+  const supersededByNewerAnalysis = writtenWith === null || writtenWith < promptVersion;
+
+  if (!filingsChanged && !priceDrifted && !supersededByNewerAnalysis) return fresh;
 
   // Newer filings undermine the whole analysis: every section was reasoned
   // from figures that have since been superseded. Price movement undermines
   // only the parts that depend on price — the moat and solvency reasoning is
   // just as good as it was. Saying so is the difference between a caveat a
   // person can act on and one they learn to dismiss.
-  const scope = filingsChanged ? 'all' : 'valuation';
+  // A newer analysis supersedes the whole thing for the same reason newer
+  // filings do: the sections were reasoned without figures that now exist.
+  const scope = filingsChanged || supersededByNewerAnalysis ? 'all' : 'valuation';
+
+  // Filings first where both apply. New statements are the more concrete
+  // reason and the one a reader can check for themselves.
+  const headline = filingsChanged
+    ? 'Newer financial statements have been filed since this was written.'
+    : supersededByNewerAnalysis
+      ? 'The app has learned to measure things this analysis was never shown.'
+      : 'The share price has moved materially since this was written.';
+
+  const detail = filingsChanged
+    ? `Written against ${writtenAgainst}; the latest filed period is now ${filedNow}. ` +
+      'Every section was reasoned from the older figures.'
+    : supersededByNewerAnalysis
+      ? 'It was written against an earlier version of what this app measures, so it ' +
+        'could not have taken the newer figures into account. Re-analysing costs one ' +
+        'model call.'
+      : `${formatSignedPercent(driftRatio)} since the analysis was generated. ` +
+        'The valuation and buy-zone sections are affected; the moat and solvency ' +
+        'reasoning is unchanged.';
 
   return {
     stale: true,
     filingsChanged,
     priceDrifted,
+    supersededByNewerAnalysis,
     driftRatio,
     scope,
-    headline: filingsChanged
-      ? 'Newer financial statements have been filed since this was written.'
-      : 'The share price has moved materially since this was written.',
-    detail: filingsChanged
-      ? `Written against ${writtenAgainst}; the latest filed period is now ${filedNow}. ` +
-        'Every section was reasoned from the older figures.'
-      : `${formatSignedPercent(driftRatio)} since the analysis was generated. ` +
-        'The valuation and buy-zone sections are affected; the moat and solvency ' +
-        'reasoning is unchanged.'
+    headline,
+    detail
   };
 }
 

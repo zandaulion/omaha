@@ -23,6 +23,7 @@ import { initVapid, getVapidPublicKey, saveSubscription, broadcastPush, sendToDe
 import { generateStockAISummary, getCachedAISummary } from './gemini.js';
 import { getAppSettings, updateAppSettings, shouldIncludeNotesInAI } from './app-settings.js';
 import { assessSummaryStaleness } from '../core/analysis/staleness.js';
+import { PROMPT_VERSION } from '../core/analysis/prompt.js';
 import { buildBackup, mergeBackup } from '../core/backup.js';
 import { readPersonalData, writePersonalData } from './backup-store.js';
 import {
@@ -255,7 +256,7 @@ async function withStaleness(ticker, summary) {
   if (!summary) return summary;
   try {
     const current = await getStockData(ticker);
-    return { ...summary, staleness: assessSummaryStaleness(summary, current) };
+    return { ...summary, staleness: assessSummaryStaleness(summary, current, PROMPT_VERSION) };
   } catch (err) {
     console.warn(`[Staleness] could not evaluate ${ticker}:`, err.message);
     return summary;

@@ -29,7 +29,8 @@ export function getGeminiModel() {
 import {
   buildComprehensivePayload,
   buildPrompt,
-  RESPONSE_SCHEMA
+  RESPONSE_SCHEMA,
+  PROMPT_VERSION
 } from '../core/analysis/prompt.js';
 
 // Re-exported so the prompt-dumping script and the PWA route keep one import
@@ -126,6 +127,10 @@ export async function callGemini(stock, thesis = null) {
     // cached summary can be spotted as stale once new fundamentals land.
     fiscalPeriodEnd: stock.summary?.metrics?.fiscalPeriodEnd || null,
     priceAtGeneration: stock.price ?? null,
+    // What the model was told, as a number. The filings can be unchanged and
+    // the price flat while the app has learned to say something it could not
+    // say before; without this, such an analysis is served as current forever.
+    promptVersion: PROMPT_VERSION,
     // Whether this analysis was written with the user's own notes in front of
     // it. Recorded rather than inferred: the preference can be changed after
     // the fact, and a cached summary must still be able to say what it was
