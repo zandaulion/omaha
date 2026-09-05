@@ -5,7 +5,12 @@ import {
   dcfBlockedReason,
   explainBlocked,
   projectDcf,
-  dcfVerdict
+  dcfVerdict,
+  BANK_LIMITS,
+  bankBaselines,
+  bankPresets,
+  projectBank,
+  BANK_BLOCKED_EXPLANATIONS
 } from './dcf.js';
 
 /**
@@ -822,18 +827,36 @@ function initEventListeners() {
   // DCF Sliders & Presets
   document.getElementById('dcfGrowthSlider')?.addEventListener('input', (e) => {
     document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+    if (isBankModel()) {
+      state.bank = { ...(state.bank || {}), rotePct: parseFloat(e.target.value) };
+      document.getElementById('dcfGrowthVal').textContent = `${state.bank.rotePct.toFixed(1)}%`;
+      calculateClientBank();
+      return;
+    }
     state.dcf.growth = parseFloat(e.target.value);
     document.getElementById('dcfGrowthVal').textContent = `${state.dcf.growth}%`;
     calculateClientDCF();
   });
   document.getElementById('dcfMultipleSlider')?.addEventListener('input', (e) => {
     document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+    if (isBankModel()) {
+      state.bank = { ...(state.bank || {}), payoutPct: parseFloat(e.target.value) };
+      document.getElementById('dcfMultipleVal').textContent = `${Math.round(state.bank.payoutPct)}%`;
+      calculateClientBank();
+      return;
+    }
     state.dcf.multiple = parseFloat(e.target.value);
     document.getElementById('dcfMultipleVal').textContent = `${state.dcf.multiple.toFixed(1)}x`;
     calculateClientDCF();
   });
   document.getElementById('dcfDiscountSlider')?.addEventListener('input', (e) => {
     document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+    if (isBankModel()) {
+      state.bank = { ...(state.bank || {}), coePct: parseFloat(e.target.value) };
+      document.getElementById('dcfDiscountVal').textContent = `${state.bank.coePct.toFixed(1)}%`;
+      calculateClientBank();
+      return;
+    }
     state.dcf.discount = parseFloat(e.target.value);
     document.getElementById('dcfDiscountVal').textContent = `${state.dcf.discount.toFixed(1)}%`;
     calculateClientDCF();
@@ -1988,6 +2011,12 @@ function renderTrendsSubtab(stock) {
 }
 
 // ----------------- DCF INTRINSIC VALUE SANDBOX -----------------
+
+/** True where the engine valued this listing on its balance sheet. */
+function isBankModel(stock) {
+  return (stock || state.currentStock)?.summary?.dcf?.method === 'return-on-tangible-equity';
+}
+
 function getStockDCFBaselines(stock) {
   // core/analysis/dcf.js is the definition, shipped to the browser by
   // tools/bundle-core.mjs. This arithmetic used to live here as the only copy,
@@ -2008,10 +2037,16 @@ function setDCFPreset(preset, stockOverride) {
     preset === 'bear' ? 'dcfBearPreset' : preset === 'bull' ? 'dcfBullPreset' : 'dcfBasePreset';
   document.getElementById(buttonId)?.classList.add('active');
 
+  if (isBankModel(stockOverride || state.currentStock)) {
+    applyBankPreset(preset, stockOverride || state.currentStock);
+    return;
+  }
+
   const a = presetAssumptions(preset, baselines);
   state.dcf.growth = a.growthPct;
   state.dcf.multiple = a.multiple;
   state.dcf.discount = a.discountPct;
+  restoreDcfControls();
 
   const growthSlider = document.getElementById('dcfGrowthSlider');
   if (growthSlider) growthSlider.value = state.dcf.growth;
@@ -2029,6 +2064,145 @@ function setDCFPreset(preset, stockOverride) {
   if (discountVal) discountVal.textContent = `${state.dcf.discount.toFixed(1)}%`;
 
   calculateClientDCF();
+}
+
+/**
+ * The same three sliders, relabelled for a bank.
+ *
+ * Growth, an exit multiple and a hurdle rate are not a lender's levers. The
+ * controls are re-pointed at what actually moves its value -- the return on
+ * tangible equity, what that capital costs, and how much is paid away -- so
+ * the tab keeps one set of controls rather than growing a second.
+ */
+function applyBankPreset(preset, stock) {
+  const summary = (stock || state.currentStock)?.summary?.dcf || {};
+  const a = bankPresets(preset, summary, bankBaselines(summary));
+  state.bank = a;
+
+  const set = (sliderId, valId, value, limits, text) => {
+    const slider = document.getElementById(sliderId);
+    if (slider) {
+      slider.min = limits.min;
+      slider.max = limits.max;
+      slider.step = 0.1;
+      slider.value = value;
+    }
+    const out = document.getElementById(valId);
+    if (out) out.textContent = text;
+  };
+
+  set('dcfGrowthSlider', 'dcfGrowthVal', a.rotePct, BANK_LIMITS.rotePct, `${a.rotePct.toFixed(1)}%`);
+  set('dcfMultipleSlider', 'dcfMultipleVal', a.payoutPct, BANK_LIMITS.payoutPct, `${Math.round(a.payoutPct)}%`);
+  set('dcfDiscountSlider', 'dcfDiscountVal', a.coePct, BANK_LIMITS.coePct, `${a.coePct.toFixed(1)}%`);
+
+  const labels = document.querySelectorAll('#dcfControls .slider-label > span:first-child');
+  const names = [
+    '1. Return on Tangible Equity:',
+    '2. Paid out as dividends:',
+    '3. Cost of Equity (Hurdle):'
+  ];
+  labels.forEach((el, i) => { if (names[i]) el.textContent = names[i]; });
+
+  calculateClientBank();
+}
+
+/**
+ * The balance-sheet valuation, drawn where the discounted one would be.
+ */
+function calculateClientBank() {
+  const stock = state.currentStock;
+  if (!stock) return;
+  const cur = reportingCcy(stock);
+  const m = stock.summary?.metrics || {};
+  const summary = stock.summary?.dcf || {};
+  const a = state.bank || bankBaselines(summary);
+
+  const fairValueEl = document.getElementById('dcfFairValueText');
+  const priceEl = document.getElementById('dcfCurrentPriceText');
+  const badge = document.getElementById('dcfMarginBadge');
+  const table = document.getElementById('dcfBreakdownTable');
+  const controls = document.getElementById('dcfControls');
+
+  const price = isNum(m.price) ? m.price : stock.price;
+  priceEl.textContent = fmtPrice(price, cur);
+
+  const tbvps = summary.tangibleBookValuePerShare;
+  const out = projectBank({ ...a, tangibleBookValuePerShare: tbvps });
+
+  if (out.blocked) {
+    fairValueEl.textContent = EM_DASH;
+    badge.className = 'margin-of-safety-meter is-unavailable';
+    badge.textContent = 'Fair value not modelled';
+    table.innerHTML = `<div class="chart-empty">${BANK_BLOCKED_EXPLANATIONS[out.blocked]
+      || 'This model cannot be run on the available filings.'}</div>`;
+    if (controls) controls.hidden = out.blocked === 'no-tangible-equity';
+    return;
+  }
+
+  if (controls) controls.hidden = false;
+  fairValueEl.textContent = fmtPrice(out.fairValue, cur);
+
+  const verdict = dcfVerdict(out.fairValue, price);
+  if (verdict.kind === 'undervalued') {
+    badge.className = 'margin-of-safety-meter undervalued';
+    badge.textContent = `Margin of safety ${fmtPct(verdict.pct, 1, { alreadyPercent: true, sign: true })} — trading below fair value`;
+  } else if (verdict.kind === 'divergent') {
+    badge.className = 'margin-of-safety-meter is-divergent';
+    badge.textContent =
+      `This model lands ${verdict.factor >= 3
+        ? verdict.factor.toFixed(1) + '× above'
+        : (1 / verdict.factor).toFixed(1) + '× below'} the traded price.` +
+      ' A gap this wide usually means the assumptions need revisiting.';
+  } else {
+    badge.className = 'margin-of-safety-meter overvalued';
+    badge.textContent = `${fmtPct(verdict.pct, 1, { alreadyPercent: true })} above fair value at these assumptions`;
+  }
+
+  const line = (label, value, cls = '') =>
+    `<div class="dcf-line"><span>${label}</span><span class="mono ${cls}">${value}</span></div>`;
+  const pct = (v) => `${(v * 100).toFixed(1)}%`;
+
+  table.innerHTML =
+    line(`Return on tangible equity (median of ${summary.roteYears} filed years)`, pct(summary.rote)) +
+    (isNum(summary.roteLatest)
+      ? line('Latest filed year', pct(summary.roteLatest), 'text-muted') : '') +
+    line('At this slider', pct(a.rotePct / 100)) +
+    line('Cost of equity', pct(a.coePct / 100)) +
+    line('Sustainable growth (retained × return, capped at 4%)', pct(out.growth)) +
+    line('Justified price to tangible book', `${out.justifiedPTBV.toFixed(2)}×`) +
+    line('Tangible book value per share', fmtPrice(tbvps, cur)) +
+    `<div class="dcf-line is-total"><span>Fair value per share</span>
+       <span class="mono">${fmtPrice(out.fairValue, cur)}</span></div>` +
+    // The band the bank's own record supports. Gordon growth divides one small
+    // difference by another, so a single figure would claim a precision these
+    // inputs do not have.
+    (isNum(summary.fairValueAtWorstYear) || isNum(summary.fairValueAtBestYear)
+      ? `<div class="dcf-implied">On its worst and best filed years this same model gives
+           ${isNum(summary.fairValueAtWorstYear) ? fmtPrice(summary.fairValueAtWorstYear, cur) : '—'}
+           and ${isNum(summary.fairValueAtBestYear) ? fmtPrice(summary.fairValueAtBestYear, cur) : '—'}.
+           The spread is the finding.</div>`
+      : '');
+}
+
+/**
+ * Put the sliders back the way the markup declares them.
+ *
+ * Looking at a bank and then an industrial otherwise leaves the first slider
+ * labelled "Return on Tangible Equity" and capped at 30% — a growth control
+ * wearing the wrong name and unable to reach its own range.
+ */
+function restoreDcfControls() {
+  const spec = [
+    ['dcfGrowthSlider', -25, 45, 1, '1. 5-Year Annual FCF Growth:'],
+    ['dcfMultipleSlider', 8, 45, 1, '2. Terminal Exit Multiple (Year 5):'],
+    ['dcfDiscountSlider', 6, 16, 0.5, '3. Required Discount Rate (Hurdle):']
+  ];
+  const labels = document.querySelectorAll('#dcfControls .slider-label > span:first-child');
+  spec.forEach(([id, min, max, step, name], i) => {
+    const el = document.getElementById(id);
+    if (el) { el.min = min; el.max = max; el.step = step; }
+    if (labels[i]) labels[i].textContent = name;
+  });
 }
 
 function calculateClientDCF() {

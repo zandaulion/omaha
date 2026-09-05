@@ -95,15 +95,76 @@ function dcfVerdict(fairValue, price) {
   }
   return { kind: "overvalued", pct: (price - fairValue) / fairValue * 100, factor };
 }
+var BANK_LIMITS = {
+  rotePct: { min: -5, max: 30 },
+  coePct: { min: 6, max: 16 },
+  payoutPct: { min: 0, max: 100 }
+};
+function bankBaselines(dcfSummary) {
+  const a = dcfSummary?.assumptions || {};
+  return clampBank({
+    rotePct: Math.round((dcfSummary?.rote ?? 0.1) * 1e3) / 10,
+    coePct: Math.round((a.costOfEquity ?? 0.095) * 1e3) / 10,
+    payoutPct: Math.round((a.payoutRatio ?? 0.5) * 100)
+  });
+}
+function bankPresets(preset, dcfSummary, baselines) {
+  if (preset === "bear" && isFiniteNum(dcfSummary?.roteLow)) {
+    return clampBank({ ...baselines, rotePct: Math.round(dcfSummary.roteLow * 1e3) / 10, coePct: 11 });
+  }
+  if (preset === "bull" && isFiniteNum(dcfSummary?.roteHigh)) {
+    return clampBank({ ...baselines, rotePct: Math.round(dcfSummary.roteHigh * 1e3) / 10, coePct: 9 });
+  }
+  return clampBank(baselines);
+}
+function isFiniteNum(v) {
+  return typeof v === "number" && isFinite(v);
+}
+function clampBank(a) {
+  const clamp = (v, { min, max }) => Math.min(max, Math.max(min, v));
+  return {
+    rotePct: clamp(a.rotePct, BANK_LIMITS.rotePct),
+    coePct: clamp(a.coePct, BANK_LIMITS.coePct),
+    payoutPct: clamp(a.payoutPct, BANK_LIMITS.payoutPct)
+  };
+}
+function projectBank({ rotePct, coePct, payoutPct, tangibleBookValuePerShare, maxGrowth = 0.04 }) {
+  const rote = rotePct / 100;
+  const coe = coePct / 100;
+  const payout = payoutPct / 100;
+  const tbvps = Number(tangibleBookValuePerShare);
+  if (!isFiniteNum(tbvps) || tbvps <= 0) return { blocked: "no-tangible-equity" };
+  if (rote <= 0) return { blocked: "not-earning-on-equity" };
+  const growth = Math.min(rote * (1 - payout), maxGrowth);
+  if (growth >= coe) return { blocked: "growth-exceeds-cost-of-equity" };
+  const justifiedPTBV = (rote - growth) / (coe - growth);
+  return {
+    blocked: null,
+    growth,
+    justifiedPTBV,
+    tangibleBookValuePerShare: tbvps,
+    fairValue: tbvps * justifiedPTBV
+  };
+}
+var BANK_BLOCKED_EXPLANATIONS = {
+  "not-earning-on-equity": "At this return the bank earns nothing on the capital it holds, so there is no justified multiple of book to apply. Raise the return to see a value.",
+  "growth-exceeds-cost-of-equity": "Retained growth has reached the cost of equity. Past that point the model divides by nothing and the answer runs to infinity \u2014 pay more out, or demand a higher return.",
+  "no-tangible-equity": "Tangible book value is not in the filings for this listing, so there is nothing to apply a multiple to."
+};
 export {
+  BANK_BLOCKED_EXPLANATIONS,
+  BANK_LIMITS,
   BLOCKED_EXPLANATIONS,
   LIMITS,
   PROJECTION_YEARS,
+  bankBaselines,
+  bankPresets,
   clampAssumptions,
   dcfBaselines,
   dcfBlockedReason,
   dcfVerdict,
   explainBlocked,
   presetAssumptions,
+  projectBank,
   projectDcf
 };

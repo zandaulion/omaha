@@ -178,9 +178,9 @@ function bankInput(model, metrics) {
     roteHistory.push(profit2 / tangible);
   }
   const latest = model.latest || {};
-  const dividends = Math.abs(num(latest.dividendsPaid) ?? 0);
+  const filed = num(latest.dividendsPaid);
   const profit = num(latest.netIncomeToCommon) ?? num(latest.netIncome);
-  const payoutRatio = profit && profit > 0 ? dividends / profit : null;
+  const payoutRatio = filed !== null && profit !== null && profit > 0 ? Math.abs(filed) / profit : null;
   return {
     roteHistory,
     tangibleBookValue: tangibleEquityOf(latest),
