@@ -227,9 +227,17 @@ function bankInput(model, metrics) {
   const latest = model.latest || {};
   // Dividends are filed as a negative outflow; the sign is dropped rather than
   // trusted, since providers disagree about it.
-  const dividends = Math.abs(num(latest.dividendsPaid) ?? 0);
+  //
+  // An absent line is not a bank that pays nothing. Reading it as zero made
+  // Société Générale retain everything, which pushes growth to its cap and --
+  // because its return sits below its cost of equity — drove the justified
+  // multiple down to 0.29 on an assumption nobody filed. Unknown falls through
+  // to the 50% default instead, which is ordinary for a bank.
+  const filed = num(latest.dividendsPaid);
   const profit = num(latest.netIncomeToCommon) ?? num(latest.netIncome);
-  const payoutRatio = profit && profit > 0 ? dividends / profit : null;
+  const payoutRatio = filed !== null && profit !== null && profit > 0
+    ? Math.abs(filed) / profit
+    : null;
 
   return {
     roteHistory,

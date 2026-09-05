@@ -827,3 +827,14 @@ test('the assumptions reported match the model that ran', () => {
   assert.equal(industrial.dcf.assumptions.basis, 'discounted free cash flow');
   assert.ok('cashFlowBase' in industrial.dcf.assumptions);
 });
+
+test('a bank that files no dividend line is not assumed to pay nothing', () => {
+  // Zero payout means full retention, which pushes growth to its cap. For a
+  // bank earning below its cost of equity that is not a neutral assumption --
+  // it drives the justified multiple down on a number nobody filed.
+  const withoutLine = computeComprehensiveHealth(healthyModel({
+    isFinancial: true, isBookValueBusiness: true
+  }));
+  assert.notEqual(withoutLine.dcf.assumptions.payoutRatio, 0,
+    'an absent dividend line must not read as a bank that pays nothing');
+});

@@ -197,3 +197,107 @@ export function dcfVerdict(fairValue, price) {
   }
   return { kind: 'overvalued', pct: ((price - fairValue) / fairValue) * 100, factor };
 }
+
+// =====================================================================
+// The same sandbox, for a bank
+// =====================================================================
+
+/**
+ * A bank's three levers, in place of a DCF's three.
+ *
+ * The discounted model asks about growth, an exit multiple and a hurdle rate.
+ * None of those are the question for a lender, whose value comes from what it
+ * earns on the capital it must hold. So the same three sliders are re-pointed
+ * at the terms that do move it: the return, what that capital costs, and how
+ * much of the return is paid away rather than reinvested.
+ */
+export const BANK_LIMITS = {
+  rotePct: { min: -5, max: 30 },
+  coePct: { min: 6, max: 16 },
+  payoutPct: { min: 0, max: 100 }
+};
+
+export function bankBaselines(dcfSummary) {
+  const a = dcfSummary?.assumptions || {};
+  return clampBank({
+    rotePct: Math.round((dcfSummary?.rote ?? 0.1) * 1000) / 10,
+    coePct: Math.round((a.costOfEquity ?? 0.095) * 1000) / 10,
+    payoutPct: Math.round((a.payoutRatio ?? 0.5) * 100)
+  });
+}
+
+/**
+ * Bear and bull are the worst and best years the bank actually filed.
+ *
+ * Not a percentage haircut on the base case. A lender's range is written in
+ * its own record -- 2008 is the bear case -- and inventing a scenario when the
+ * real one is in the data would be the weaker claim.
+ */
+export function bankPresets(preset, dcfSummary, baselines) {
+  if (preset === 'bear' && isFiniteNum(dcfSummary?.roteLow)) {
+    return clampBank({ ...baselines, rotePct: Math.round(dcfSummary.roteLow * 1000) / 10, coePct: 11 });
+  }
+  if (preset === 'bull' && isFiniteNum(dcfSummary?.roteHigh)) {
+    return clampBank({ ...baselines, rotePct: Math.round(dcfSummary.roteHigh * 1000) / 10, coePct: 9 });
+  }
+  return clampBank(baselines);
+}
+
+function isFiniteNum(v) { return typeof v === 'number' && isFinite(v); }
+
+function clampBank(a) {
+  // Local, like clampAssumptions' own. The first version reached for a shared
+  // `clamp` that does not exist at this scope -- the existing helper declares
+  // its own inside the function -- so every bank baseline threw on the first
+  // call. Nothing in the arithmetic tests touched it, because they pass
+  // percentages straight to projectBank.
+  const clamp = (v, { min, max }) => Math.min(max, Math.max(min, v));
+  return {
+    rotePct: clamp(a.rotePct, BANK_LIMITS.rotePct),
+    coePct: clamp(a.coePct, BANK_LIMITS.coePct),
+    payoutPct: clamp(a.payoutPct, BANK_LIMITS.payoutPct)
+  };
+}
+
+/**
+ * Gordon growth on book value, the same arithmetic the engine runs.
+ *
+ * Kept here rather than reimplemented in the page so the sandbox and the
+ * scorecard cannot drift apart -- the number under the sliders at their
+ * opening position has to be the number on the card behind them.
+ */
+export function projectBank({ rotePct, coePct, payoutPct, tangibleBookValuePerShare, maxGrowth = 0.04 }) {
+  const rote = rotePct / 100;
+  const coe = coePct / 100;
+  const payout = payoutPct / 100;
+  const tbvps = Number(tangibleBookValuePerShare);
+
+  if (!isFiniteNum(tbvps) || tbvps <= 0) return { blocked: 'no-tangible-equity' };
+  if (rote <= 0) return { blocked: 'not-earning-on-equity' };
+
+  const growth = Math.min(rote * (1 - payout), maxGrowth);
+  // The multiple runs away to infinity as growth approaches the discount rate,
+  // and turns negative past it. Neither is a valuation.
+  if (growth >= coe) return { blocked: 'growth-exceeds-cost-of-equity' };
+
+  const justifiedPTBV = (rote - growth) / (coe - growth);
+  return {
+    blocked: null,
+    growth,
+    justifiedPTBV,
+    tangibleBookValuePerShare: tbvps,
+    fairValue: tbvps * justifiedPTBV
+  };
+}
+
+export const BANK_BLOCKED_EXPLANATIONS = {
+  'not-earning-on-equity':
+    'At this return the bank earns nothing on the capital it holds, so there is no ' +
+    'justified multiple of book to apply. Raise the return to see a value.',
+  'growth-exceeds-cost-of-equity':
+    'Retained growth has reached the cost of equity. Past that point the model divides ' +
+    'by nothing and the answer runs to infinity — pay more out, or demand a higher return.',
+  'no-tangible-equity':
+    'Tangible book value is not in the filings for this listing, so there is nothing to ' +
+    'apply a multiple to.'
+};
