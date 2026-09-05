@@ -13,6 +13,13 @@ const STATIC_ASSETS = [
   // run at all, so leaving it out of the precache would not degrade the app
   // offline — it would stop it starting.
   '/dcf.js',
+  // Same reason, and it was missing while the comment above described it.
+  // app.js imports installUpdates from here at module scope, so a fetch that
+  // fails -- offline, or during a server restart -- leaves the import
+  // unresolved and the whole application never starts. The fetch handler is
+  // network-first for scripts and falls back to the cache, which cannot help
+  // for a file that was never put in it.
+  '/pwa-update.js',
   '/manifest.webmanifest',
   '/icons/icon.svg',
   '/icons/favicon.svg',
