@@ -26,7 +26,7 @@ initDatabase();
 const { getStockData } = await import('../server/finance.js');
 const { buildPrompt, RESPONSE_SCHEMA, getGeminiModel } = await import('../server/gemini.js');
 
-const stock = await getStockData(ticker);
+const stock = await getStockData(ticker, true);   // forced: a cached record predates whatever is being checked
 if (!stock) {
   console.error(`No listing found for ${ticker}.`);
   process.exit(1);

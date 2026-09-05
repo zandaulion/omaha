@@ -19,6 +19,8 @@ import {
   calculateROIC,
   calculateDCFFairValue,
   calculateBankFairValue,
+  calculateEarningsPower,
+  impliedRote,
   estimateWACC
 } from './scoring.js';
 
@@ -837,4 +839,61 @@ test('a bank that files no dividend line is not assumed to pay nothing', () => {
   }));
   assert.notEqual(withoutLine.dcf.assumptions.payoutRatio, 0,
     'an absent dividend line must not read as a bank that pays nothing');
+});
+
+// =====================================================================
+// Earnings power, and what the price implies
+// =====================================================================
+
+test('earnings power capitalises the median year, with no growth in it', () => {
+  const r = calculateEarningsPower({
+    ebitHistory: [28e9, 30e9, 32e9], taxRate: 0.2, waccPct: 10,
+    cash: 20e9, totalDebt: 5e9, sharesOutstanding: 2e9
+  });
+  assert.equal(r.applicable, true);
+  assert.equal(r.normalisedEbit, 30e9, 'the median year, not the latest');
+  // 30bn x 0.8 = 24bn NOPAT; /10% = 240bn; +15bn net cash; /2bn shares.
+  assert.equal(r.valuePerShare, 127.5);
+});
+
+test('a business losing money at the operating line has no earnings power', () => {
+  // Capitalising a negative profit would return a negative value and read as a
+  // company worth less than nothing.
+  const r = calculateEarningsPower({
+    ebitHistory: [-3e9, -1e9], taxRate: 0.2, waccPct: 10, sharesOutstanding: 1e9
+  });
+  assert.equal(r.applicable, false);
+  assert.equal(r.reason, 'not-profitable-at-operating-line');
+  assert.equal(r.valuePerShare, null);
+});
+
+test('earnings power is not run on a bank', () => {
+  // Operating profit over cost of capital assumes the capital finances
+  // operations, which is not what a balance sheet full of deposits does.
+  const r = computeComprehensiveHealth(healthyModel({ isFinancial: true, isBookValueBusiness: true }));
+  assert.equal(r.earningsPower.applicable, false);
+  assert.equal(r.earningsPower.reason, 'not-meaningful-for-financials');
+});
+
+test('the implied return inverts the bank model rather than restating it', () => {
+  // Société Générale at 74.18 on 84.72 of tangible book implies a return well
+  // above the 5.6% it has averaged -- which is the finding, not the fair value.
+  const implied = impliedRote({
+    price: 74.18, tangibleBookValuePerShare: 84.72, payoutRatio: 0.5, costOfEquity: 0.095
+  });
+  assert.ok(implied > 0.08 && implied < 0.095, `expected roughly 8.8%, got ${implied}`);
+
+  // And it round-trips: feed the implied return back in and the price returns.
+  const back = calculateBankFairValue({
+    roteHistory: [implied], tangibleBookValue: 84.72e9, sharesOutstanding: 1e9,
+    payoutRatio: 0.5, costOfEquity: 0.095
+  });
+  assert.ok(Math.abs(back.fairValuePerShare - 74.18) < 0.5,
+    `round trip should land back on the price, got ${back.fairValuePerShare}`);
+});
+
+test('a price no return can justify reports nothing rather than a huge number', () => {
+  assert.equal(impliedRote({
+    price: 5000, tangibleBookValuePerShare: 10, payoutRatio: 0.5, costOfEquity: 0.095
+  }), null);
 });

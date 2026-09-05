@@ -12,7 +12,7 @@
       "title": "Accretive buybacks"
     }
   ],
-  "change_pct": -2.5105849,
+  "change_pct": -2.51058,
   "checklist": [
     {
       "benchmark": "Z ≥ 3.0 safe zone",
@@ -111,7 +111,7 @@
       "id": 11,
       "name": "Valuation PEG Ratio",
       "status": "fail",
-      "value": "2.56×"
+      "value": "2.58×"
     },
     {
       "benchmark": "> 8% CAGR",
@@ -646,6 +646,7 @@
       "fairValueAtBestYear": null,
       "fairValueAtWorstYear": null,
       "impliedGrowthRate": 0.2465,
+      "impliedRote": null,
       "justifiedPTBV": null,
       "marginOfSafetyPct": -138.5,
       "method": "discounted-cash-flow",
@@ -690,6 +691,16 @@
       "terminalValue": 2477702145924.32,
       "totalDebt": 90678000000
     },
+    "earningsPower": {
+      "applicable": true,
+      "ebitYears": 19,
+      "normalisedEbit": 61344000000,
+      "premiumForGrowthPct": 818.7,
+      "reason": null,
+      "taxRate": 0.1561,
+      "valuePerShare": 34.83,
+      "waccPct": 9.51
+    },
     "healthGrade": "MODERATE",
     "healthLabel": "Mixed — watch the flagged items",
     "healthTier": "moderate",
@@ -722,7 +733,7 @@
       "fcfReportedYears": 12,
       "fcfYield": 0.021150609034656674,
       "fiscalPeriodEnd": "2025-09-27",
-      "forwardPE": 33.539375,
+      "forwardPE": 33.4195,
       "freeCashFlow": 98767000000,
       "freeCashFlowLatest": 98767000000,
       "freeCashFlowNormalised": 99584000000,
@@ -752,7 +763,7 @@
       "operatingMargin": 0.31970799762591884,
       "operatingMarginChangeBps": 46,
       "peVsHistoryPct": 15.4,
-      "pegRatio": 2.56,
+      "pegRatio": 2.58,
       "piotroski": {
         "details": [
           {
@@ -1144,9 +1155,9 @@
     "ratios": {
       "beta": 1.085,
       "dividendYield": 0.0033000002,
-      "forwardPE": 33.539375,
+      "forwardPE": 33.4195,
       "pe": 36.65178,
-      "peg": 2.56,
+      "peg": 2.58,
       "priceToBook": 43.474186
     }
   },

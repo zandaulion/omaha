@@ -1,7 +1,7 @@
 {
   "ok": true,
   "quote": {
-    "beta": 0.977,
+    "beta": 0.975,
     "changePct": -0.94459,
     "currency": "USD",
     "dividendYield": 0.0166,
@@ -11,13 +11,13 @@
     "marketCap": 953331941376,
     "name": "JPMorgan Chase & Co.",
     "payoutRatio": 0.2571,
-    "pegRatio": 1.65,
+    "pegRatio": 1.68,
     "price": 358.64,
     "priceToBook": 2.6963995,
     "sector": "Financial Services",
     "sharesOutstanding": 2658186195,
     "ticker": "JPM",
-    "trailingPE": 15.359315,
+    "trailingPE": 15.505405,
     "ttm": {
       "currentRatio": null,
       "debtToEquity": null,

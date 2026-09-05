@@ -111,7 +111,7 @@
       "id": 11,
       "name": "Valuation PEG Ratio",
       "status": "watch",
-      "value": "1.65×"
+      "value": "1.68×"
     },
     {
       "benchmark": "> 8% CAGR",
@@ -607,6 +607,7 @@
       "fairValueAtBestYear": 360.71,
       "fairValueAtWorstYear": 19.28,
       "impliedGrowthRate": null,
+      "impliedRote": 0.2219,
       "justifiedPTBV": 1.612,
       "marginOfSafetyPct": -105.2,
       "method": "return-on-tangible-equity",
@@ -625,6 +626,16 @@
       "terminalValue": null,
       "totalDebt": null
     },
+    "earningsPower": {
+      "applicable": false,
+      "ebitYears": null,
+      "normalisedEbit": null,
+      "premiumForGrowthPct": null,
+      "reason": "not-meaningful-for-financials",
+      "taxRate": null,
+      "valuePerShare": null,
+      "waccPct": null
+    },
     "healthGrade": "RISK",
     "healthLabel": "High leverage or distress risk",
     "healthTier": "risk",
@@ -632,7 +643,7 @@
       "altmanZ": null,
       "appliedTaxRate": 0.21416075487292513,
       "assetTurnover": 0.04123189224615246,
-      "beta": 0.977,
+      "beta": 0.975,
       "betaClamped": false,
       "cagrYears": 18,
       "cash": 343338000000,
@@ -686,8 +697,8 @@
       "operatingCashFlow": -147782000000,
       "operatingMargin": 0.9210236397419524,
       "operatingMarginChangeBps": -233,
-      "peVsHistoryPct": 18.2,
-      "pegRatio": 1.65,
+      "peVsHistoryPct": 19.4,
+      "pegRatio": 1.68,
       "piotroski": {
         "details": [
           {
@@ -762,7 +773,7 @@
       "roa": 0.012881647042871026,
       "roe": 0.15726827760886,
       "roic": 691.37,
-      "roicSpread": 682.28,
+      "roicSpread": 682.3,
       "sectorMedianAssetTurnover": null,
       "shareChangeAnnualisedPct": -3.39,
       "shareChangeIsAnnual": true,
@@ -775,13 +786,13 @@
       "totalLiabilitiesDerived": false,
       "tradedCurrency": "USD",
       "tradedPrice": 358.64,
-      "trailingPE": 15.359315,
-      "wacc": 9.09,
+      "trailingPE": 15.505405,
+      "wacc": 9.07,
       "workingCapital": null
     },
     "peHistory": {
       "available": true,
-      "current": 15.36,
+      "current": 15.51,
       "epsPeriods": 19,
       "max": 19.13,
       "median": 12.99,
@@ -789,7 +800,7 @@
       "months": 61,
       "p20": 10.74,
       "p80": 15.65,
-      "percentile": 77,
+      "percentile": 79,
       "reason": null,
       "scoreable": true,
       "series": [
@@ -1038,14 +1049,14 @@
           "pe": 17.91
         }
       ],
-      "vsMedianPct": 18.2
+      "vsMedianPct": 19.4
     },
     "ratios": {
-      "beta": 0.977,
+      "beta": 0.975,
       "dividendYield": 0.0166,
       "forwardPE": 14.341591,
-      "pe": 15.359315,
-      "peg": 1.65,
+      "pe": 15.505405,
+      "peg": 1.68,
       "priceToBook": 2.6963995
     }
   },
