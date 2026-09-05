@@ -22,8 +22,8 @@
   <!-- Stylesheet -->
   <!-- Generated from design/tokens.json; must load before app.css, which
        consumes these custom properties. See docs/13 §10. -->
-  <link rel="stylesheet" href="/tokens.css?v=2.1.1">
-  <link rel="stylesheet" href="/app.css?v=2.1.1">
+  <link rel="stylesheet" href="/tokens.css?v=__BUILD_VERSION__">
+  <link rel="stylesheet" href="/app.css?v=__BUILD_VERSION__">
 </head>
 <body>
 
@@ -1149,6 +1149,9 @@
     }, 8000);
   })();
   </script>
-  <script type="module" src="/app.js?v=2.1.1"></script>
+  <!-- Stamped by deploy.sh from a hash of web/. The hand-written 2.1.1 was
+       the same URL across every deploy, so Cloudflare kept serving whatever
+       it had cached under it. -->
+  <script type="module" src="/app.js?v=__BUILD_VERSION__"></script>
 </body>
 </html>

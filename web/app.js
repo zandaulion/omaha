@@ -1,4 +1,4 @@
-import { installUpdates } from '/pwa-update.js';
+import { installUpdates } from '/pwa-update.js?v=__BUILD_VERSION__';
 import {
   dcfBaselines,
   presetAssumptions,
@@ -11,7 +11,7 @@ import {
   bankPresets,
   projectBank,
   BANK_BLOCKED_EXPLANATIONS
-} from './dcf.js';
+} from './dcf.js?v=__BUILD_VERSION__';
 
 /**
  * Pocket Omaha — Core PWA Client Application Logic
