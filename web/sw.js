@@ -72,7 +72,11 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         })
-        .catch(() => caches.match(event.request))
+        // ignoreSearch, because index.html asks for /app.js?v=2.1.1 while the
+        // precache holds /app.js. An exact match never finds it, so the one
+        // time the fallback is needed -- offline, or a failed request -- the
+        // shell's own script is the thing it cannot return.
+        .catch(() => caches.match(event.request, { ignoreSearch: true }))
     );
     return;
   }
