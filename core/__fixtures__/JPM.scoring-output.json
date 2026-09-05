@@ -133,9 +133,9 @@
   },
   "coverage": {
     "measured": 10,
-    "pct": 77,
+    "pct": 91,
     "sufficient": true,
-    "total": 13
+    "total": 11
   },
   "dcf": {
     "applicable": true,
@@ -214,6 +214,7 @@
     "equity": 362438000000,
     "equityToAssets": 0.08190874370042261,
     "evToFcfYield": null,
+    "fairValueModelApplies": true,
     "fcfConversion": null,
     "fcfMargin": null,
     "fcfPerShareCAGR": null,
@@ -374,18 +375,12 @@
           "max": 5,
           "name": "Return on equity",
           "points": 5
-        },
-        {
-          "available": false,
-          "max": 5,
-          "name": "Free cash flow conversion",
-          "points": null
         }
       ],
       "max": 20,
       "measured": 2,
       "name": "Profitability & Moat Quality",
-      "of": 3,
+      "of": 2,
       "pct": 50,
       "score": 10
     },
@@ -404,22 +399,16 @@
           "points": 3.5
         },
         {
-          "available": false,
-          "max": 5,
-          "name": "EV / free cash flow yield",
-          "points": null
-        },
-        {
           "available": true,
           "max": 5,
-          "name": "Discount to DCF fair value",
+          "name": "Discount to fair value",
           "points": 0
         }
       ],
       "max": 20,
       "measured": 3,
       "name": "Valuation & Margin of Safety",
-      "of": 4,
+      "of": 3,
       "pct": 37,
       "score": 7.3
     },
