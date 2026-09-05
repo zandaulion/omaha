@@ -1108,6 +1108,47 @@
   </div>
 
   <!-- Application Logic -->
+  <!-- A blank page is the least useful failure a web app has: it says nothing
+       about whether the script 404d, threw, or failed to import. This catches
+       whatever went wrong before the app could draw and puts it on screen, so
+       the next report is evidence rather than a description of white. -->
+  <script>
+  (function () {
+    var shown = false;
+    function show(what) {
+      if (shown) return;
+      shown = true;
+      var box = document.createElement('pre');
+      box.id = 'bootError';
+      box.style.cssText = 'position:fixed;inset:0;z-index:99999;margin:0;padding:16px;' +
+        'background:#0b1220;color:#e6edf3;font:12px/1.5 ui-monospace,monospace;' +
+        'white-space:pre-wrap;overflow:auto';
+      box.textContent = 'Pocket Omaha could not start.\n\n' + what +
+        '\n\nTap and hold to copy this, then send it on.\n' +
+        'To clear a stuck install: /bust';
+      (document.body || document.documentElement).appendChild(box);
+    }
+    window.addEventListener('error', function (e) {
+      // Resource failures (a script that 404s) carry no message, only a target.
+      var t = e.target;
+      if (t && t !== window && (t.src || t.href)) return show('Failed to load: ' + (t.src || t.href));
+      show((e.message || 'Error') + '\n  at ' + (e.filename || '?') + ':' + (e.lineno || '?'));
+    }, true);
+    window.addEventListener('unhandledrejection', function (e) {
+      var r = e.reason;
+      show('Unhandled rejection: ' + ((r && (r.stack || r.message)) || r));
+    });
+    // Nothing drawn after eight seconds is a failure that threw nothing.
+    setTimeout(function () {
+      var app = document.querySelector('#app, main, .app-shell');
+      if (!document.getElementById('bootError') && (!app || app.getBoundingClientRect().height < 40)) {
+        show('The page loaded but nothing rendered within 8 seconds.\n' +
+             'serviceWorker: ' + (navigator.serviceWorker && navigator.serviceWorker.controller
+               ? 'a worker is controlling this page' : 'none controlling'));
+      }
+    }, 8000);
+  })();
+  </script>
   <script type="module" src="/app.js?v=2.1.1"></script>
 </body>
 </html>
