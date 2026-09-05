@@ -579,6 +579,25 @@ export const RESPONSE_SCHEMA = {
  * can only be read by reverse-engineering the code is a prompt nobody
  * reviews.
  */
+/**
+ * What the model was told, as a number.
+ *
+ * A cached analysis is stale not only when the filings move but when the app
+ * learns to say something it could not say before. The staleness check could
+ * see a new fiscal period and a price drift and nothing else, so every summary
+ * written before the bank model, earnings power and the implied return existed
+ * kept being served as current -- for a bank, an analysis written when the app
+ * had no fair value for it at all.
+ *
+ * Hand-maintained, and deliberately so: only a person can say whether a change
+ * to this file is worth re-spending money on every cached analysis. The test
+ * beside it pins a hash of this file's contents and fails when they change
+ * without this number moving, so the decision has to be made rather than
+ * forgotten -- which is the failure mode of every version constant that is not
+ * enforced by something.
+ */
+export const PROMPT_VERSION = 2;
+
 export function buildPrompt(stock, thesis = null) {
   const payloadData = buildComprehensivePayload(stock, thesis);
   return `
