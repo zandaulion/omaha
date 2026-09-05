@@ -248,6 +248,7 @@
     "equity": 21058000000,
     "equityToAssets": 0.5600978801500119,
     "evToFcfYield": 0.03266599045106762,
+    "fairValueModelApplies": true,
     "fcfConversion": 2.2196969696969697,
     "fcfMargin": 0.07365880637538338,
     "fcfPerShareCAGR": 0.1805,
@@ -470,7 +471,7 @@
         {
           "available": true,
           "max": 5,
-          "name": "Discount to DCF fair value",
+          "name": "Discount to fair value",
           "points": 0
         }
       ],

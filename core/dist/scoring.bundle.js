@@ -170,10 +170,11 @@ function estimateWACC({ beta, marketCap, totalDebt, interestExpense, taxRate }) 
 }
 function bankInput(model, metrics) {
   const years = model.annual || [];
+  const assumeNoIntangibles = filesNoIntangibles(years);
   const roteHistory = [];
   for (const y of years) {
     const profit2 = num(y.netIncomeToCommon) ?? num(y.netIncome);
-    const tangible = tangibleEquityOf(y);
+    const tangible = tangibleEquityOf(y, { assumeNoIntangibles });
     if (profit2 === null || tangible === null || tangible <= 0) continue;
     roteHistory.push(profit2 / tangible);
   }
@@ -183,12 +184,15 @@ function bankInput(model, metrics) {
   const payoutRatio = filed !== null && profit !== null && profit > 0 ? Math.abs(filed) / profit : null;
   return {
     roteHistory,
-    tangibleBookValue: tangibleEquityOf(latest),
+    tangibleBookValue: tangibleEquityOf(latest, { assumeNoIntangibles }),
     sharesOutstanding: metrics.sharesOutstanding,
-    payoutRatio
+    payoutRatio,
+    // Reported so the scorecard can say the book is tangible by assumption
+    // rather than by a filed line.
+    assumedNoIntangibles: assumeNoIntangibles
   };
 }
-function tangibleEquityOf(year) {
+function tangibleEquityOf(year, { assumeNoIntangibles = false } = {}) {
   if (!year) return null;
   const direct = num(year.tangibleBookValue);
   if (direct !== null) return direct;
@@ -197,9 +201,16 @@ function tangibleEquityOf(year) {
   const combined = num(year.goodwillAndIntangibles);
   const goodwill = num(year.goodwill);
   const other = num(year.otherIntangibles);
-  if (combined === null && goodwill === null && other === null) return null;
+  if (combined === null && goodwill === null && other === null && !assumeNoIntangibles) {
+    return null;
+  }
   const intangible = combined !== null ? combined : (goodwill ?? 0) + (other ?? 0);
   return equity - intangible - (num(year.preferredEquity) ?? 0);
+}
+function filesNoIntangibles(years) {
+  const withEquity = years.filter((y) => num(y.equity) !== null);
+  if (!withEquity.length) return false;
+  return withEquity.every((y) => num(y.tangibleBookValue) === null && num(y.goodwillAndIntangibles) === null && num(y.goodwill) === null && num(y.otherIntangibles) === null);
 }
 function calculateBankFairValue(params) {
   const {
@@ -208,7 +219,8 @@ function calculateBankFairValue(params) {
     sharesOutstanding,
     payoutRatio,
     costOfEquity = 0.095,
-    maxGrowth = 0.04
+    maxGrowth = 0.04,
+    assumedNoIntangibles = false
   } = params;
   const tbv = num(tangibleBookValue);
   const shares = num(sharesOutstanding);
@@ -274,7 +286,10 @@ function calculateBankFairValue(params) {
     costOfEquity,
     justifiedPTBV: round(justifiedPTBV, 3),
     tangibleBookValuePerShare: round(tbvPerShare),
-    tangibleBookValue: round(tbv)
+    tangibleBookValue: round(tbv),
+    // True when no filed year reported an intangibles line, so tangible book
+    // here is book value. Worth saying out loud next to the fair value.
+    assumedNoIntangibles
   };
 }
 function calculateEarningsPower(params) {
@@ -595,6 +610,7 @@ function band(value, bands, max) {
 }
 var fixed2 = (points, max) => ({ points, max, available: true });
 var unavailable = (max) => ({ points: null, max, available: false });
+var undetermined = (max) => ({ points: max / 2, max, available: true, assumed: true });
 function scorePillars(m) {
   const pillars = [];
   const p1 = [];
@@ -648,14 +664,16 @@ function scorePillars(m) {
       ...band(m.operatingMarginChangeBps, [[100, 5], [-50, 3.5], [-200, 1.5]], 5)
     });
   }
-  p2.push({
-    name: "Free cash flow conversion",
-    ...band(
-      m.fcfConversion === null ? null : m.fcfConversion * 100,
-      [[100, 5], [80, 3.5], [50, 2]],
-      5
-    )
-  });
+  if (!m.isFinancial) {
+    p2.push({
+      name: "Free cash flow conversion",
+      ...band(
+        m.fcfConversion === null ? null : m.fcfConversion * 100,
+        [[100, 5], [80, 3.5], [50, 2]],
+        5
+      )
+    });
+  }
   pillars.push({ name: "Profitability & Moat Quality", items: p2 });
   const p3 = [];
   p3.push({
@@ -668,17 +686,22 @@ function scorePillars(m) {
     name: "PEG ratio",
     ...m.pegRatio === null || m.pegRatio <= 0 ? unavailable(5) : band(-m.pegRatio, [[-1, 5], [-1.8, 3.5], [-2.5, 2]], 5)
   });
+  if (!m.isFinancial) {
+    p3.push({
+      name: "EV / free cash flow yield",
+      ...band(
+        m.evToFcfYield === null ? null : m.evToFcfYield * 100,
+        [[6, 5], [4, 3.5], [2, 2]],
+        5
+      )
+    });
+  }
   p3.push({
-    name: "EV / free cash flow yield",
-    ...band(
-      m.evToFcfYield === null ? null : m.evToFcfYield * 100,
-      [[6, 5], [4, 3.5], [2, 2]],
-      5
-    )
-  });
-  p3.push({
-    name: "Discount to DCF fair value",
-    ...band(m.dcfDiscountPct, [[20, 5], [-10, 3], [-20, 1]], 5)
+    name: "Discount to fair value",
+    // A business the model does not cover -- an asset manager, where neither
+    // discounted cash flow nor a book-value multiple fits -- drops out. A
+    // business it does cover, whose inputs failed, is undetermined instead.
+    ...m.dcfDiscountPct !== null ? band(m.dcfDiscountPct, [[20, 5], [-10, 3], [-20, 1]], 5) : m.fairValueModelApplies === false ? unavailable(5) : undetermined(5)
   });
   pillars.push({ name: "Valuation & Margin of Safety", items: p3 });
   const p4 = [];
@@ -1130,6 +1153,7 @@ function computeComprehensiveHealth(model = {}) {
     }
   }
   metrics.dcfDiscountPct = dcfDiscountPct;
+  metrics.fairValueModelApplies = dcf.reason !== "no-model-for-this-balance-sheet";
   const impliedGrowth = dcf.applicable ? impliedGrowthRate({
     price: metrics.price,
     fcf0: cashFlowBase.value,
@@ -1184,7 +1208,10 @@ function computeComprehensiveHealth(model = {}) {
         name: i.name,
         points: i.points,
         max: i.max,
-        available: i.available
+        available: i.available,
+        // Half marks standing in for a test that should have run: the
+        // scorecard has to be able to say so rather than show a real score.
+        ...i.assumed ? { assumed: true } : {}
       }))
     };
   });

@@ -216,10 +216,11 @@ export function estimateWACC({ beta, marketCap, totalDebt, interestExpense, taxR
  */
 function bankInput(model, metrics) {
   const years = model.annual || [];
+  const assumeNoIntangibles = filesNoIntangibles(years);
   const roteHistory = [];
   for (const y of years) {
     const profit = num(y.netIncomeToCommon) ?? num(y.netIncome);
-    const tangible = tangibleEquityOf(y);
+    const tangible = tangibleEquityOf(y, { assumeNoIntangibles });
     if (profit === null || tangible === null || tangible <= 0) continue;
     roteHistory.push(profit / tangible);
   }
@@ -241,9 +242,12 @@ function bankInput(model, metrics) {
 
   return {
     roteHistory,
-    tangibleBookValue: tangibleEquityOf(latest),
+    tangibleBookValue: tangibleEquityOf(latest, { assumeNoIntangibles }),
     sharesOutstanding: metrics.sharesOutstanding,
-    payoutRatio
+    payoutRatio,
+    // Reported so the scorecard can say the book is tangible by assumption
+    // rather than by a filed line.
+    assumedNoIntangibles: assumeNoIntangibles
   };
 }
 
@@ -254,12 +258,13 @@ function bankInput(model, metrics) {
  * American bank, already nets off both intangibles and preferred stock.
  * EDGAR has no such concept, so the pieces are subtracted here instead.
  *
- * A filing with no intangible information at all returns null rather than
- * assuming none. Treating an unfiled goodwill balance as zero would inflate
- * tangible book for exactly the acquisitive banks where it matters most, and
+ * A filing that reports intangibles in some years and not others returns null
+ * rather than assuming none. Treating an unfiled goodwill balance as zero
+ * would inflate tangible book for exactly the acquisitive banks where it
+ * matters most, and
  * this file already refuses to fill a gap with the convenient number.
  */
-function tangibleEquityOf(year) {
+function tangibleEquityOf(year, { assumeNoIntangibles = false } = {}) {
   if (!year) return null;
   const direct = num(year.tangibleBookValue);
   if (direct !== null) return direct;
@@ -270,10 +275,34 @@ function tangibleEquityOf(year) {
   const combined = num(year.goodwillAndIntangibles);
   const goodwill = num(year.goodwill);
   const other = num(year.otherIntangibles);
-  if (combined === null && goodwill === null && other === null) return null;
+  if (combined === null && goodwill === null && other === null && !assumeNoIntangibles) {
+    return null;
+  }
 
   const intangible = combined !== null ? combined : (goodwill ?? 0) + (other ?? 0);
   return equity - intangible - (num(year.preferredEquity) ?? 0);
+}
+
+/**
+ * Whether a filed history is silent about intangibles everywhere, rather than
+ * missing them here and there.
+ *
+ * Nu Holdings files equity for every year and a goodwill line for none, which
+ * read as unknown and left the bank with no fair value at all -- and, because
+ * an unscored item is dropped from its pillar, a *better* valuation score than
+ * a bank whose model ran. A provider that returns four years of equity and
+ * zero years of goodwill is describing a lender that has bought nobody, not
+ * four independent omissions. A history that reports the line sometimes is a
+ * real gap and still returns null.
+ */
+function filesNoIntangibles(years) {
+  const withEquity = years.filter((y) => num(y.equity) !== null);
+  if (!withEquity.length) return false;
+  return withEquity.every((y) =>
+    num(y.tangibleBookValue) === null &&
+    num(y.goodwillAndIntangibles) === null &&
+    num(y.goodwill) === null &&
+    num(y.otherIntangibles) === null);
 }
 
 
@@ -306,7 +335,8 @@ function tangibleEquityOf(year) {
 export function calculateBankFairValue(params) {
   const {
     roteHistory = [], tangibleBookValue, sharesOutstanding,
-    payoutRatio, costOfEquity = 0.095, maxGrowth = 0.04
+    payoutRatio, costOfEquity = 0.095, maxGrowth = 0.04,
+    assumedNoIntangibles = false
   } = params;
 
   const tbv = num(tangibleBookValue);
@@ -403,7 +433,10 @@ export function calculateBankFairValue(params) {
     costOfEquity,
     justifiedPTBV: round(justifiedPTBV, 3),
     tangibleBookValuePerShare: round(tbvPerShare),
-    tangibleBookValue: round(tbv)
+    tangibleBookValue: round(tbv),
+    // True when no filed year reported an intangibles line, so tangible book
+    // here is book value. Worth saying out loud next to the fair value.
+    assumedNoIntangibles
   };
 }
 
@@ -877,6 +910,19 @@ function band(value, bands, max) {
 const fixed = (points, max) => ({ points, max, available: true });
 const unavailable = (max) => ({ points: null, max, available: false });
 
+/**
+ * Half marks, for a test that should have run and could not.
+ *
+ * Dropping an item rescales its pillar over the rest, which is right for a
+ * line a business genuinely does not have -- gross profit at a bank -- but
+ * wrong when the test applies and the data failed. Nu Holdings filed no
+ * intangibles line, so its bank model produced no fair value, so the valuation
+ * item was dropped, so its Valuation pillar read 100% off two ratio proxies
+ * while Société Générale -- whose model ran and said the shares were dear --
+ * scored 47%. Not knowing must not outscore knowing.
+ */
+const undetermined = (max) => ({ points: max / 2, max, available: true, assumed: true });
+
 function scorePillars(m) {
   const pillars = [];
 
@@ -942,11 +988,17 @@ function scorePillars(m) {
       ...band(m.operatingMarginChangeBps, [[100, 5], [-50, 3.5], [-200, 1.5]], 5)
     });
   }
-  p2.push({
-    name: 'Free cash flow conversion',
-    ...band(m.fcfConversion === null ? null : m.fcfConversion * 100,
-            [[100, 5], [80, 3.5], [50, 2]], 5)
-  });
+  if (!m.isFinancial) {
+    // Pillar 4 already excludes FCF per share for a lender on the grounds that
+    // deposit and loan flows dominate it. The same reasoning applies here and
+    // was not applied: Société Générale's free cash flow is -29bn, which is
+    // funding movement rather than distress, and it scored 0 of 5 for it.
+    p2.push({
+      name: 'Free cash flow conversion',
+      ...band(m.fcfConversion === null ? null : m.fcfConversion * 100,
+              [[100, 5], [80, 3.5], [50, 2]], 5)
+    });
+  }
   pillars.push({ name: 'Profitability & Moat Quality', items: p2 });
 
   // --- Pillar 3: valuation and margin of safety ------------------------
@@ -965,14 +1017,25 @@ function scorePillars(m) {
       ? unavailable(5)
       : band(-m.pegRatio, [[-1.0, 5], [-1.8, 3.5], [-2.5, 2]], 5))
   });
+  if (!m.isFinancial) {
+    // Enterprise value assumes debt funds the assets. For a bank, deposits do,
+    // and the ratio stops describing anything.
+    p3.push({
+      name: 'EV / free cash flow yield',
+      ...band(m.evToFcfYield === null ? null : m.evToFcfYield * 100,
+              [[6, 5], [4, 3.5], [2, 2]], 5)
+    });
+  }
   p3.push({
-    name: 'EV / free cash flow yield',
-    ...band(m.evToFcfYield === null ? null : m.evToFcfYield * 100,
-            [[6, 5], [4, 3.5], [2, 2]], 5)
-  });
-  p3.push({
-    name: 'Discount to DCF fair value',
-    ...band(m.dcfDiscountPct, [[20, 5], [-10, 3], [-20, 1]], 5)
+    name: 'Discount to fair value',
+    // A business the model does not cover -- an asset manager, where neither
+    // discounted cash flow nor a book-value multiple fits -- drops out. A
+    // business it does cover, whose inputs failed, is undetermined instead.
+    ...(m.dcfDiscountPct !== null
+      ? band(m.dcfDiscountPct, [[20, 5], [-10, 3], [-20, 1]], 5)
+      : m.fairValueModelApplies === false
+        ? unavailable(5)
+        : undetermined(5))
   });
   pillars.push({ name: 'Valuation & Margin of Safety', items: p3 });
 
@@ -1534,6 +1597,10 @@ export function computeComprehensiveHealth(model = {}) {
     }
   }
   metrics.dcfDiscountPct = dcfDiscountPct;
+  // Whether a fair-value model covers this business at all, as distinct from
+  // covering it and failing on the inputs. Only the first justifies dropping
+  // the valuation test rather than leaving it undetermined.
+  metrics.fairValueModelApplies = dcf.reason !== 'no-model-for-this-balance-sheet';
 
   // What the market would have to believe. When the model and the market
   // disagree by a wide factor, this is the more informative number of the two.
@@ -1622,7 +1689,10 @@ export function computeComprehensiveHealth(model = {}) {
         name: i.name,
         points: i.points,
         max: i.max,
-        available: i.available
+        available: i.available,
+        // Half marks standing in for a test that should have run: the
+        // scorecard has to be able to say so rather than show a real score.
+        ...(i.assumed ? { assumed: true } : {})
       }))
     };
   });
