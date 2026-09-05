@@ -353,7 +353,7 @@ app.get('/api/compare', requireDeviceAuth, async (req, res) => {
     .split(',')
     .map(t => t.trim().toUpperCase())
     .filter(Boolean)
-    .slice(0, 4);
+    .slice(0, 5);
 
   if (tickers.length === 0) {
     return res.status(400).json({ error: 'At least one ticker required' });
@@ -398,6 +398,64 @@ app.get('/api/stock/:ticker/peers', requireDeviceAuth, async (req, res) => {
     console.warn(`Peer lookup failed for ${ticker}:`, err.message);
     return res.json({ ticker, peers: [] });
   }
+});
+
+// Everything the comparison picker can offer, in the order it offers it.
+//
+// Three tiers, because they are three different kinds of suggestion: a
+// watchlist is a set the user curated, a peer is Yahoo's opinion about the
+// open ticker, and the rest is whatever has been looked up before. Merging
+// them into one list would lose that distinction and bury the curated set.
+app.get('/api/compare/candidates', requireDeviceAuth, async (req, res) => {
+  const ticker = (req.query.ticker || '').trim().toUpperCase();
+
+  const cached = db
+    .prepare('SELECT ticker, name, sector, health_score FROM stock_cache')
+    .all();
+  const byTicker = new Map(cached.map((r) => [r.ticker, r]));
+  const decorate = (sym) => ({
+    ticker: sym,
+    name: byTicker.get(sym)?.name || null,
+    sector: byTicker.get(sym)?.sector || null,
+    health_score: byTicker.get(sym)?.health_score ?? null
+  });
+
+  const watchlists = db
+    .prepare('SELECT id, name, tickers_json FROM watchlists ORDER BY is_default DESC, name')
+    .all()
+    .map((w) => ({
+      id: w.id,
+      name: w.name,
+      // A watchlist ticker is offered even when nothing is cached for it yet:
+      // the user put it there, and /api/compare fetches on demand anyway.
+      tickers: JSON.parse(w.tickers_json || '[]').map(decorate)
+    }))
+    .filter((w) => w.tickers.length);
+
+  let peers = [];
+  if (ticker) {
+    try {
+      peers = (await fetchPeers(ticker)).map(decorate);
+    } catch (err) {
+      // Yahoo's peer list is a convenience; the other two tiers stand alone.
+      console.warn(`Peer lookup failed for ${ticker}:`, err.message);
+    }
+  }
+
+  // Everything else that has been looked up. Unscored rows are dropped on
+  // purpose: they are mistyped searches and delisted symbols -- SDK for SNDK,
+  // say -- and a picker that reads back the user's own typos is noise.
+  const alreadyOffered = new Set([
+    ticker,
+    ...watchlists.flatMap((w) => w.tickers.map((t) => t.ticker)),
+    ...peers.map((p) => p.ticker)
+  ]);
+  const seen = cached
+    .filter((r) => r.health_score !== null && !alreadyOffered.has(r.ticker))
+    .sort((a, b) => b.health_score - a.health_score)
+    .map((r) => decorate(r.ticker));
+
+  return res.json({ ticker: ticker || null, watchlists, peers, seen });
 });
 
 // Filter Endpoint

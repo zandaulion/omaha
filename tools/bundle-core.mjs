@@ -62,7 +62,11 @@ export const ENTRIES = [
  * browser keeps one definition rather than adding a third.
  */
 export const WEB_ENTRIES = [
-  { entry: 'core/analysis/dcf.js', out: 'dcf.js' }
+  { entry: 'core/analysis/dcf.js', out: 'dcf.js' },
+  // The explainer text. It lives in core/ so a scoring change and the sentence
+  // describing it can be edited together, and it is shipped here for the same
+  // reason as the DCF above: the browser cannot import across the boundary.
+  { entry: 'core/glossary.js', out: 'glossary.js' }
 ];
 
 /** Build one entry and return its contents, without writing. */
