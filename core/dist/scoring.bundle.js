@@ -277,6 +277,65 @@ function calculateBankFairValue(params) {
     tangibleBookValue: round(tbv)
   };
 }
+function calculateEarningsPower(params) {
+  const { ebitHistory = [], taxRate, waccPct, cash = 0, totalDebt = 0, sharesOutstanding } = params;
+  const shares = num(sharesOutstanding);
+  const wacc = num(waccPct);
+  const ebits = ebitHistory.map(num).filter((v) => v !== null && Number.isFinite(v));
+  if (!ebits.length) return { applicable: false, reason: "no-operating-profit", valuePerShare: null };
+  if (shares === null || shares <= 0) return { applicable: false, reason: "no-share-count", valuePerShare: null };
+  if (wacc === null || wacc <= 0) return { applicable: false, reason: "no-cost-of-capital", valuePerShare: null };
+  const sorted = [...ebits].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  const normalisedEbit = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  if (normalisedEbit <= 0) {
+    return {
+      applicable: false,
+      reason: "not-profitable-at-operating-line",
+      valuePerShare: null,
+      normalisedEbit: round(normalisedEbit)
+    };
+  }
+  const tax = num(taxRate);
+  const usedTax = tax !== null && tax >= 0 && tax < 0.6 ? tax : 0.21;
+  const nopat = normalisedEbit * (1 - usedTax);
+  const enterpriseValue = nopat / (wacc / 100);
+  const equityValue = enterpriseValue + (num(cash) ?? 0) - (num(totalDebt) ?? 0);
+  return {
+    applicable: true,
+    reason: null,
+    valuePerShare: round(equityValue / shares),
+    normalisedEbit: round(normalisedEbit),
+    ebitYears: ebits.length,
+    taxRate: round(usedTax, 4),
+    nopat: round(nopat),
+    waccPct: wacc,
+    enterpriseValue: round(enterpriseValue),
+    equityValue: round(equityValue)
+  };
+}
+function impliedRote({ price, tangibleBookValuePerShare, payoutRatio, costOfEquity, maxGrowth = 0.04 }) {
+  const p = num(price);
+  const tbvps = num(tangibleBookValuePerShare);
+  const coe = num(costOfEquity);
+  if (p === null || tbvps === null || coe === null || tbvps <= 0 || p <= 0) return null;
+  const payout = num(payoutRatio);
+  const used = payout !== null && payout >= 0 && payout <= 1 ? payout : 0.5;
+  const priceAt = (r) => {
+    const g = Math.min(r * (1 - used), maxGrowth);
+    if (g >= coe) return Infinity;
+    return tbvps * ((r - g) / (coe - g));
+  };
+  let lo = 0;
+  let hi = 0.6;
+  if (priceAt(hi) < p) return null;
+  for (let i = 0; i < 80; i++) {
+    const mid = (lo + hi) / 2;
+    if (priceAt(mid) > p) hi = mid;
+    else lo = mid;
+  }
+  return round((lo + hi) / 2, 4);
+}
 function calculateDCFFairValue(params) {
   const {
     trailingFCF,
@@ -1080,6 +1139,20 @@ function computeComprehensiveHealth(model = {}) {
     debt: metrics.totalDebt,
     shares: metrics.sharesOutstanding
   }) : null;
+  const impliedReturnOnEquity = model.isBookValueBusiness && dcf.applicable ? impliedRote({
+    price: metrics.price,
+    tangibleBookValuePerShare: dcf.tangibleBookValuePerShare,
+    payoutRatio: dcf.payoutRatio,
+    costOfEquity: dcf.costOfEquity
+  }) : null;
+  const epv = model.isFinancial ? { applicable: false, reason: "not-meaningful-for-financials", valuePerShare: null } : calculateEarningsPower({
+    ebitHistory: (model.annual || []).map((y) => y.ebit),
+    taxRate: metrics.effectiveTaxRate,
+    waccPct: metrics.wacc,
+    cash: metrics.cash,
+    totalDebt: metrics.totalDebt,
+    sharesOutstanding: metrics.sharesOutstanding
+  });
   const divergenceFactor = dcf.applicable && dcf.fairValuePerShare > 0 && metrics.price > 0 ? round(dcf.fairValuePerShare / metrics.price) : null;
   const divergenceWarning = divergenceFactor !== null && (divergenceFactor >= 3 || divergenceFactor <= 0.33);
   const rawPillars = scorePillars(metrics);
@@ -1176,6 +1249,20 @@ function computeComprehensiveHealth(model = {}) {
     checklist,
     catalysts,
     risks,
+    // Deliberately its own block rather than folded into dcf: it is a second
+    // opinion, and the value of a second opinion is that it disagrees.
+    earningsPower: {
+      applicable: epv.applicable,
+      reason: epv.reason || null,
+      valuePerShare: epv.valuePerShare,
+      normalisedEbit: epv.normalisedEbit ?? null,
+      ebitYears: epv.ebitYears ?? null,
+      taxRate: epv.taxRate ?? null,
+      waccPct: epv.waccPct ?? null,
+      // What the market pays above the business as it stands. The whole reason
+      // for having a growth-free model beside a growth-driven one.
+      premiumForGrowthPct: epv.applicable && epv.valuePerShare > 0 && metrics.price !== null ? round((metrics.price - epv.valuePerShare) / epv.valuePerShare * 100, 1) : null
+    },
     dcf: {
       applicable: dcf.applicable,
       reason: dcf.reason || null,
@@ -1236,6 +1323,7 @@ function computeComprehensiveHealth(model = {}) {
         normalisedCashFlow: cashFlowBase.normalised
       },
       impliedGrowthRate: impliedGrowth,
+      impliedRote: impliedReturnOnEquity,
       divergenceFactor,
       divergenceWarning,
       pvCashFlows: dcf.pvCashFlows || []
@@ -1277,10 +1365,12 @@ export {
   calculateAltmanZScore,
   calculateBankFairValue,
   calculateDCFFairValue,
+  calculateEarningsPower,
   calculatePiotroskiFScore,
   calculateROIC,
   computeComprehensiveHealth,
   currencySymbol,
   estimateWACC,
-  formatMoney
+  formatMoney,
+  impliedRote
 };

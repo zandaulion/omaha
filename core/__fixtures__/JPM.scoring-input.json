@@ -1115,7 +1115,7 @@
   },
   "peHistory": {
     "available": true,
-    "current": 15.36,
+    "current": 15.51,
     "epsPeriods": 19,
     "max": 19.13,
     "median": 12.99,
@@ -1123,7 +1123,7 @@
     "months": 61,
     "p20": 10.74,
     "p80": 15.65,
-    "percentile": 77,
+    "percentile": 79,
     "reason": null,
     "scoreable": true,
     "series": [
@@ -1372,9 +1372,9 @@
         "pe": 17.91
       }
     ],
-    "vsMedianPct": 18.2
+    "vsMedianPct": 19.4
   },
-  "peVsHistoryPct": 18.2,
+  "peVsHistoryPct": 19.4,
   "prior": {
     "asOfDate": "2024-12-31",
     "buybacks": 18830000000,
@@ -3450,7 +3450,7 @@
     }
   ],
   "quote": {
-    "beta": 0.977,
+    "beta": 0.975,
     "changePct": -0.94459,
     "currency": "USD",
     "dividendYield": 0.0166,
@@ -3461,14 +3461,14 @@
     "marketCapReporting": 953331941376,
     "name": "JPMorgan Chase & Co.",
     "payoutRatio": 0.2571,
-    "pegRatio": 1.65,
+    "pegRatio": 1.68,
     "price": 358.64,
     "priceReporting": 358.64,
     "priceToBook": 2.6963995,
     "sector": "Financial Services",
     "sharesOutstanding": 2658186195,
     "ticker": "JPM",
-    "trailingPE": 15.359315,
+    "trailingPE": 15.505405,
     "ttm": {
       "currentRatio": null,
       "debtToEquity": null,

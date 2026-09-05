@@ -2176,6 +2176,8 @@ function calculateClientBank() {
     // The band the bank's own record supports. Gordon growth divides one small
     // difference by another, so a single figure would claim a precision these
     // inputs do not have.
+    (isNum(summary.impliedRote)
+      ? line('Return the current price implies', pct(summary.impliedRote), 'text-cyan') : '') +
     (isNum(summary.fairValueAtWorstYear) || isNum(summary.fairValueAtBestYear)
       ? `<div class="dcf-implied">On its worst and best filed years this same model gives
            ${isNum(summary.fairValueAtWorstYear) ? fmtPrice(summary.fairValueAtWorstYear, cur) : '—'}
@@ -2302,6 +2304,14 @@ function calculateClientDCF() {
     line('Diluted shares', `${(shares / 1e9).toFixed(2)}B`) +
     `<div class="dcf-line is-total"><span>Fair value per share</span>
        <span class="mono">${fmtPrice(fairValue, cur)}</span></div>` +
+    // The same business with no growth in it at all. Shown beside the
+    // discounted value rather than blended with it: the gap between the two is
+    // what the market is paying for growth, and averaging them would destroy
+    // exactly the number worth reading.
+    (stock.summary?.earningsPower?.applicable
+      ? line('Earnings power, no growth assumed',
+             fmtPrice(stock.summary.earningsPower.valuePerShare, cur), 'text-muted')
+      : '') +
     // The rate that would make the model agree with the market. When the two
     // disagree this is the more useful of the two numbers: it states what you
     // would have to believe, rather than asserting who is right.

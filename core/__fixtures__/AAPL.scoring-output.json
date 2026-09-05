@@ -110,7 +110,7 @@
       "id": 11,
       "name": "Valuation PEG Ratio",
       "status": "fail",
-      "value": "2.56×"
+      "value": "2.58×"
     },
     {
       "benchmark": "> 8% CAGR",
@@ -161,6 +161,7 @@
     "fairValueAtBestYear": null,
     "fairValueAtWorstYear": null,
     "impliedGrowthRate": 0.2465,
+    "impliedRote": null,
     "justifiedPTBV": null,
     "marginOfSafetyPct": -138.5,
     "method": "discounted-cash-flow",
@@ -205,6 +206,16 @@
     "terminalValue": 2477702145924.32,
     "totalDebt": 90678000000
   },
+  "earningsPower": {
+    "applicable": true,
+    "ebitYears": 19,
+    "normalisedEbit": 61344000000,
+    "premiumForGrowthPct": 818.7,
+    "reason": null,
+    "taxRate": 0.1561,
+    "valuePerShare": 34.83,
+    "waccPct": 9.51
+  },
   "fcfConversionPct": 88,
   "healthGrade": "MODERATE",
   "healthLabel": "Mixed — watch the flagged items",
@@ -239,7 +250,7 @@
     "fcfReportedYears": 12,
     "fcfYield": 0.021150609034656674,
     "fiscalPeriodEnd": "2025-09-27",
-    "forwardPE": 33.539375,
+    "forwardPE": 33.4195,
     "freeCashFlow": 98767000000,
     "freeCashFlowLatest": 98767000000,
     "freeCashFlowNormalised": 99584000000,
@@ -269,7 +280,7 @@
     "operatingMargin": 0.31970799762591884,
     "operatingMarginChangeBps": 46,
     "peVsHistoryPct": 15.4,
-    "pegRatio": 2.56,
+    "pegRatio": 2.58,
     "piotroski": {
       "details": [
         {

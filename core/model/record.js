@@ -72,6 +72,11 @@ export function toRecord(ticker, quote, fundamentals, model, score) {
       healthTier: score.healthTier,
       checklistSummary: score.checklistSummary,
       dcf: score.dcf,
+      // The growth-free second opinion. summary_json is a picked shape rather
+      // than a spread, so a new block on the score is invisible downstream
+      // until it is named here -- which is how earningsPower reached the
+      // prompt as "inputs unavailable" while the engine had computed it.
+      earningsPower: score.earningsPower || null,
       metrics: score.metrics,
       coverage: score.coverage,
       peHistory: score.peHistory || null,

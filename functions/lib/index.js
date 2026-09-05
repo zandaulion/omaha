@@ -90,6 +90,7 @@ function buildComprehensivePayload(stock, thesis = null) {
   const r = sum.ratios || {};
   const dcf = sum.dcf || {};
   const pe = sum.peHistory || {};
+  const epv = sum.earningsPower || null;
   const hist = stock.financials?.historical || {};
   const currency = m.reportingCurrency || stock.financials?.reportingCurrency || stock.currency || "USD";
   const NR = "not reported";
@@ -256,19 +257,50 @@ function buildComprehensivePayload(stock, thesis = null) {
         usableAsAValuationRange: pe.scoreable === true,
         caution: pe.scoreable === true ? null : "Too short to be a valuation range. A low percentile here reflects earnings recovering off a trough, not a multiple compressing. Do not present it as a five-year range or draw a cheapness conclusion from it."
       } : `not available \u2014 ${pe.reason || "insufficient history"}`,
+      // Which model produced the fair value below. Two of them can now, and a
+      // reader comparing a bank with an industrial is comparing two different
+      // claims about two different kinds of business.
+      fairValueModel: dcf.method === "return-on-tangible-equity" ? "return on tangible equity against its cost \u2014 a discounted cash flow says nothing about a lender, whose free cash flow is deposits and the loan book moving" : dcf.method === "discounted-cash-flow" ? "two-stage discounted free cash flow" : "none applies to this balance sheet",
       dcfFairValue: dcf.applicable ? `${formatMoney(dcf.fairValue, currency)} per share` : `not modelled (${dcf.reason || "inputs unavailable"})`,
-      dcfAssumptions: dcf.applicable ? {
+      // Per model. This block used to read the discounted model's assumptions
+      // whatever had actually run, so a bank arrived carrying a cash flow base
+      // of minus 29 billion — the very number its own model exists to avoid.
+      dcfAssumptions: !dcf.applicable ? NR : dcf.method === "return-on-tangible-equity" ? {
+        returnOnTangibleEquity: `${fixed(dcf.rote * 100, 1)}% \u2014 the median of ${dcf.roteYears} filed years`,
+        latestFiledYear: n(dcf.roteLatest) === null ? NR : `${fixed(dcf.roteLatest * 100, 1)}%`,
+        rangeAcrossFiledYears: n(dcf.roteLow) === null ? NR : `${fixed(dcf.roteLow * 100, 1)}% to ${fixed(dcf.roteHigh * 100, 1)}%`,
+        costOfEquity: `${fixed((dcf.assumptions.costOfEquity ?? 0) * 100, 1)}%`,
+        growth: `${fixed((dcf.assumptions.growthRate ?? 0) * 100, 1)}% a year \u2014 ${dcf.assumptions.growthBasis}`,
+        payoutRatio: n(dcf.assumptions.payoutRatio) === null ? NR : `${fixed(dcf.assumptions.payoutRatio * 100, 0)}% of earnings`,
+        justifiedPriceToTangibleBook: `${dcf.justifiedPTBV}x`,
+        tangibleBookValuePerShare: formatMoney(dcf.tangibleBookValuePerShare, currency),
+        // Gordon growth divides one small difference by another, so the
+        // answer is soft. The band the bank's own record supports is the
+        // honest way to say so.
+        sensitivity: n(dcf.fairValueAtWorstYear) === null && n(dcf.fairValueAtBestYear) === null ? NR : `on its worst and best filed years the same model gives ${n(dcf.fairValueAtWorstYear) === null ? "no value" : formatMoney(dcf.fairValueAtWorstYear, currency)} and ${n(dcf.fairValueAtBestYear) === null ? "no value" : formatMoney(dcf.fairValueAtBestYear, currency)}. Treat the single figure as the middle of that, not as a precise number.`
+      } : {
         cashFlowBase: `${formatMoney(dcf.assumptions.cashFlowBase, currency)} \u2014 ${dcf.assumptions.cashFlowBasis}`,
         latestFiledCashFlow: money(dcf.assumptions.latestFiledCashFlow),
         growth: `${fixed(dcf.assumptions.growthRate * 100, 1)}% a year for 5 years \u2014 ${dcf.assumptions.growthBasis}`,
         terminalMultiple: `${dcf.assumptions.terminalMultiple}x on year-5 free cash flow`,
         discountRate: `${fixed(dcf.assumptions.discountRate * 100, 1)}%`
-      } : NR,
+      },
       // The rate that would reconcile the model with the traded price. Where
       // the two disagree sharply this is the more informative number, and the
       // model should reason from it rather than declaring the market wrong.
       growthRateImpliedByMarketPrice: n(dcf.impliedGrowthRate) === null ? NR : `${fixed(dcf.impliedGrowthRate * 100, 1)}% a year`,
+      // The same question where the balance-sheet model runs: what the buyer
+      // must believe about the bank's return to pay what it costs.
+      returnOnTangibleEquityImpliedByMarketPrice: n(dcf.impliedRote) === null ? NR : `${fixed(dcf.impliedRote * 100, 1)}% \u2014 compare it with what the bank has actually earned above before deciding who is right`,
       modelVersusMarket: dcf.divergenceWarning ? `The modelled fair value is ${dcf.divergenceFactor}x the traded price. A gap this wide usually means the assumptions need revisiting or the market is pricing in something the filings do not show. Say so plainly rather than presenting it as free money.` : "The model and the market are within a normal range of each other.",
+      // A second opinion built to disagree: no growth in it at all. Where the
+      // two are far apart, the gap is what the market is paying for growth,
+      // which is a more useful sentence than either number alone.
+      earningsPowerNoGrowth: epv && epv.applicable ? {
+        valuePerShare: `${formatMoney(epv.valuePerShare, currency)} per share`,
+        builtFrom: `median operating profit of ${formatMoney(epv.normalisedEbit, currency)} across ${epv.ebitYears} filed years, taxed at ${fixed(epv.taxRate * 100, 0)}% and capitalised at ${fixed(epv.waccPct, 1)}%`,
+        whatTheMarketPaysForGrowth: n(epv.premiumForGrowthPct) === null ? NR : epv.premiumForGrowthPct >= 0 ? `the price is ${fixed(epv.premiumForGrowthPct, 0)}% above the business as it stands, so that much of it is being paid for growth that has not happened yet` : `the price is ${fixed(Math.abs(epv.premiumForGrowthPct), 0)}% below the business as it stands \u2014 cheap without needing anything to go right, which is a rarer and stronger claim than a favourable discounted cash flow`
+      } : `not modelled (${epv && epv.reason || "inputs unavailable"})`,
       marginOfSafety: !dcf.applicable ? NR : n(dcf.marginOfSafetyPct) === null ? NR : dcf.marginOfSafetyPct >= 0 ? `trading ${dcf.marginOfSafetyPct}% below the modelled fair value` : `trading ${dcf.premiumToFairValuePct}% above the modelled fair value`
     },
     growthAndHistory: {

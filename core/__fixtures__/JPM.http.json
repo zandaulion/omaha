@@ -4,12 +4,12 @@
     "headers": {
       "set-cookie": "RECORDED=1"
     },
-    "body": "<!DOCTYPE html>\n<html lang=\"en-us\">\n  <head>\n    <meta http-equiv=\"content-type\" content=\"text/html; charset=UTF-8\">\n    <meta charset=\"utf-8\">\n    <title>Yahoo</title>\n    <meta name=\"viewport\" content=\"width=device-width,initial-scale=1,minimal-ui\">\n    <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge,chrome=1\">\n    <style>\n      html {\n          height: 100%;\n      }\n      body {\n          background: #fafafc url(https://s.yimg.com/nn/img/sad-panda-201402200631.png) 50% 50%;\n          background-size: cover;\n          height: 100%;\n          text-align: center;\n          font: 300 18px \"helvetica neue\", helvetica, verdana, tahoma, arial, sans-serif;\n          margin: 0;\n      }\n      table {\n          height: 100%;\n          width: 100%;\n          table-layout: fixed;\n          border-collapse: collapse;\n          border-spacing: 0;\n          border: none;\n      }\n      h1 {\n          font-size: 42px;\n          font-weight: 400;\n          color: #400090;\n      }\n      p {\n          color: #1A1A1A;\n      }\n      #message-1 {\n          font-weight: bold;\n          margin: 0;\n      }\n      #message-2 {\n          display: inline-block;\n          *display: inline;\n          zoom: 1;\n          max-width: 17em;\n          _width: 17em;\n      }\n      </style>\n      <script>\n      !function(){if(window==window.top){var o=window.location.host;o.endsWith(\".yahoo.com\")&&window.location.replace(\"https://www.yahoo.com/\"),o.endsWith(\".aol.com\")&&window.location.replace(\"https://www.aol.com/\")}}();\n      </script>\n  </head>\n  <body>\n  <!-- status code : 404 -->\n  <!-- Not Found on Accelerator -->\n  <!-- host machine: e6.ycpi.deb.yahoo.com -->\n  <!-- timestamp: 1788554109.762 -->\n  <!-- url: https://fc.yahoo.com/-->\n  <script type=\"text/javascript\">\n    function buildUrl(url, parameters){\n      var qs = [];\n      for(var key in parameters) {\n        var value = parameters[key];\n        qs.push(encodeURIComponent(key) + \"=\" + encodeURIComponent(value));\n      }\n      url = url + \"?\" + qs.join('&');\n      return url;\n    }\n\n    function generateBRBMarkup(site) {\n      params.source = 'brb';\n      generateBeaconMarkup(params);\n      var englishHeader = 'Will be right back...';\n      var englishMessage1 = 'Thank you for your patience.';\n      var englishMessage2 = 'Our engineers are working quickly to resolve the issue.';\n      var defaultLogoStyle = '';\n      var siteDataMap = {\n        'default': {\n          logo: 'https://s.yimg.com/rz/p/yahoo_frontpage_en-US_s_f_p_205x58_frontpage.png',\n          logoAlt: 'Yahoo Logo',\n          logoStyle: defaultLogoStyle,\n          header: englishHeader,\n          message1: englishMessage1,\n          message2: englishMessage2\n        }\n      };\n\n      var siteDetails = siteDataMap['default'];\n\n      document.write('<table><tbody><tr><td>');\n      document.write('<div id=\"content\">');\n      document.write('<img src=\"' + siteDetails['logo'] + '\" alt=\"' + siteDetails['logoAlt'] + '\" style=\"' + siteDetails['logoStyle'] + '\">');\n      document.write('<h1 style=\"margin-top:20px;\">' + siteDetails['header'] + '</h1>');\n      document.write('<p id=\"message-1\">' + siteDetails['message1'] + '</p>');\n      document.write('<p id=\"message-2\">' + siteDetails['message2'] + '</p>');\n      document.write('</div>');\n      document.write('</td></tr></tbody></table>');\n    }\n\n    function generateBeaconMarkup(params) {\n        document.write('<img src=\"' + buildUrl('//geo.yahoo.com/b', params) + '\" style=\"display:none;\" width=\"0px\" height=\"0px\"/>');\n        var beacon = new Image();\n        beacon.src = buildUrl('//bcn.fp.yahoo.com/p', params);\n    }\n\n    var hostname = window.location.hostname;\n    var device = 'desktop';\n    var ynet = ('-' === '1');\n    var time = new Date().getTime();\n    var params = {\n        s: '1197757129',\n        t: time,\n        err_url: document.URL,\n        err: '404',\n        test: '-',\n        ats_host: 'e6.ycpi.deb.yahoo.com',\n        rid: '-',\n        message: 'Not Found on Accelerator'\n    };\n\n    if(ynet) {\n        document.write('<div style=\"height: 5px; background-color: red;\"></div>');\n    }\n    generateBRBMarkup(hostname, params);\n\n  </script>\n  <noscript>\n  <table>\n    <tbody>\n      <tr>\n        <td>\n          <div id=\"englishContent\">\n            <h1 style=\"margin-top:20px;\">Will be right back...</h1>\n            <p id=\"message-1\">Thank you for your patience.</p>\n            <p id=\"message-2\">Our engineers are working quickly to resolve the issue.</p>\n          </div>\n        </td>\n      </tr>\n    </tbody>\n  </table>\n  </noscript>\n  </body>\n</html>\n"
+    "body": "<!DOCTYPE html>\n<html lang=\"en-us\">\n  <head>\n    <meta http-equiv=\"content-type\" content=\"text/html; charset=UTF-8\">\n    <meta charset=\"utf-8\">\n    <title>Yahoo</title>\n    <meta name=\"viewport\" content=\"width=device-width,initial-scale=1,minimal-ui\">\n    <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge,chrome=1\">\n    <style>\n      html {\n          height: 100%;\n      }\n      body {\n          background: #fafafc url(https://s.yimg.com/nn/img/sad-panda-201402200631.png) 50% 50%;\n          background-size: cover;\n          height: 100%;\n          text-align: center;\n          font: 300 18px \"helvetica neue\", helvetica, verdana, tahoma, arial, sans-serif;\n          margin: 0;\n      }\n      table {\n          height: 100%;\n          width: 100%;\n          table-layout: fixed;\n          border-collapse: collapse;\n          border-spacing: 0;\n          border: none;\n      }\n      h1 {\n          font-size: 42px;\n          font-weight: 400;\n          color: #400090;\n      }\n      p {\n          color: #1A1A1A;\n      }\n      #message-1 {\n          font-weight: bold;\n          margin: 0;\n      }\n      #message-2 {\n          display: inline-block;\n          *display: inline;\n          zoom: 1;\n          max-width: 17em;\n          _width: 17em;\n      }\n      </style>\n      <script>\n      !function(){if(window==window.top){var o=window.location.host;o.endsWith(\".yahoo.com\")&&window.location.replace(\"https://www.yahoo.com/\"),o.endsWith(\".aol.com\")&&window.location.replace(\"https://www.aol.com/\")}}();\n      </script>\n  </head>\n  <body>\n  <!-- status code : 404 -->\n  <!-- Not Found on Accelerator -->\n  <!-- host machine: e3.ycpi.deb.yahoo.com -->\n  <!-- timestamp: 1788588532.860 -->\n  <!-- url: https://fc.yahoo.com/-->\n  <script type=\"text/javascript\">\n    function buildUrl(url, parameters){\n      var qs = [];\n      for(var key in parameters) {\n        var value = parameters[key];\n        qs.push(encodeURIComponent(key) + \"=\" + encodeURIComponent(value));\n      }\n      url = url + \"?\" + qs.join('&');\n      return url;\n    }\n\n    function generateBRBMarkup(site) {\n      params.source = 'brb';\n      generateBeaconMarkup(params);\n      var englishHeader = 'Will be right back...';\n      var englishMessage1 = 'Thank you for your patience.';\n      var englishMessage2 = 'Our engineers are working quickly to resolve the issue.';\n      var defaultLogoStyle = '';\n      var siteDataMap = {\n        'default': {\n          logo: 'https://s.yimg.com/rz/p/yahoo_frontpage_en-US_s_f_p_205x58_frontpage.png',\n          logoAlt: 'Yahoo Logo',\n          logoStyle: defaultLogoStyle,\n          header: englishHeader,\n          message1: englishMessage1,\n          message2: englishMessage2\n        }\n      };\n\n      var siteDetails = siteDataMap['default'];\n\n      document.write('<table><tbody><tr><td>');\n      document.write('<div id=\"content\">');\n      document.write('<img src=\"' + siteDetails['logo'] + '\" alt=\"' + siteDetails['logoAlt'] + '\" style=\"' + siteDetails['logoStyle'] + '\">');\n      document.write('<h1 style=\"margin-top:20px;\">' + siteDetails['header'] + '</h1>');\n      document.write('<p id=\"message-1\">' + siteDetails['message1'] + '</p>');\n      document.write('<p id=\"message-2\">' + siteDetails['message2'] + '</p>');\n      document.write('</div>');\n      document.write('</td></tr></tbody></table>');\n    }\n\n    function generateBeaconMarkup(params) {\n        document.write('<img src=\"' + buildUrl('//geo.yahoo.com/b', params) + '\" style=\"display:none;\" width=\"0px\" height=\"0px\"/>');\n        var beacon = new Image();\n        beacon.src = buildUrl('//bcn.fp.yahoo.com/p', params);\n    }\n\n    var hostname = window.location.hostname;\n    var device = 'desktop';\n    var ynet = ('-' === '1');\n    var time = new Date().getTime();\n    var params = {\n        s: '1197757129',\n        t: time,\n        err_url: document.URL,\n        err: '404',\n        test: '-',\n        ats_host: 'e3.ycpi.deb.yahoo.com',\n        rid: '-',\n        message: 'Not Found on Accelerator'\n    };\n\n    if(ynet) {\n        document.write('<div style=\"height: 5px; background-color: red;\"></div>');\n    }\n    generateBRBMarkup(hostname, params);\n\n  </script>\n  <noscript>\n  <table>\n    <tbody>\n      <tr>\n        <td>\n          <div id=\"englishContent\">\n            <h1 style=\"margin-top:20px;\">Will be right back...</h1>\n            <p id=\"message-1\">Thank you for your patience.</p>\n            <p id=\"message-2\">Our engineers are working quickly to resolve the issue.</p>\n          </div>\n        </td>\n      </tr>\n    </tbody>\n  </table>\n  </noscript>\n  </body>\n</html>\n"
   },
   "crumb": {
     "status": 200,
     "headers": {},
-    "body": "DeBNUOwAiCo"
+    "body": "XTiHBTOKYsX"
   },
   "quoteSummary": {
     "status": 200,
@@ -78,31 +78,31 @@
                 "fmt": "2.39"
               },
               "beta": {
-                "raw": 0.977,
+                "raw": 0.975,
                 "fmt": "0.98"
               },
               "trailingPE": {
-                "raw": 15.359315,
-                "fmt": "15.36"
+                "raw": 15.505405,
+                "fmt": "15.51"
               },
               "forwardPE": {
                 "raw": 14.341591,
                 "fmt": "14.34"
               },
               "volume": {
-                "raw": 4855454,
-                "fmt": "4.86M",
-                "longFmt": "4,855,454"
+                "raw": 4867465,
+                "fmt": "4.87M",
+                "longFmt": "4,867,465"
               },
               "regularMarketVolume": {
-                "raw": 4855454,
-                "fmt": "4.86M",
-                "longFmt": "4,855,454"
+                "raw": 4867465,
+                "fmt": "4.87M",
+                "longFmt": "4,867,465"
               },
               "averageVolume": {
-                "raw": 8225444,
-                "fmt": "8.23M",
-                "longFmt": "8,225,444"
+                "raw": 8211035,
+                "fmt": "8.21M",
+                "longFmt": "8,211,035"
               },
               "averageVolume10days": {
                 "raw": 5552290,
@@ -119,8 +119,8 @@
                 "fmt": "358.42"
               },
               "ask": {
-                "raw": 358.45,
-                "fmt": "358.45"
+                "raw": 358.96,
+                "fmt": "358.96"
               },
               "bidSize": {
                 "raw": 4000,
@@ -138,9 +138,9 @@
                 "longFmt": "953,331,941,376"
               },
               "nonDilutedMarketCap": {
-                "raw": 943523189915,
-                "fmt": "943.52B",
-                "longFmt": "943,523,189,915"
+                "raw": 946899086382,
+                "fmt": "946.9B",
+                "longFmt": "946,899,086,382"
               },
               "yield": {},
               "ytdReturn": {},
@@ -166,15 +166,15 @@
                 "fmt": "3.21"
               },
               "fulldayPrice": {
-                "raw": 358.28,
-                "fmt": "358.28"
+                "raw": 358.695,
+                "fmt": "358.70"
               },
               "fulldayChange": {
-                "raw": -3.419983,
+                "raw": -3.41998,
                 "fmt": "-3.42"
               },
               "fulldayChangePercent": {
-                "raw": -0.009445901,
+                "raw": -0.0094459,
                 "fmt": "-0.94%"
               },
               "priceToSalesTrailing12Months": {
@@ -222,9 +222,9 @@
                 "longFmt": "2"
               },
               "enterpriseValue": {
-                "raw": 800350863360,
-                "fmt": "800.35B",
-                "longFmt": "800,350,863,360"
+                "raw": 791259906048,
+                "fmt": "791.26B",
+                "longFmt": "791,259,906,048"
               },
               "forwardPE": {
                 "raw": 14.341591,
@@ -283,7 +283,7 @@
                 "fmt": "0.95%"
               },
               "beta": {
-                "raw": 0.977,
+                "raw": 0.975,
                 "fmt": "0.98"
               },
               "impliedSharesOutstanding": {
@@ -337,16 +337,16 @@
                 "longFmt": "63,634,001,920"
               },
               "trailingEps": {
-                "raw": 23.35,
-                "fmt": "23.35"
+                "raw": 23.13,
+                "fmt": "23.13"
               },
               "forwardEps": {
                 "raw": 25.00699,
                 "fmt": "25.01"
               },
               "pegRatio": {
-                "raw": 1.65,
-                "fmt": "1.65"
+                "raw": 1.68,
+                "fmt": "1.68"
               },
               "lastSplitFactor": "3:2",
               "lastSplitDate": {
@@ -354,13 +354,13 @@
                 "fmt": "2000-06-12"
               },
               "enterpriseToRevenue": {
-                "raw": 4.295,
-                "fmt": "4.30"
+                "raw": 4.247,
+                "fmt": "4.25"
               },
               "enterpriseToEbitda": {},
               "52WeekChange": {
-                "raw": 0.22990692,
-                "fmt": "22.99%"
+                "raw": 0.23607934,
+                "fmt": "23.61%"
               },
               "SandP52WeekChange": {
                 "raw": 0.19535756,
@@ -407,34 +407,23 @@
             },
             "price": {
               "maxAge": 1,
-              "preMarketChangePercent": {
-                "raw": -0.0008286956,
-                "fmt": "-0.08%"
-              },
-              "preMarketChange": {
-                "raw": -0.2999878,
-                "fmt": "-0.30"
-              },
-              "preMarketTime": 1788528334,
-              "preMarketPrice": {
-                "raw": 361.7,
-                "fmt": "361.70"
-              },
+              "preMarketChange": {},
+              "preMarketPrice": {},
               "preMarketSource": "FREE_REALTIME",
               "postMarketChangePercent": {
-                "raw": -0.0010038363,
-                "fmt": "-0.10%"
+                "raw": 0.0001533367,
+                "fmt": "0.02%"
               },
               "postMarketChange": {
-                "raw": -0.36001587,
-                "fmt": "-0.36"
+                "raw": 0.054992676,
+                "fmt": "0.05"
               },
-              "postMarketTime": 1788553157,
+              "postMarketTime": 1788566398,
               "postMarketPrice": {
-                "raw": 358.28,
-                "fmt": "358.28"
+                "raw": 358.695,
+                "fmt": "358.70"
               },
-              "postMarketSource": "FREE_REALTIME",
+              "postMarketSource": "DELAYED",
               "regularMarketChangePercent": {
                 "raw": -0.0094459,
                 "fmt": "-0.94%"
@@ -462,9 +451,9 @@
                 "fmt": "355.23"
               },
               "regularMarketVolume": {
-                "raw": 4855454,
-                "fmt": "4.86M",
-                "longFmt": "4,855,454.00"
+                "raw": 4867465,
+                "fmt": "4.87M",
+                "longFmt": "4,867,465.00"
               },
               "averageDailyVolume10Day": {
                 "raw": 5552290,
@@ -472,9 +461,9 @@
                 "longFmt": "5,552,290"
               },
               "averageDailyVolume3Month": {
-                "raw": 8225444,
-                "fmt": "8.23M",
-                "longFmt": "8,225,444"
+                "raw": 8211035,
+                "fmt": "8.21M",
+                "longFmt": "8,211,035"
               },
               "regularMarketPreviousClose": {
                 "raw": 362.06,
@@ -488,28 +477,28 @@
               "strikePrice": {},
               "openInterest": {},
               "fulldayChangePercent": {
-                "raw": -0.009445901,
+                "raw": -0.0094459,
                 "fmt": "-0.94%"
               },
               "fulldayChange": {
-                "raw": -3.419983,
+                "raw": -3.41998,
                 "fmt": "-3.42"
               },
               "fulldayPrice": {
-                "raw": 358.28,
-                "fmt": "358.28"
+                "raw": 358.695,
+                "fmt": "358.70"
               },
               "exchange": "NYQ",
               "exchangeName": "NYSE",
               "exchangeDataDelayedBy": 0,
-              "marketState": "POST",
+              "marketState": "CLOSED",
               "quoteType": "EQUITY",
               "symbol": "JPM",
               "underlyingSymbol": null,
               "shortName": "JP Morgan Chase & Co.",
               "longName": "JPMorgan Chase & Co.",
               "currency": "USD",
-              "quoteSourceName": "Nasdaq Real Time Price",
+              "quoteSourceName": "Delayed Quote",
               "currencySymbol": "$",
               "fromCurrency": null,
               "toCurrency": null,
@@ -545,8 +534,11 @@
                 "raw": 372,
                 "fmt": "372.00"
               },
-              "recommendationMean": {},
-              "recommendationKey": "none",
+              "recommendationMean": {
+                "raw": 2.125,
+                "fmt": "2.12"
+              },
+              "recommendationKey": "buy",
               "numberOfAnalystOpinions": {
                 "raw": 21,
                 "fmt": "21",
@@ -651,14 +643,14 @@
               "exchangeTimezoneName": "America/New_York",
               "regularMarketPrice": 358.64,
               "regularMarketChangePercent": -0.945,
-              "fulldayPrice": 358.28,
+              "fulldayPrice": 358.695,
               "fulldayChange": -3.42,
               "fulldayChangePercent": -0.945,
               "fiftyTwoWeekHigh": 366.5,
               "fiftyTwoWeekLow": 279.1,
               "regularMarketDayHigh": 362.86,
               "regularMarketDayLow": 355.23,
-              "regularMarketVolume": 4855454,
+              "regularMarketVolume": 4867465,
               "longName": "JPMorgan Chase & Co.",
               "shortName": "JP Morgan Chase & Co.",
               "chartPreviousClose": 159.49,
@@ -666,20 +658,20 @@
               "currentTradingPeriod": {
                 "pre": {
                   "timezone": "EDT",
-                  "start": 1788508800,
                   "end": 1788528600,
+                  "start": 1788508800,
                   "gmtoffset": -14400
                 },
                 "regular": {
                   "timezone": "EDT",
-                  "start": 1788528600,
                   "end": 1788552000,
+                  "start": 1788528600,
                   "gmtoffset": -14400
                 },
                 "post": {
                   "timezone": "EDT",
-                  "start": 1788552000,
                   "end": 1788566400,
+                  "start": 1788552000,
                   "gmtoffset": -14400
                 }
               },
@@ -826,7 +818,133 @@
                     210986200,
                     118993600,
                     15834600,
-                    4855454
+                    4867465
+                  ],
+                  "open": [
+                    164,
+                    172.0399932861328,
+                    161,
+                    159.86000061035156,
+                    148.69000244140625,
+                    140.0399932861328,
+                    137.39999389648438,
+                    119.87999725341797,
+                    132.8699951171875,
+                    112.6500015258789,
+                    114.5,
+                    113.29000091552734,
+                    105.62000274658203,
+                    126.87000274658203,
+                    138.17999267578125,
+                    135.24000549316406,
+                    138.2100067138672,
+                    142.10000610351562,
+                    129.91000366210938,
+                    142.25999450683594,
+                    136.52000427246094,
+                    146.19000244140625,
+                    157.42999267578125,
+                    146.08999633789062,
+                    144.8300018310547,
+                    139.25,
+                    155.82000732421875,
+                    169.08999633789062,
+                    173.63999938964844,
+                    185.6999969482422,
+                    199.99000549316406,
+                    192.27000427246094,
+                    202.30999755859375,
+                    202.83999633789062,
+                    213.1999969482422,
+                    222.3000030517578,
+                    208.89999389648438,
+                    223.55999755859375,
+                    249.5500030517578,
+                    240.9199981689453,
+                    261.8299865722656,
+                    264,
+                    242.6199951171875,
+                    242.83999633789062,
+                    263.0199890136719,
+                    290.8900146484375,
+                    290.3999938964844,
+                    300.260009765625,
+                    313.9700012207031,
+                    311,
+                    312.95001220703125,
+                    322.5,
+                    304.4599914550781,
+                    294.80999755859375,
+                    295.3900146484375,
+                    313.95001220703125,
+                    297.69000244140625,
+                    328.3699951171875,
+                    353.75,
+                    355.7300109863281,
+                    361
+                  ],
+                  "low": [
+                    160.05999755859375,
+                    158.2899932861328,
+                    151.83999633789062,
+                    139.57000732421875,
+                    139.77999877929688,
+                    127.2699966430664,
+                    118.9000015258789,
+                    115.0199966430664,
+                    110.93000030517578,
+                    106.05999755859375,
+                    111.0199966430664,
+                    104.4000015258789,
+                    101.27999877929688,
+                    125.91000366210938,
+                    128.41000366210938,
+                    133.5500030517578,
+                    137.44000244140625,
+                    123.11000061035156,
+                    126.22000122070312,
+                    131.80999755859375,
+                    135.4499969482422,
+                    141.44000244140625,
+                    145.4600067138672,
+                    142.64999389648438,
+                    135.19000244140625,
+                    138.47000122070312,
+                    155.82000732421875,
+                    164.3000030517578,
+                    171.42999267578125,
+                    184.27000427246094,
+                    179.1999969482422,
+                    188.4600067138672,
+                    190.8800048828125,
+                    202.10000610351562,
+                    190.89999389648438,
+                    200.61000061035156,
+                    204.33999633789062,
+                    219.1699981689453,
+                    229.52999877929688,
+                    238.74000549316406,
+                    253.35000610351562,
+                    224.22999572753906,
+                    202.16000366210938,
+                    242.1699981689453,
+                    260.30999755859375,
+                    280.30999755859375,
+                    284.239990234375,
+                    291.44000244140625,
+                    290.5400085449219,
+                    292.80999755859375,
+                    298.4599914550781,
+                    296.510009765625,
+                    291.3800048828125,
+                    279.1000061035156,
+                    288.7200012207031,
+                    293.6700134277344,
+                    295.2699890136719,
+                    325.010009765625,
+                    350.3699951171875,
+                    353.7900085449219,
+                    355.2300109863281
                   ],
                   "close": [
                     169.88999938964844,
@@ -953,188 +1071,62 @@
                     366.5,
                     362.8500061035156,
                     362.8599853515625
-                  ],
-                  "low": [
-                    160.05999755859375,
-                    158.2899932861328,
-                    151.83999633789062,
-                    139.57000732421875,
-                    139.77999877929688,
-                    127.2699966430664,
-                    118.9000015258789,
-                    115.0199966430664,
-                    110.93000030517578,
-                    106.05999755859375,
-                    111.0199966430664,
-                    104.4000015258789,
-                    101.27999877929688,
-                    125.91000366210938,
-                    128.41000366210938,
-                    133.5500030517578,
-                    137.44000244140625,
-                    123.11000061035156,
-                    126.22000122070312,
-                    131.80999755859375,
-                    135.4499969482422,
-                    141.44000244140625,
-                    145.4600067138672,
-                    142.64999389648438,
-                    135.19000244140625,
-                    138.47000122070312,
-                    155.82000732421875,
-                    164.3000030517578,
-                    171.42999267578125,
-                    184.27000427246094,
-                    179.1999969482422,
-                    188.4600067138672,
-                    190.8800048828125,
-                    202.10000610351562,
-                    190.89999389648438,
-                    200.61000061035156,
-                    204.33999633789062,
-                    219.1699981689453,
-                    229.52999877929688,
-                    238.74000549316406,
-                    253.35000610351562,
-                    224.22999572753906,
-                    202.16000366210938,
-                    242.1699981689453,
-                    260.30999755859375,
-                    280.30999755859375,
-                    284.239990234375,
-                    291.44000244140625,
-                    290.5400085449219,
-                    292.80999755859375,
-                    298.4599914550781,
-                    296.510009765625,
-                    291.3800048828125,
-                    279.1000061035156,
-                    288.7200012207031,
-                    293.6700134277344,
-                    295.2699890136719,
-                    325.010009765625,
-                    350.3699951171875,
-                    353.7900085449219,
-                    355.2300109863281
-                  ],
-                  "open": [
-                    164,
-                    172.0399932861328,
-                    161,
-                    159.86000061035156,
-                    148.69000244140625,
-                    140.0399932861328,
-                    137.39999389648438,
-                    119.87999725341797,
-                    132.8699951171875,
-                    112.6500015258789,
-                    114.5,
-                    113.29000091552734,
-                    105.62000274658203,
-                    126.87000274658203,
-                    138.17999267578125,
-                    135.24000549316406,
-                    138.2100067138672,
-                    142.10000610351562,
-                    129.91000366210938,
-                    142.25999450683594,
-                    136.52000427246094,
-                    146.19000244140625,
-                    157.42999267578125,
-                    146.08999633789062,
-                    144.8300018310547,
-                    139.25,
-                    155.82000732421875,
-                    169.08999633789062,
-                    173.63999938964844,
-                    185.6999969482422,
-                    199.99000549316406,
-                    192.27000427246094,
-                    202.30999755859375,
-                    202.83999633789062,
-                    213.1999969482422,
-                    222.3000030517578,
-                    208.89999389648438,
-                    223.55999755859375,
-                    249.5500030517578,
-                    240.9199981689453,
-                    261.8299865722656,
-                    264,
-                    242.6199951171875,
-                    242.83999633789062,
-                    263.0199890136719,
-                    290.8900146484375,
-                    290.3999938964844,
-                    300.260009765625,
-                    313.9700012207031,
-                    311,
-                    312.95001220703125,
-                    322.5,
-                    304.4599914550781,
-                    294.80999755859375,
-                    295.3900146484375,
-                    313.95001220703125,
-                    297.69000244140625,
-                    328.3699951171875,
-                    353.75,
-                    355.7300109863281,
-                    361
                   ]
                 }
               ],
               "adjclose": [
                 {
                   "adjclose": [
-                    150.81539916992188,
-                    140.9971160888672,
+                    150.81536865234375,
+                    140.99716186523438,
                     140.57106018066406,
-                    132.7064666748047,
-                    126.63378143310547,
-                    121.7398681640625,
+                    132.70645141601562,
+                    126.6337661743164,
+                    121.73988342285156,
                     107.38394165039062,
-                    118.9626235961914,
+                    118.96260833740234,
                     101.31120300292969,
-                    104.70332336425781,
-                    103.22392272949219,
-                    94.8465576171875,
-                    115.27373504638672,
-                    126.53734588623047,
-                    122.80113983154297,
-                    129.1140899658203,
+                    104.70333099365234,
+                    103.22391510009766,
+                    94.84654235839844,
+                    115.27372741699219,
+                    126.53736114501953,
+                    122.80113220214844,
+                    129.11410522460938,
                     132.24142456054688,
                     120.21192169189453,
                     128.52822875976562,
                     126.17597198486328,
                     135.222412109375,
-                    147.87144470214844,
+                    147.8714599609375,
                     136.98423767089844,
                     135.75790405273438,
-                    131.13912963867188,
+                    131.13909912109375,
                     147.18963623046875,
-                    160.4110870361328,
+                    160.41110229492188,
                     165.4423370361328,
-                    176.54393005371094,
+                    176.5439453125,
                     190.05564880371094,
-                    182.9946746826172,
+                    182.99468994140625,
                     193.3879852294922,
-                    193.0348358154297,
-                    204.219482421875,
-                    215.73561096191406,
-                    202.35772705078125,
-                    214.27685546875,
+                    193.03485107421875,
+                    204.21949768066406,
+                    215.7356414794922,
+                    202.3577117919922,
+                    214.27684020996094,
                     241.119384765625,
-                    231.45416259765625,
-                    259.4268798828125,
+                    231.45413208007812,
+                    259.4269104003906,
                     256.8549499511719,
-                    238.07485961914062,
+                    238.0748748779297,
                     238.87725830078125,
-                    257.8022766113281,
-                    283.10400390625,
-                    290.6790466308594,
-                    295.7618713378906,
+                    257.80230712890625,
+                    283.1040344238281,
+                    290.6790771484375,
+                    295.7618408203125,
                     309.50885009765625,
-                    306.76397705078125,
-                    308.696533203125,
+                    306.7639465332031,
+                    308.6965026855469,
                     317.70855712890625,
                     302.9676818847656,
                     297.4310607910156,

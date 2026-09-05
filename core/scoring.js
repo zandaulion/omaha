@@ -408,6 +408,104 @@ export function calculateBankFairValue(params) {
 }
 
 // =====================================================================
+// 3c. Earnings power, with no growth in it at all
+// =====================================================================
+
+/**
+ * What the business is worth if it never grows again.
+ *
+ * Greenwald's earnings power value: normalised operating profit after tax,
+ * capitalised at the cost of capital, plus the net cash. No projection, no
+ * terminal multiple, no compounding — which is the whole point of having it
+ * next to a discounted cash flow.
+ *
+ * The DCF's answer is dominated by assumptions about years nobody can see. This
+ * one deliberately assumes nothing about them, so the gap between the two is a
+ * number worth reading: it is what the market is paying for growth. A company
+ * trading below its earnings power is cheap without needing anything to go
+ * right, which is a different and rarer claim than a favourable DCF.
+ *
+ * Operating profit is taken as the median of the filed years for the same
+ * reason the growth estimate is: one year is a year, not an earnings power.
+ */
+export function calculateEarningsPower(params) {
+  const { ebitHistory = [], taxRate, waccPct, cash = 0, totalDebt = 0, sharesOutstanding } = params;
+
+  const shares = num(sharesOutstanding);
+  const wacc = num(waccPct);
+  const ebits = ebitHistory.map(num).filter((v) => v !== null && Number.isFinite(v));
+
+  if (!ebits.length) return { applicable: false, reason: 'no-operating-profit', valuePerShare: null };
+  if (shares === null || shares <= 0) return { applicable: false, reason: 'no-share-count', valuePerShare: null };
+  if (wacc === null || wacc <= 0) return { applicable: false, reason: 'no-cost-of-capital', valuePerShare: null };
+
+  const sorted = [...ebits].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  const normalisedEbit = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+
+  // A business losing money at the operating line has no earnings power to
+  // capitalise. Capitalising a negative one would return a negative value and
+  // read as a company worth less than nothing.
+  if (normalisedEbit <= 0) {
+    return { applicable: false, reason: 'not-profitable-at-operating-line', valuePerShare: null,
+             normalisedEbit: round(normalisedEbit) };
+  }
+
+  const tax = num(taxRate);
+  const usedTax = tax !== null && tax >= 0 && tax < 0.6 ? tax : 0.21;
+  const nopat = normalisedEbit * (1 - usedTax);
+  const enterpriseValue = nopat / (wacc / 100);
+  const equityValue = enterpriseValue + (num(cash) ?? 0) - (num(totalDebt) ?? 0);
+
+  return {
+    applicable: true,
+    reason: null,
+    valuePerShare: round(equityValue / shares),
+    normalisedEbit: round(normalisedEbit),
+    ebitYears: ebits.length,
+    taxRate: round(usedTax, 4),
+    nopat: round(nopat),
+    waccPct: wacc,
+    enterpriseValue: round(enterpriseValue),
+    equityValue: round(equityValue)
+  };
+}
+
+/**
+ * The return on tangible equity today's price implies.
+ *
+ * The mirror of impliedGrowthRate, for the model that replaces the DCF on a
+ * bank. Inverting the justified multiple states what you would have to believe
+ * about the bank to pay what it costs -- which is a more useful thing to argue
+ * with than a fair value somebody disagrees with.
+ */
+export function impliedRote({ price, tangibleBookValuePerShare, payoutRatio, costOfEquity, maxGrowth = 0.04 }) {
+  const p = num(price);
+  const tbvps = num(tangibleBookValuePerShare);
+  const coe = num(costOfEquity);
+  if (p === null || tbvps === null || coe === null || tbvps <= 0 || p <= 0) return null;
+
+  const payout = num(payoutRatio);
+  const used = payout !== null && payout >= 0 && payout <= 1 ? payout : 0.5;
+
+  const priceAt = (r) => {
+    const g = Math.min(r * (1 - used), maxGrowth);
+    if (g >= coe) return Infinity;
+    return tbvps * ((r - g) / (coe - g));
+  };
+
+  // Monotonic in the return, so a bisection settles it.
+  let lo = 0;
+  let hi = 0.6;
+  if (priceAt(hi) < p) return null;   // no plausible return justifies the price
+  for (let i = 0; i < 80; i++) {
+    const mid = (lo + hi) / 2;
+    if (priceAt(mid) > p) hi = mid; else lo = mid;
+  }
+  return round((lo + hi) / 2, 4);
+}
+
+// =====================================================================
 // 4. Two-stage DCF
 // =====================================================================
 
@@ -1451,6 +1549,35 @@ export function computeComprehensiveHealth(model = {}) {
       })
     : null;
 
+  // The same question for a bank: what return on its capital would justify what
+  // it costs. Only meaningful once the balance-sheet model actually ran.
+  const impliedReturnOnEquity = model.isBookValueBusiness && dcf.applicable
+    ? impliedRote({
+        price: metrics.price,
+        tangibleBookValuePerShare: dcf.tangibleBookValuePerShare,
+        payoutRatio: dcf.payoutRatio,
+        costOfEquity: dcf.costOfEquity
+      })
+    : null;
+
+  // What the business is worth with no growth in it at all. Kept apart from the
+  // DCF rather than blended with it: the gap between the two is the number
+  // worth reading, and averaging them would destroy exactly that.
+  //
+  // Not run for a bank or an insurer. Operating profit over cost of capital
+  // assumes the capital is financing operations, which is not what a balance
+  // sheet full of deposits is doing.
+  const epv = model.isFinancial
+    ? { applicable: false, reason: 'not-meaningful-for-financials', valuePerShare: null }
+    : calculateEarningsPower({
+        ebitHistory: (model.annual || []).map((y) => y.ebit),
+        taxRate: metrics.effectiveTaxRate,
+        waccPct: metrics.wacc,
+        cash: metrics.cash,
+        totalDebt: metrics.totalDebt,
+        sharesOutstanding: metrics.sharesOutstanding
+      });
+
   // A fair value several multiples away from the traded price is far more
   // likely to mean the assumptions are wrong, or that the market is pricing
   // something the filings do not show, than that free money is on the table.
@@ -1574,6 +1701,24 @@ export function computeComprehensiveHealth(model = {}) {
     catalysts,
     risks,
 
+    // Deliberately its own block rather than folded into dcf: it is a second
+    // opinion, and the value of a second opinion is that it disagrees.
+    earningsPower: {
+      applicable: epv.applicable,
+      reason: epv.reason || null,
+      valuePerShare: epv.valuePerShare,
+      normalisedEbit: epv.normalisedEbit ?? null,
+      ebitYears: epv.ebitYears ?? null,
+      taxRate: epv.taxRate ?? null,
+      waccPct: epv.waccPct ?? null,
+      // What the market pays above the business as it stands. The whole reason
+      // for having a growth-free model beside a growth-driven one.
+      premiumForGrowthPct:
+        epv.applicable && epv.valuePerShare > 0 && metrics.price !== null
+          ? round(((metrics.price - epv.valuePerShare) / epv.valuePerShare) * 100, 1)
+          : null
+    },
+
     dcf: {
       applicable: dcf.applicable,
       reason: dcf.reason || null,
@@ -1640,6 +1785,7 @@ export function computeComprehensiveHealth(model = {}) {
             normalisedCashFlow: cashFlowBase.normalised
           },
       impliedGrowthRate: impliedGrowth,
+      impliedRote: impliedReturnOnEquity,
       divergenceFactor,
       divergenceWarning,
       pvCashFlows: dcf.pvCashFlows || []
