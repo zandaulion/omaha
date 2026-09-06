@@ -248,6 +248,31 @@ var GLOSSARY = {
     matters: "It is the cleanest single indicator of pricing power, and the hardest line to improve by cost-cutting alone.",
     computes: "Gross profit over revenue. Not reported for banks, which file no gross profit line."
   },
+  // ------------------------------------------------ comparison matrix rows
+  "Industry": {
+    title: "Sector and industry",
+    means: "How the exchange classifies the business.",
+    matters: "More than a label here: it decides which tests apply and which valuation model runs. A bank has no working-capital cycle and no gross profit line, so several measures are not merely missing for it, they are undefined.",
+    computes: "Banks and insurers are valued on tangible book; ordinary companies on discounted cash flow; the rest of the financial sector on neither, and are told which of the two reasons applies. A misclassified company is therefore scored with the wrong instrument, which is worth checking when a figure looks strange."
+  },
+  "Operating margin": {
+    title: "Operating margin",
+    means: "Operating profit as a percentage of revenue \u2014 what is left after the cost of running the business, before interest and tax.",
+    matters: "It is the cleanest comparison of operating efficiency between two companies in the same industry, because it strips out how each chose to finance itself.",
+    computes: "From the filed statements. Compare it within an industry rather than across: a supermarket at 4% and a software company at 30% are not evidence about either."
+  },
+  "P/E vs 5y median": {
+    title: "P/E against its own five-year median",
+    means: "How today's earnings multiple compares with what this company has typically traded at over five years.",
+    matters: "Comparing a company to itself sidesteps the argument about which peer group is fair. A quality compounder looks permanently expensive against the market and can still be cheap against its own record.",
+    computes: "Against the company's own history, and only where enough history is filed for a median to mean anything; otherwise it is left blank rather than computed from two points."
+  },
+  "Checklist passed": {
+    title: "Checklist passed",
+    means: "How many of the twelve qualitative tests this company clears, out of those that could be scored.",
+    matters: "It is a different reading from the health score: the score weighs and combines, while this simply counts how many separate things look right.",
+    computes: "The denominator is the tests that could be evaluated, not always twelve. A measure the filings do not contain is left out of both halves rather than counted as a failure."
+  },
   // -------------------------------------------------- DCF sandbox inputs
   "dcf-growth": {
     title: "Five-year free cash flow growth",
@@ -312,6 +337,12 @@ var GLOSSARY = {
   }
 };
 var ALIASES = {
+  // Row labels in the side-by-side comparison, which word several of these
+  // differently from the scorecard.
+  "Health score": "health-score",
+  "Cash conversion": "Free cash flow conversion",
+  "Net cash / (debt)": "Net Cash",
+  "Current ratio": "Current & quick ratio",
   // The watchlist header aggregates the five pillars under shorter labels
   // (server/index.js), positionally mapped to the same five.
   "Solvency": "Financial Health & Solvency",
