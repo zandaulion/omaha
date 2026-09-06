@@ -34,6 +34,8 @@ test('no entry describes a metric that no longer exists', () => {
     'health-score', 'Estimated Fair Value', 'P/E Ratio', 'Current Price', 'Net Cash',
     // Deep-dive ratio cards with no equivalent among the scored items.
     'Price / book', 'Share count YoY', 'Dividend yield', 'Gross margin',
+    // Comparison matrix rows.
+    'Industry', 'Operating margin', 'P/E vs 5y median', 'Checklist passed',
     // DCF sandbox inputs.
     'dcf-growth', 'dcf-terminal-multiple', 'dcf-discount-rate', 'bank-payout',
     'return-on-tangible-equity', 'justified-ptbv', 'margin-of-safety',
@@ -73,6 +75,20 @@ test('the watchlist header pillar labels resolve', () => {
   const short = ['Solvency', 'Profitability', 'Valuation', 'Growth', 'Capital Return'];
   const missing = short.filter((l) => !explain(l));
   assert.deepEqual(missing, [], `Watchlist pillar label with no entry: ${missing.join(', ')}`);
+});
+
+test('every row of the comparison matrix resolves', () => {
+  // The matrix words several of these differently from the scorecard, and the
+  // row label is used directly as the key -- so a reworded row would tap to
+  // nothing without this.
+  const rows = [
+    'Health score', 'Industry', 'Altman Z-Score', 'Piotroski F-Score', 'ROIC',
+    'ROIC − WACC', 'Cash conversion', 'Gross margin', 'Operating margin',
+    'Net cash / (debt)', 'Current ratio', 'Trailing P/E', 'P/E vs 5y median',
+    'Revenue CAGR', 'Checklist passed'
+  ];
+  const missing = rows.filter((l) => !explain(l));
+  assert.deepEqual(missing, [], `Comparison row with no entry: ${missing.join(', ')}`);
 });
 
 test('an unknown key returns null rather than throwing', () => {

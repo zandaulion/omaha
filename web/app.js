@@ -2615,7 +2615,7 @@ async function runComparison() {
 
     const row = (label, render) => `
       <tr>
-        <td><strong>${label}</strong></td>
+        <td><strong data-explain="${label}" tabindex="0">${label}</strong></td>
         ${stocks.map((s) => `<td class="mono">${render(s)}</td>`).join('')}
       </tr>`;
 
@@ -2631,7 +2631,7 @@ async function runComparison() {
           </thead>
           <tbody>
             <tr>
-              <td><strong>Health score</strong></td>
+              <td><strong data-explain="Health score" tabindex="0">Health score</strong></td>
               ${stocks.map((s) => `<td><span class="score-badge ${s.summary?.healthTier || 'good'}">${
                 isNum(s.health_score) ? `${s.health_score}/100` : 'N/A'
               }</span></td>`).join('')}
