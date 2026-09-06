@@ -2703,7 +2703,10 @@ function renderCompareRadar(stocks) {
 
   const labels = AXES.map((name, i) => {
     const [x, y] = point(i, 1.2);
-    return `<text class="radar-label" x="${x.toFixed(1)}" y="${y.toFixed(1)}"
+    // SVG elements carry data-explain the same way: the delegated handler
+    // finds them with closest(), which Element gives to SVG too.
+    return `<text class="radar-label" data-explain="${name}" tabindex="0"
+                  x="${x.toFixed(1)}" y="${y.toFixed(1)}"
                   text-anchor="middle" dominant-baseline="middle">${name}</text>`;
   }).join('');
 
@@ -2737,6 +2740,36 @@ function renderCompareRadar(stocks) {
 }
 
 const COMPARE_MAX = 5;
+const COMPARE_KEY = 'omaha_compare_tickers';
+
+/**
+ * The picked set survives a reload.
+ *
+ * Rebuilding a five-way comparison by hand after every refresh is the kind of
+ * small tax that stops a screen being used. Stored rather than derived,
+ * because it is a choice the person made.
+ */
+function saveCompareTickers() {
+  try {
+    localStorage.setItem(COMPARE_KEY, JSON.stringify(state.compareTickers));
+  } catch {
+    // A full or blocked store costs the convenience, not the feature.
+  }
+}
+
+function loadCompareTickers() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(COMPARE_KEY) || '[]');
+    if (!Array.isArray(raw)) return [];
+    // Validated on the way in: anything could be in local storage, and a bad
+    // entry would otherwise reach /api/compare as a ticker.
+    return raw
+      .filter((t) => typeof t === 'string' && /^[A-Z0-9.\-]{1,12}$/.test(t))
+      .slice(0, COMPARE_MAX);
+  } catch {
+    return [];
+  }
+}
 
 /** The four slots, plus the empty ones, so the limit is visible before it bites. */
 function renderCompareSlots() {
@@ -2757,6 +2790,7 @@ function renderCompareSlots() {
     btn.addEventListener('click', () => {
       haptic();
       state.compareTickers = state.compareTickers.filter((t) => t !== btn.dataset.drop);
+      saveCompareTickers();
       renderCompareSlots();
     });
   });
@@ -2781,6 +2815,7 @@ function toggleCompareTicker(ticker) {
     showToast(`${COMPARE_MAX} is the limit — remove one first`, '⚠️');
     return;
   }
+  saveCompareTickers();
   renderCompareSlots();
   renderComparePicker();
 }
@@ -2868,6 +2903,9 @@ function renderComparePicker() {
 
 /** Arriving from a scorecard, the ticker you were reading is the subject. */
 function initCompareView() {
+  // What was being compared last time wins; the open ticker only seeds a set
+  // that does not exist yet.
+  if (!state.compareTickers.length) state.compareTickers = loadCompareTickers();
   if (!state.compareTickers.length && state.currentTicker) {
     state.compareTickers = [state.currentTicker];
   }

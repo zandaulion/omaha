@@ -384,6 +384,8 @@ const ALIASES = {
   'Valuation': 'Valuation & Margin of Safety',
   'Growth': 'Growth & Operating Leverage',
   'Capital Return': 'Capital Allocation & Returns',
+  // The radar plots the same five, abbreviated harder to fit the chart.
+  'Capital': 'Capital Allocation & Returns',
   // Short forms used on the deep-dive ratio cards.
   'ROIC': 'Return on invested capital',
   'ROIC − WACC': 'ROIC vs. Cost of Capital',

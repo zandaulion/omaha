@@ -91,6 +91,13 @@ test('every row of the comparison matrix resolves', () => {
   assert.deepEqual(missing, [], `Comparison row with no entry: ${missing.join(', ')}`);
 });
 
+test('the radar axis labels resolve', () => {
+  // Abbreviated harder than anywhere else to fit inside the chart.
+  const axes = ['Solvency', 'Profitability', 'Valuation', 'Growth', 'Capital'];
+  const missing = axes.filter((a) => !explain(a));
+  assert.deepEqual(missing, [], `Radar axis with no entry: ${missing.join(', ')}`);
+});
+
 test('an unknown key returns null rather than throwing', () => {
   assert.equal(explain('no-such-metric'), null);
   assert.equal(explain(undefined), null);
