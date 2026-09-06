@@ -2490,6 +2490,20 @@ body {
 
 .radar-label { font-size: 9px; fill: var(--text-tertiary); font-weight: 600; }
 
+/* SVG text takes text-decoration but not text-underline-offset, and the
+   generic [data-explain] rule's colour keyword does not apply to a fill-based
+   element -- so the affordance is declared here in the chart's own terms. */
+.radar-label[data-explain] {
+  text-decoration: underline dotted;
+  /* 1px, not a hairline: at 9px the dots have to be coarse enough to read as
+     dotted, or the affordance looks like a different thing from the dotted
+     underline used everywhere else. */
+  text-decoration-thickness: 1px;
+  cursor: pointer;
+}
+
+.radar-label[data-explain]:focus-visible { outline: 2px solid var(--brand-cyan); }
+
 .radar-legend {
   display: flex;
   justify-content: center;
