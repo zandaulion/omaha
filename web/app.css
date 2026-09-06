@@ -42,7 +42,12 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  padding-top: var(--sat);
+  /* No padding-top for the notch here. On the body it only moved things down
+     before the first scroll: the sticky header still pinned to the true top of
+     the screen, which under viewport-fit=cover with a translucent status bar
+     is *behind the clock*. So the title and the icons ended up drawn over the
+     status bar as soon as the page scrolled. The header carries the inset
+     itself now, exactly as .bottom-nav already carries --sab. */
   padding-bottom: calc(var(--bottom-nav-height) + var(--sab) + 16px);
   min-height: 100vh;
   overflow-x: hidden;
@@ -72,7 +77,13 @@ body {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border-subtle);
-  height: var(--header-height);
+  /* The bar grows by the inset and pads its contents down past it: the
+     background still reaches the top of the screen, but the title and icons
+     start below the status bar instead of underneath it. Measured against a
+     59px inset, the title moved from y=13 to y=72. box-sizing is border-box,
+     so .header-inner still resolves to --header-height. */
+  padding-top: var(--sat);
+  height: calc(var(--header-height) + var(--sat));
 }
 
 .header-inner {
@@ -2552,7 +2563,8 @@ body {
 
 .pull-indicator {
   position: fixed;
-  top: 0;
+  /* Below the notch, or it animates out from behind the clock. */
+  top: var(--sat);
   left: 50%;
   z-index: 60;
   transform: translate(-50%, -48px);
