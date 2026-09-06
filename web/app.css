@@ -407,12 +407,20 @@ body {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  /* A grid item's automatic minimum is its min-content width, and
+     .company-industry below is white-space: nowrap -- so this column refused to
+     shrink below the full "Communication Services · Internet Content &
+     Information" string. That gave the whole page a 407px floor: on anything
+     narrower the card overflowed and took the price off the right edge, while
+     the ellipsis never engaged because the text was never actually clipped. */
+  min-width: 0;
 }
 
 .ticker-row {
   display: flex;
   align-items: baseline;
   gap: 8px;
+  min-width: 0;
 }
 
 .ticker-symbol {
