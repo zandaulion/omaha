@@ -137,11 +137,12 @@ private fun Loaded(holdings: List<Holding>) {
             CompareRow("", chosen.map { it.ticker }, header = true)
             Divider()
             CompareRow("Industry", chosen.map { h ->
+                val sector = h.sector?.takeIf { it.isNotBlank() }
+                val industry = h.industry?.takeIf { it.isNotBlank() }
                 when {
-                    !h.sector.isNullOrBlank() && !h.industry.isNullOrBlank() && h.sector != h.industry ->
-                        "${h.sector} · ${h.industry}"
-                    !h.industry.isNullOrBlank() -> h.industry
-                    !h.sector.isNullOrBlank() -> h.sector
+                    sector != null && industry != null && sector != industry -> "$sector · $industry"
+                    industry != null -> industry
+                    sector != null -> sector
                     else -> EM_DASH
                 }
             })
