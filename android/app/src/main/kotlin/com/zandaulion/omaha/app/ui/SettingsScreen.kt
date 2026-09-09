@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import com.zandaulion.omaha.data.AlertSettings
 import com.zandaulion.omaha.data.NotificationRow
 import com.zandaulion.omaha.design.Omaha
+import com.zandaulion.omaha.design.OmahaCard
 import com.zandaulion.omaha.design.OmahaRadius
 import com.zandaulion.omaha.design.OmahaType
 import com.zandaulion.omaha.design.ThemeChoice
@@ -370,14 +371,7 @@ private fun lastCheckedLine(iso: String?): String =
 
 @Composable
 private fun SettingsCard(title: String, content: @Composable () -> Unit) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(OmahaRadius.md))
-            .background(Omaha.colors.bgSurface)
-            .border(1.dp, Omaha.colors.borderSubtle, RoundedCornerShape(OmahaRadius.md))
-            .padding(14.dp)
-    ) {
+    OmahaCard {
         BasicText(title, style = OmahaType.title2.toTextStyle(color = Omaha.colors.textPrimary))
         Box(Modifier.height(8.dp))
         content()

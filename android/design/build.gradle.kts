@@ -16,7 +16,9 @@ plugins {
  * whose output is never compiled is not a gate. Two syntax errors were already
  * caught this way on the first emission — a `title-1` identifier a hyphen made
  * illegal, and a missing `em` import — and neither is visible in the JSON or in
- * the CSS half. The shared composables doc 13 §5 puts here arrive with step 4.
+ * the CSS half. The shared composables doc 13 §5 puts here arrive with step 4
+ * have arrived: `Card.kt`'s `OmahaCard` is the first one, which is why
+ * `foundation` and `ui` join the dependency list below.
  */
 android {
     namespace = "com.zandaulion.omaha.design"
@@ -79,4 +81,9 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-text")
     implementation("androidx.compose.ui:ui-unit")
+    // OmahaCard: background/border/clickable/shadow/RoundedCornerShape and the
+    // press-scale's interactionSource all live here, matching :app's own
+    // foundation+ui coordinates so a consumer never needs a third declaration.
+    implementation("androidx.compose.foundation:foundation")
+    implementation("androidx.compose.ui:ui")
 }

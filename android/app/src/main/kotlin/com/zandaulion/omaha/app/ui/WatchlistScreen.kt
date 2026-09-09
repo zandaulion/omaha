@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,6 +25,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import com.zandaulion.omaha.data.Holding
 import com.zandaulion.omaha.data.PortfolioHealth
 import com.zandaulion.omaha.design.Omaha
+import com.zandaulion.omaha.design.OmahaCard
 import com.zandaulion.omaha.design.OmahaColors
 import com.zandaulion.omaha.design.OmahaRadius
 import com.zandaulion.omaha.design.OmahaType
@@ -102,59 +106,80 @@ fun WatchlistScreen(
     }
 }
 
-/** `.portfolio-hero`: the list's name, its size, and the composite badge. */
+/**
+ * `.portfolio-hero`: the list's name, its size, and the composite badge.
+ *
+ * `.portfolio-hero::before` in the PWA lays a radial glow over the top-right
+ * corner (`radial-gradient(circle, var(--brand-glow) 0%, transparent 70%)`).
+ * `Omaha.colors.brandGlow` was already generated for this and, until now,
+ * never drawn anywhere on Android — the `Brush.radialGradient` below is the
+ * same glow, positioned to bleed off the same corner.
+ */
 @Composable
 private fun PortfolioHero(health: PortfolioHealth, pending: Int = 0) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(OmahaRadius.lg))
-            .background(Omaha.colors.bgSurfaceElevated)
-            .border(1.dp, Omaha.colors.borderSubtle, RoundedCornerShape(OmahaRadius.lg))
-            .padding(16.dp)
-    ) {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top
-        ) {
-            Column(Modifier.weight(1f)) {
-                BasicText(
-                    health.watchlistName,
-                    style = OmahaType.title1.toTextStyle(color = Omaha.colors.textPrimary)
-                )
-                Box(Modifier.height(2.dp))
-                BasicText(
-                    "${health.holdingCount} companies in portfolio",
-                    style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary)
-                )
-            }
-            ScoreBadge(health.compositeScore, health.tier)
-        }
+    // contentPadding = 0 so the glow (below) can bleed to the card's clipped
+    // edge the way the CSS pseudo-element does; the text content restores the
+    // usual 16dp inset itself, one level in.
+    OmahaCard(elevated = true, contentPadding = 0.dp) {
+        Box(Modifier.fillMaxWidth()) {
+            Box(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 50.dp, y = (-50).dp)
+                    .size(140.dp)
+                    .background(
+                        Brush.radialGradient(
+                            colorStops = arrayOf(0f to Omaha.colors.brandGlow, 0.7f to Color.Transparent)
+                        )
+                    )
+            )
 
-        // States what the average is an average of. A composite over three of
-        // five holdings is a different claim from one over all five, and the
-        // engine reports null rather than zero where too few line items were
-        // filed — averaging those in would read "bad" instead of "unmeasured".
-        // While the list is still loading the composite is a partial figure,
-        // and saying "averaged over 1 of 5" would read as a finding about the
-        // holdings rather than as progress. The two cases are worded apart.
-        if (pending > 0) {
-            Box(Modifier.height(10.dp))
-            BasicText(
-                "Scoring… $pending of ${health.holdingCount} still to go.",
-                style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary)
-            )
-        } else if (health.scoredCount != health.holdingCount) {
-            Box(Modifier.height(10.dp))
-            BasicText(
-                if (health.scoredCount == 0)
-                    "None of these could be scored from what has been filed."
-                else
-                    "Averaged over the ${health.scoredCount} of ${health.holdingCount} " +
-                        "that could be scored.",
-                style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary)
-            )
+            Column(Modifier.padding(16.dp)) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        BasicText(
+                            health.watchlistName,
+                            style = OmahaType.title1.toTextStyle(color = Omaha.colors.textPrimary)
+                        )
+                        Box(Modifier.height(2.dp))
+                        BasicText(
+                            "${health.holdingCount} companies in portfolio",
+                            style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary)
+                        )
+                    }
+                    ScoreBadge(health.compositeScore, health.tier)
+                }
+
+                // States what the average is an average of. A composite over three
+                // of five holdings is a different claim from one over all five, and
+                // the engine reports null rather than zero where too few line items
+                // were filed — averaging those in would read "bad" instead of
+                // "unmeasured". While the list is still loading the composite is a
+                // partial figure, and saying "averaged over 1 of 5" would read as a
+                // finding about the holdings rather than as progress. The two cases
+                // are worded apart.
+                if (pending > 0) {
+                    Box(Modifier.height(10.dp))
+                    BasicText(
+                        "Scoring… $pending of ${health.holdingCount} still to go.",
+                        style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary)
+                    )
+                } else if (health.scoredCount != health.holdingCount) {
+                    Box(Modifier.height(10.dp))
+                    BasicText(
+                        if (health.scoredCount == 0)
+                            "None of these could be scored from what has been filed."
+                        else
+                            "Averaged over the ${health.scoredCount} of ${health.holdingCount} " +
+                                "that could be scored.",
+                        style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary)
+                    )
+                }
+            }
         }
     }
 }
@@ -162,15 +187,7 @@ private fun PortfolioHero(health: PortfolioHealth, pending: Int = 0) {
 /** `.stock-card`. */
 @Composable
 private fun HoldingCard(holding: Holding, onClick: () -> Unit, onRemove: () -> Unit = {}) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(OmahaRadius.md))
-            .background(Omaha.colors.bgSurface)
-            .border(1.dp, Omaha.colors.borderSubtle, RoundedCornerShape(OmahaRadius.md))
-            .clickable(onClick = onClick)
-            .padding(14.dp)
-    ) {
+    OmahaCard(onClick = onClick) {
         if (holding.loading) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 BasicText(
@@ -185,7 +202,7 @@ private fun HoldingCard(holding: Holding, onClick: () -> Unit, onRemove: () -> U
                     )
                 }
             }
-            return@Column
+            return@OmahaCard
         }
 
         if (holding.error != null) {
@@ -219,7 +236,7 @@ private fun HoldingCard(holding: Holding, onClick: () -> Unit, onRemove: () -> U
                     style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary)
                 )
             }
-            return@Column
+            return@OmahaCard
         }
 
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {

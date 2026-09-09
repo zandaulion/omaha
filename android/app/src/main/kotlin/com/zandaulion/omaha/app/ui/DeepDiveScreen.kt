@@ -2,7 +2,6 @@ package com.zandaulion.omaha.app.ui
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -36,6 +35,7 @@ import com.zandaulion.omaha.data.Check
 import com.zandaulion.omaha.data.StockDetail
 import com.zandaulion.omaha.data.assessStaleness
 import com.zandaulion.omaha.design.Omaha
+import com.zandaulion.omaha.design.OmahaCard
 import com.zandaulion.omaha.design.OmahaRadius
 import com.zandaulion.omaha.design.OmahaType
 import com.zandaulion.omaha.design.toTextStyle
@@ -167,10 +167,10 @@ private fun Loaded(
                 }
             }
             DeepDiveTab.Dcf -> item {
-                Card { DcfSandbox(stock) }
+                OmahaCard { DcfSandbox(stock) }
             }
             DeepDiveTab.Thesis -> item {
-                Card {
+                OmahaCard {
                     if (thesis == null) {
                         BasicText(
                             "Loading your notes…",
@@ -184,7 +184,7 @@ private fun Loaded(
             DeepDiveTab.Ai -> {
                 when (aiState) {
                     AiUiState.Loading -> item {
-                        Card {
+                        OmahaCard {
                             BasicText(
                                 "Checking for a saved analysis…",
                                 style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textTertiary)
@@ -193,7 +193,7 @@ private fun Loaded(
                     }
                     is AiUiState.Ready -> {
                         item {
-                            Card {
+                            OmahaCard {
                                 AiStatusSection(
                                     aiState,
                                     aiCreditPackPrice,
@@ -208,13 +208,13 @@ private fun Loaded(
                         aiState.summary?.let { summary ->
                             val staleness = assessStaleness(summary, stock)
                             if (staleness.stale) {
-                                item { Card { AiStalenessCard(staleness, onReanalyze = onAiGenerate) } }
+                                item { OmahaCard { AiStalenessCard(staleness, onReanalyze = onAiGenerate) } }
                             }
-                            item { Card { AiVerdictCard(summary) } }
-                            item { Card { AiRatingsCard(summary) } }
-                            item { Card { AiStrengthsRisksCard(summary) } }
-                            item { Card { AiBuyZoneCard(summary) } }
-                            item { Card { AiCaveatsCard(summary) } }
+                            item { OmahaCard { AiVerdictCard(summary) } }
+                            item { OmahaCard { AiRatingsCard(summary) } }
+                            item { OmahaCard { AiStrengthsRisksCard(summary) } }
+                            item { OmahaCard { AiBuyZoneCard(summary) } }
+                            item { OmahaCard { AiCaveatsCard(summary) } }
                         }
                     }
                 }
@@ -315,7 +315,7 @@ private fun SubTabs(selected: DeepDiveTab, onSelect: (DeepDiveTab) -> Unit) {
 
 @Composable
 private fun ScoreCard(stock: StockDetail) {
-    Card {
+    OmahaCard {
         Column(
             Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -343,7 +343,7 @@ private fun ScoreCard(stock: StockDetail) {
 
 @Composable
 private fun PillarsCard(stock: StockDetail) {
-    Card {
+    OmahaCard {
         BasicText(
             "Five pillars",
             style = OmahaType.title2.toTextStyle(color = Omaha.colors.textPrimary)
@@ -360,7 +360,7 @@ private fun PillarsCard(stock: StockDetail) {
 @Composable
 private fun ChecklistSummaryBar(stock: StockDetail) {
     val s = stock.checklistSummary
-    Card {
+    OmahaCard {
         BasicText(
             buildString {
                 append("${s.pass} pass · ${s.watch} watch · ${s.fail} fail")
@@ -393,7 +393,7 @@ private fun ChecklistRow(check: Check) {
         else -> colors.textTertiary to "Not reported"
     }
 
-    Card(onClick = { open = !open }, modifier = Modifier.animateContentSize()) {
+    OmahaCard(onClick = { open = !open }, modifier = Modifier.animateContentSize()) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(
                 Modifier
@@ -487,7 +487,7 @@ private fun ChartCard(
     summary: String? = null,
     chart: @Composable () -> Unit
 ) {
-    Card {
+    OmahaCard {
         BasicText(title, style = OmahaType.title2.toTextStyle(color = Omaha.colors.textPrimary))
         if (summary != null) {
             Box(Modifier.height(4.dp))
@@ -505,28 +505,10 @@ private fun ChartCard(
 
 @Composable
 private fun Slice(title: String, detail: String) {
-    Card {
+    OmahaCard {
         BasicText(title, style = OmahaType.title2.toTextStyle(color = Omaha.colors.textPrimary))
         Box(Modifier.height(6.dp))
         BasicText(detail, style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary))
     }
 }
 
-/** `.card`: the surface every block on this screen sits on. */
-@Composable
-private fun Card(
-    onClick: (() -> Unit)? = null,
-    modifier: Modifier = Modifier,
-    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit
-) {
-    Column(
-        modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(OmahaRadius.md))
-            .background(Omaha.colors.bgSurface)
-            .border(1.dp, Omaha.colors.borderSubtle, RoundedCornerShape(OmahaRadius.md))
-            .let { if (onClick != null) it.clickable(onClick = onClick) else it }
-            .padding(14.dp),
-        content = content
-    )
-}
