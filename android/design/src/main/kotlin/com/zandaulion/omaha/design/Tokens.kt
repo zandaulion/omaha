@@ -132,6 +132,18 @@ object OmahaLayout {
 }
 
 /**
+ * `Modifier.shadow(elevation: Dp, ...)` takes one value, not the
+ * offset/blur/spread/colour `design/tokens.json`'s `shadow` entries carry —
+ * so these are a hand-picked Dp scale keyed to the same tier names, read
+ * off the source blur radii, rather than a literal port of the CSS.
+ */
+object OmahaElevation {
+    val sm = 2.dp
+    val md = 6.dp
+    val lg = 16.dp
+}
+
+/**
  * The type scale from doc 04 §2.
  *
  * Sizes are sp so they honour the reader's font scale; line heights are sp

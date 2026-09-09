@@ -1,7 +1,6 @@
 package com.zandaulion.omaha.app.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -28,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.zandaulion.omaha.data.Holding
 import com.zandaulion.omaha.design.Omaha
+import com.zandaulion.omaha.design.OmahaCard
 import com.zandaulion.omaha.design.OmahaRadius
 import com.zandaulion.omaha.design.OmahaType
 import com.zandaulion.omaha.design.toTextStyle
@@ -126,14 +126,7 @@ private fun Loaded(holdings: List<Holding>) {
             return@Column
         }
 
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(OmahaRadius.md))
-                .background(Omaha.colors.bgSurface)
-                .border(1.dp, Omaha.colors.borderSubtle, RoundedCornerShape(OmahaRadius.md))
-                .padding(12.dp)
-        ) {
+        OmahaCard(contentPadding = 12.dp) {
             CompareRow("", chosen.map { it.ticker }, header = true)
             Divider()
             CompareRow("Industry", chosen.map { h ->

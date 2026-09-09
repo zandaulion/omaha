@@ -1,7 +1,6 @@
 package com.zandaulion.omaha.app.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -32,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.zandaulion.omaha.data.Holding
 import com.zandaulion.omaha.design.Omaha
+import com.zandaulion.omaha.design.OmahaCard
 import com.zandaulion.omaha.design.OmahaRadius
 import com.zandaulion.omaha.design.OmahaType
 import com.zandaulion.omaha.design.toTextStyle
@@ -158,14 +158,7 @@ private fun Loaded(holdings: List<Holding>, onSelect: (String) -> Unit) {
         }
 
         item {
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(OmahaRadius.md))
-                    .background(Omaha.colors.bgSurface)
-                    .border(1.dp, Omaha.colors.borderSubtle, RoundedCornerShape(OmahaRadius.md))
-                    .padding(14.dp)
-            ) {
+            OmahaCard {
                 FilterSlider("Minimum health score", "${filters.minHealth}", filters.minHealth.toFloat(), 0f..95f, 18) {
                     filters = filters.copy(minHealth = it.roundToInt()); preset = ""
                 }
@@ -228,55 +221,48 @@ private fun FilterSlider(
 
 @Composable
 private fun FilterRow(h: Holding, onClick: () -> Unit) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(OmahaRadius.md))
-            .background(Omaha.colors.bgSurface)
-            .border(1.dp, Omaha.colors.borderSubtle, RoundedCornerShape(OmahaRadius.md))
-            .clickable(onClick = onClick)
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(Modifier.weight(1f)) {
-            BasicText(
-                h.ticker,
-                style = OmahaType.bodyMd.toTextStyle(color = Omaha.colors.textPrimary)
-                    .copy(fontFamily = Omaha.fonts.mono)
-            )
-            BasicText(
-                h.name,
-                style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary),
-                maxLines = 1
-            )
-            val ind = when {
-                !h.sector.isNullOrBlank() && !h.industry.isNullOrBlank() && h.sector != h.industry ->
-                    "${h.sector} · ${h.industry}"
-                !h.industry.isNullOrBlank() -> h.industry
-                !h.sector.isNullOrBlank() -> h.sector
-                else -> null
-            }
-            if (ind != null) {
+    OmahaCard(onClick = onClick, contentPadding = 12.dp) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
                 BasicText(
-                    ind,
-                    style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary),
+                    h.ticker,
+                    style = OmahaType.bodyMd.toTextStyle(color = Omaha.colors.textPrimary)
+                        .copy(fontFamily = Omaha.fonts.mono)
+                )
+                BasicText(
+                    h.name,
+                    style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary),
                     maxLines = 1
                 )
+                val ind = when {
+                    !h.sector.isNullOrBlank() && !h.industry.isNullOrBlank() && h.sector != h.industry ->
+                        "${h.sector} · ${h.industry}"
+                    !h.industry.isNullOrBlank() -> h.industry
+                    !h.sector.isNullOrBlank() -> h.sector
+                    else -> null
+                }
+                if (ind != null) {
+                    BasicText(
+                        ind,
+                        style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary),
+                        maxLines = 1
+                    )
+                }
             }
-        }
-        BasicText(
-            "ROIC ${fmtPercent(h.roicPct)}",
-            style = OmahaType.caption
-                .toTextStyle(color = Omaha.colors.textTertiary)
-                .copy(fontFamily = Omaha.fonts.mono)
-        )
-        Box(Modifier.padding(start = 10.dp)) {
             BasicText(
-                h.healthScore?.let { "$it/100" } ?: "Not scored",
+                "ROIC ${fmtPercent(h.roicPct)}",
                 style = OmahaType.caption
-                    .toTextStyle(color = Omaha.colors.textPrimary)
+                    .toTextStyle(color = Omaha.colors.textTertiary)
                     .copy(fontFamily = Omaha.fonts.mono)
             )
+            Box(Modifier.padding(start = 10.dp)) {
+                BasicText(
+                    h.healthScore?.let { "$it/100" } ?: "Not scored",
+                    style = OmahaType.caption
+                        .toTextStyle(color = Omaha.colors.textPrimary)
+                        .copy(fontFamily = Omaha.fonts.mono)
+                )
+            }
         }
     }
 }

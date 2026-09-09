@@ -115,3 +115,18 @@ test('both bundled faces are named, since Roboto cannot reproduce the scale', ()
   assert.strictEqual(tokens.font.mono.bundled, 'JetBrains Mono');
   assert.match(read(KT), /OmahaFonts/);
 });
+
+test('every shadow tier has a Compose elevation, not just a CSS box-shadow', () => {
+  // The gap this closes: `shadow` reached web/tokens.css but had no Kotlin
+  // counterpart, leaving Compose with no elevation value to draw a card
+  // shadow with even where a screen wanted one.
+  const tokens = JSON.parse(read('design/tokens.json'));
+  const names = Object.keys(tokens.shadow).filter((k) => !k.startsWith('$'));
+  assert.deepStrictEqual(names.sort(), ['lg', 'md', 'sm']);
+
+  const kt = read(KT);
+  assert.match(kt, /object OmahaElevation \{/);
+  for (const name of names) {
+    assert.match(kt, new RegExp(`val ${name} = \\d+\\.dp`), `${name} missing from OmahaElevation`);
+  }
+});

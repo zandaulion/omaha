@@ -124,6 +124,19 @@ const pascal = (kebab) => {
   return c[0].toUpperCase() + c.slice(1);
 };
 
+/**
+ * Compose elevation for each `design/tokens.json` shadow tier.
+ *
+ * CSS `box-shadow` (explicit offset/blur/spread/colour) and Compose's
+ * `Modifier.shadow(elevation: Dp, ...)` (one value Android derives an
+ * ambient+spot shadow from) are different models, so these are not parsed
+ * from the JSON's box-shadow strings — they are a hand-picked Dp scale read
+ * off the same strings' blur radii, keyed to the tier names the JSON already
+ * owns. A tier with no entry here fails the generator rather than silently
+ * emitting nothing, the same way a missing colour or radius would.
+ */
+const SHADOW_ELEVATION_DP = { sm: 2, md: 6, lg: 16 };
+
 function buildKotlin() {
   const out = [];
   out.push('package com.zandaulion.omaha.design', '');
@@ -177,6 +190,21 @@ function buildKotlin() {
   out.push('object OmahaLayout {');
   for (const [name, px] of real(tokens.layout)) {
     out.push(`    val ${camel(name)} = ${px}.dp`);
+  }
+  out.push('}', '');
+
+  out.push('/**');
+  out.push(' * `Modifier.shadow(elevation: Dp, ...)` takes one value, not the');
+  out.push(' * offset/blur/spread/colour `design/tokens.json`\'s `shadow` entries carry —');
+  out.push(' * so these are a hand-picked Dp scale keyed to the same tier names, read');
+  out.push(' * off the source blur radii, rather than a literal port of the CSS.');
+  out.push(' */');
+  out.push('object OmahaElevation {');
+  for (const [name] of real(tokens.shadow)) {
+    if (!(name in SHADOW_ELEVATION_DP)) {
+      throw new Error(`No Compose elevation mapping for shadow tier "${name}" — add one to SHADOW_ELEVATION_DP.`);
+    }
+    out.push(`    val ${camel(name)} = ${SHADOW_ELEVATION_DP[name]}.dp`);
   }
   out.push('}', '');
 
