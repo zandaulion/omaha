@@ -372,6 +372,7 @@ function explain(key) {
 }
 var GLOSSARY_KEYS = Object.keys(GLOSSARY);
 export {
+  ALIASES,
   GLOSSARY,
   GLOSSARY_KEYS,
   explain

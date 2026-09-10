@@ -13,6 +13,7 @@
     "prompt": "node scripts/dump-prompt.mjs",
     "bundle:core": "node tools/bundle-core.mjs",
     "tokens": "node tools/gen-tokens.mjs",
+    "glossary": "node tools/gen-glossary.mjs",
     "bundle:functions": "node tools/bundle-functions.mjs"
   },
   "license": "GPL-3.0-or-later",

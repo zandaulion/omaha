@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.zandaulion.omaha.data.Holding
+import com.zandaulion.omaha.design.ExplainableLabel
 import com.zandaulion.omaha.design.Omaha
 import com.zandaulion.omaha.design.OmahaCard
 import com.zandaulion.omaha.design.OmahaRadius
@@ -129,27 +130,41 @@ private fun Loaded(holdings: List<Holding>) {
         OmahaCard(contentPadding = 12.dp) {
             CompareRow("", chosen.map { it.ticker }, header = true)
             Divider()
-            CompareRow("Industry", chosen.map { h ->
-                val sector = h.sector?.takeIf { it.isNotBlank() }
-                val industry = h.industry?.takeIf { it.isNotBlank() }
-                when {
-                    sector != null && industry != null && sector != industry -> "$sector · $industry"
-                    industry != null -> industry
-                    sector != null -> sector
-                    else -> EM_DASH
-                }
-            })
-            CompareRow("Health", chosen.map { h -> h.healthScore?.let { "$it/100" } ?: EM_DASH })
+            CompareRow(
+                "Industry",
+                chosen.map { h ->
+                    val sector = h.sector?.takeIf { it.isNotBlank() }
+                    val industry = h.industry?.takeIf { it.isNotBlank() }
+                    when {
+                        sector != null && industry != null && sector != industry -> "$sector · $industry"
+                        industry != null -> industry
+                        sector != null -> sector
+                        else -> EM_DASH
+                    }
+                },
+                explainKey = "Industry"
+            )
+            CompareRow(
+                "Health",
+                chosen.map { h -> h.healthScore?.let { "$it/100" } ?: EM_DASH },
+                explainKey = "Health score"
+            )
             CompareRow("Price", chosen.map { fmtPrice(it.price, it.currency) })
             CompareRow("Change", chosen.map { fmtPercent(it.changePct, 2, signed = true) })
-            CompareRow("P/E", chosen.map { fmtRatio(it.peRatio, 1, "x") })
-            CompareRow("ROIC", chosen.map { fmtPercent(it.roicPct) })
+            CompareRow("P/E", chosen.map { fmtRatio(it.peRatio, 1, "x") }, explainKey = "Trailing P/E")
+            CompareRow("ROIC", chosen.map { fmtPercent(it.roicPct) }, explainKey = "ROIC")
             // Altman Z is not defined for a bank, so a financial shows ROE in
             // its place rather than an em dash that looks like missing data.
+            // The two metrics explain differently, and which one a given cell
+            // is showing varies company by company within the same row — so
+            // this row explains per value cell rather than by its own label.
             CompareRow(
                 "Altman Z / ROE",
                 chosen.map { h ->
                     if (h.isFinancial) fmtPercent(h.roe) else fmtRatio(h.altmanZ, 2)
+                },
+                valueExplainKeys = chosen.map { h ->
+                    if (h.isFinancial) "Return on equity" else "Altman Z-Score"
                 }
             )
         }
@@ -163,29 +178,46 @@ private fun Loaded(holdings: List<Holding>) {
     }
 }
 
+/**
+ * [explainKey] tags the row's own label — the usual case, one metric per
+ * row. [valueExplainKeys], parallel to [values], tags each value cell
+ * instead; only the Altman Z / ROE row needs it, since which of the two
+ * metrics a cell shows varies company by company within the same row.
+ */
 @Composable
-private fun CompareRow(label: String, values: List<String>, header: Boolean = false) {
+private fun CompareRow(
+    label: String,
+    values: List<String>,
+    header: Boolean = false,
+    explainKey: String? = null,
+    valueExplainKeys: List<String>? = null
+) {
     Row(
         Modifier.fillMaxWidth().padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(Modifier.width(96.dp)) {
-            BasicText(
-                label,
-                style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary)
-            )
+            val labelStyle = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary)
+            if (explainKey != null) {
+                ExplainableLabel(key = explainKey, text = label, style = labelStyle)
+            } else {
+                BasicText(label, style = labelStyle)
+            }
         }
-        for (v in values) {
+        for ((i, v) in values.withIndex()) {
             Box(Modifier.weight(1f)) {
-                BasicText(
-                    v,
-                    style = (if (header) OmahaType.bodySm else OmahaType.caption)
-                        .toTextStyle(
-                            color = if (header) Omaha.colors.textPrimary
-                            else Omaha.colors.textSecondary
-                        )
-                        .copy(fontFamily = Omaha.fonts.mono)
-                )
+                val valueStyle = (if (header) OmahaType.bodySm else OmahaType.caption)
+                    .toTextStyle(
+                        color = if (header) Omaha.colors.textPrimary
+                        else Omaha.colors.textSecondary
+                    )
+                    .copy(fontFamily = Omaha.fonts.mono)
+                val valueKey = valueExplainKeys?.getOrNull(i)
+                if (valueKey != null) {
+                    ExplainableLabel(key = valueKey, text = v, style = valueStyle)
+                } else {
+                    BasicText(v, style = valueStyle)
+                }
             }
         }
     }
