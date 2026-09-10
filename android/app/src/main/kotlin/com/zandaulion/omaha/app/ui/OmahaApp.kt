@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,10 +49,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.zandaulion.omaha.design.LocalExplainOpener
 import com.zandaulion.omaha.design.Omaha
+import com.zandaulion.omaha.design.OmahaExplainSheet
 import com.zandaulion.omaha.design.OmahaLayout
 import com.zandaulion.omaha.design.OmahaRadius
 import com.zandaulion.omaha.design.OmahaType
+import com.zandaulion.omaha.design.Glossary
 import com.zandaulion.omaha.design.toTextStyle
 
 /**
@@ -112,6 +116,9 @@ fun OmahaApp(
     onWatchlistConsumed: () -> Unit = {}
 ) {
     var tab by rememberSaveable { mutableStateOf(OmahaTab.Watchlist) }
+    // Not rememberSaveable: a glossary key is not navigation state, and
+    // surviving a rotation with the sheet re-opened would be surprising.
+    var explainKey by remember { mutableStateOf<String?>(null) }
     val deepDive: DeepDiveViewModel = viewModel()
     val ai: AiViewModel = viewModel()
     // The same instance every OmahaTab.Watchlist/Filter/Compare branch below
@@ -137,6 +144,8 @@ fun OmahaApp(
         onWatchlistConsumed()
     }
 
+    CompositionLocalProvider(LocalExplainOpener provides { explainKey = it }) {
+    Box(Modifier.fillMaxSize()) {
     Column(
         Modifier
             .fillMaxSize()
@@ -223,6 +232,13 @@ fun OmahaApp(
 
         BottomNav(selected = tab, onSelect = { tab = it })
     }
+
+    OmahaExplainSheet(
+        entry = Glossary.explain(explainKey),
+        onClose = { explainKey = null }
+    )
+    } // Box
+    } // CompositionLocalProvider
 }
 
 /**

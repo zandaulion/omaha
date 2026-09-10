@@ -370,7 +370,7 @@ export const GLOSSARY = {
  * measures differently. They point at one entry rather than carrying two
  * descriptions that can drift apart.
  */
-const ALIASES = {
+export const ALIASES = {
   // Row labels in the side-by-side comparison, which word several of these
   // differently from the scorecard.
   'Health score': 'health-score',

@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.zandaulion.omaha.design.ExplainableLabel
 import com.zandaulion.omaha.design.Omaha
 import com.zandaulion.omaha.design.OmahaType
 import com.zandaulion.omaha.design.toTextStyle
@@ -140,7 +141,11 @@ fun PillarMeter(name: String, score: Int, max: Int, pct: Int, measured: Int, of:
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            BasicText(name, style = OmahaType.bodySm.toTextStyle(color = colors.textSecondary))
+            ExplainableLabel(
+                key = name,
+                text = name,
+                style = OmahaType.bodySm.toTextStyle(color = colors.textSecondary)
+            )
             BasicText(
                 "$score/$max",
                 style = OmahaType.bodySm

@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import com.zandaulion.omaha.data.Check
 import com.zandaulion.omaha.data.StockDetail
 import com.zandaulion.omaha.data.assessStaleness
+import com.zandaulion.omaha.design.ExplainableLabel
 import com.zandaulion.omaha.design.Omaha
 import com.zandaulion.omaha.design.OmahaCard
 import com.zandaulion.omaha.design.OmahaRadius
@@ -402,8 +403,9 @@ private fun ChecklistRow(check: Check) {
                     .background(dot)
             )
             Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                BasicText(
-                    check.name,
+                ExplainableLabel(
+                    key = check.name,
+                    text = check.name,
                     style = OmahaType.bodySm.toTextStyle(
                         color = if (check.status == "na") colors.textTertiary else colors.textPrimary
                     )
