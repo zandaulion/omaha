@@ -260,6 +260,16 @@ class WatchlistRepository(
         data class Invalid(val message: String) : AddResult
     }
 
+    /**
+     * One ticker's [Holding], whether or not it is on any watchlist.
+     *
+     * The public entry point for the comparison screen, which compares
+     * companies from any of the three candidate tiers (peers and "looked
+     * up before" are never watchlist members). Just [loadOne] under a name
+     * that reads correctly from a caller with no list in view.
+     */
+    suspend fun holdingFor(ticker: String): Holding = loadOne(ticker)
+
     private suspend fun loadOne(ticker: String): Holding = try {
         val root = json.parseToJsonElement(engine.stock(ticker)).jsonObject
         if (root["ok"]?.jsonPrimitive?.contentOrNull == "true" ||

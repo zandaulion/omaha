@@ -14,6 +14,7 @@
 import { installHostFetch } from './web-shim.js';
 import { setStore } from '../store.js';
 import { getStockData, searchStocks } from '../stock.js';
+import { getPeers } from '../providers/index.js';
 import { __resetSession } from '../providers/yahoo.js';
 
 installHostFetch();
@@ -97,5 +98,22 @@ export async function search(query) {
     return { ok: true, results: await searchStocks(query) };
   } catch (err) {
     return { ok: false, error: { kind: err?.kind ?? 'unknown', message: String(err?.message ?? err) } };
+  }
+}
+
+/**
+ * Yahoo's peers for the comparison picker's "peers of" tier.
+ *
+ * `getPeers` already swallows its own failures and returns `[]` — see
+ * `core/providers/yahoo.js`'s `fetchPeers` — so there is nothing left here
+ * to fail on. The try/catch stays anyway, matching `stock`/`search`: this
+ * function's contract is "never throws", and that should hold even if
+ * `getPeers`'s own guarantee ever changes underneath it.
+ */
+export async function peers(ticker) {
+  try {
+    return { ok: true, tickers: await getPeers(ticker) };
+  } catch {
+    return { ok: false, tickers: [] };
   }
 }

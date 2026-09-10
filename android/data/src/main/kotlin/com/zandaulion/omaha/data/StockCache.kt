@@ -74,6 +74,19 @@ interface StockCacheDao {
     )
     suspend fun sectorFinancials(sector: String, excludeTicker: String): List<String>
 
+    /**
+     * Everything this install has ever scored, best first — the comparison
+     * picker's "looked up before" tier. Unranked rows (score never computed)
+     * are excluded here rather than by the caller, matching the server's own
+     * `/api/compare/candidates`: an unscored row is a mistyped search or a
+     * delisted symbol, and a picker that reads back a typo is noise.
+     */
+    @Query(
+        "SELECT ticker, name, sector, health_score FROM stock_cache " +
+            "WHERE health_score IS NOT NULL ORDER BY health_score DESC"
+    )
+    suspend fun allScored(): List<StockSummaryRow>
+
     @Query("DELETE FROM stock_cache")
     suspend fun clear()
 }

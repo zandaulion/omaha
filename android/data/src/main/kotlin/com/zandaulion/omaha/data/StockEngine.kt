@@ -37,6 +37,9 @@ class StockEngine private constructor(private val bridge: JsBridge) {
     /** Ticker and company-name search, cached rows merged with live results. */
     suspend fun search(query: String): String = bridge.call("search", jsonString(query))
 
+    /** Yahoo's peers for `ticker`, for the comparison picker's "peers of" tier. */
+    suspend fun peers(ticker: String): String = bridge.call("peers", jsonString(ticker))
+
     companion object {
         const val BUNDLE_PATH = "dist/stock.bundle.js"
 
