@@ -2364,6 +2364,7 @@ var getQuote = (ticker) => quoteSource.fetchQuote(ticker);
 var getPriceHistory = (ticker) => quoteSource.fetchPriceHistory(ticker);
 var getFxRate = (from, to) => quoteSource.fetchFxRate(from, to);
 var searchTickers = (query) => quoteSource.search(query);
+var getPeers = (ticker) => quoteSource.fetchPeers(ticker);
 
 // core/model/assemble.js
 var NON_INDUSTRIAL_SECTORS = /* @__PURE__ */ new Set(["Financial Services", "Real Estate"]);
@@ -2858,7 +2859,15 @@ async function search2(query) {
     return { ok: false, error: { kind: err?.kind ?? "unknown", message: String(err?.message ?? err) } };
   }
 }
+async function peers(ticker) {
+  try {
+    return { ok: true, tickers: await getPeers(ticker) };
+  } catch {
+    return { ok: false, tickers: [] };
+  }
+}
 export {
+  peers,
   search2 as search,
   stock
 };

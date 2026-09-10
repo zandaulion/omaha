@@ -221,9 +221,28 @@ fun OmahaApp(
                     )
                 }
                 OmahaTab.Compare -> {
-                    val vm: WatchlistViewModel = viewModel()
-                    val ui by vm.state.collectAsState()
-                    CompareScreen(state = ui, onRetry = { vm.load() })
+                    val vm: CompareViewModel = viewModel()
+                    val tickers by vm.tickers.collectAsState()
+                    val holdings by vm.holdings.collectAsState()
+                    val pillars by vm.pillars.collectAsState()
+                    val candidates by vm.candidates.collectAsState()
+                    // The ticker a scorecard was open on seeds the picker's
+                    // "peers of" tier — arriving from a scorecard, that
+                    // company is the subject, the same reasoning the PWA's
+                    // initCompareView uses.
+                    val deepDiveTicker = (deepDive.state.collectAsState().value as? DeepDiveUiState.Ready)
+                        ?.detail?.ticker
+                    CompareScreen(
+                        tickers = tickers,
+                        holdings = holdings,
+                        pillars = pillars,
+                        candidates = candidates,
+                        seedTicker = deepDiveTicker,
+                        onPick = { vm.pick(it) },
+                        onDrop = { vm.drop(it) },
+                        onOpenPicker = { vm.openPicker(deepDiveTicker) },
+                        onClosePicker = { vm.closePicker() }
+                    )
                 }
 
                 OmahaTab.Settings -> SettingsTab()

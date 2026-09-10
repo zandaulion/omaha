@@ -65,6 +65,20 @@ class AppSettings(private val dao: AppSettingsDao) {
 
     suspend fun setThemeChoice(value: String) = dao.put(AppSettingRow(KEY_THEME, value))
 
+    /**
+     * The comparison screen's picked tickers, so rebuilding a five-way
+     * comparison by hand after every restart isn't the tax that stops the
+     * screen being used. Same key name the PWA's `localStorage` entry uses
+     * (`web/app.js`'s `COMPARE_KEY`) even though the storage backend
+     * differs — it is the same setting on both clients, not two settings
+     * that happen to do the same thing.
+     */
+    suspend fun compareTickers(): List<String> =
+        dao.get(KEY_COMPARE_TICKERS)?.value?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
+
+    suspend fun setCompareTickers(tickers: List<String>) =
+        dao.put(AppSettingRow(KEY_COMPARE_TICKERS, tickers.joinToString(",")))
+
     private suspend fun readFlag(key: String): Boolean =
         dao.get(key)?.value?.let { it == "1" || it.toIntOrNull()?.let { n -> n != 0 } == true } ?: false
 
@@ -74,5 +88,6 @@ class AppSettings(private val dao: AppSettingsDao) {
     companion object {
         const val KEY_AI_INCLUDE_NOTES = "ai_include_notes"
         const val KEY_THEME = "omaha_theme"
+        const val KEY_COMPARE_TICKERS = "omaha_compare_tickers"
     }
 }

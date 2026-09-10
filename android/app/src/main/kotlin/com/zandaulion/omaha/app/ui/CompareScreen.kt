@@ -1,6 +1,7 @@
 package com.zandaulion.omaha.app.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,7 +27,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import com.zandaulion.omaha.data.CompareCandidates
 import com.zandaulion.omaha.data.Holding
+import com.zandaulion.omaha.data.Pillar
 import com.zandaulion.omaha.design.ExplainableLabel
 import com.zandaulion.omaha.design.Omaha
 import com.zandaulion.omaha.design.OmahaCard
@@ -33,148 +37,197 @@ import com.zandaulion.omaha.design.OmahaRadius
 import com.zandaulion.omaha.design.OmahaType
 import com.zandaulion.omaha.design.toTextStyle
 
-/** Up to four, as the PWA allows. More columns than that stop being readable. */
-private const val MAX_COMPARED = 4
-
 /**
  * Side by side, matching `#viewCompare`.
  *
- * Built from the watchlist rather than a ticker search, because the compare
- * view has the same scope as the filter: it works over what is already
- * followed. A search box here would imply the same market-wide reach the
- * rename in phase 1 was about removing.
- *
- * Rows are the measures; columns are the companies. That way adding a fourth
- * company widens the table rather than reflowing it, and a metric stays on one
- * line where the eye can run along it.
+ * Rows are the measures; columns are the picked companies — a metric stays
+ * on one line where the eye can run along it. Unlike the four-column
+ * version this replaces, the picked set is no longer a filter over the
+ * current watchlist: [tickers] can include Yahoo's peers or anything this
+ * install has scored before, which is the whole point of [ComparePicker]'s
+ * three tiers — so each ticker is fetched on its own via [CompareViewModel].
  */
 @Composable
-fun CompareScreen(state: WatchlistUiState, onRetry: () -> Unit) {
-    when (state) {
-        is WatchlistUiState.Loading -> CentredMessage(
-            "Scoring…", "Compare works across the companies you already follow."
-        )
-        is WatchlistUiState.Failed -> CentredMessage(
-            "Could not load", state.message, actionLabel = "Try again", onAction = onRetry
-        )
-        is WatchlistUiState.Ready -> Loaded(state.view.holdings.filter { it.error == null })
+fun CompareScreen(
+    tickers: List<String>,
+    holdings: Map<String, Holding>,
+    pillars: Map<String, List<Pillar>>,
+    candidates: CompareCandidates?,
+    seedTicker: String?,
+    onPick: (String) -> Unit,
+    onDrop: (String) -> Unit,
+    onOpenPicker: () -> Unit,
+    onClosePicker: () -> Unit
+) {
+    var pickerOpen by remember { mutableStateOf(false) }
+
+    Box(Modifier.fillMaxSize()) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            BasicText("Compare", style = OmahaType.title1.toTextStyle(color = Omaha.colors.textPrimary))
+            BasicText(
+                "Pick up to $MAX_COMPARED — your lists, Yahoo's peers, or anything looked up before.",
+                style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary)
+            )
+
+            CompareSlots(
+                tickers = tickers,
+                onDrop = onDrop,
+                onAdd = {
+                    pickerOpen = true
+                    onOpenPicker()
+                }
+            )
+
+            if (tickers.isEmpty()) {
+                BasicText(
+                    "Nothing picked.",
+                    style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textTertiary)
+                )
+            } else {
+                OmahaCard(contentPadding = 12.dp) {
+                    CompareRow("", tickers, header = true)
+                    Divider()
+                    CompareRow(
+                        "Industry",
+                        tickers.map { t -> cell(holdings[t]) { h -> industryOf(h) } },
+                        explainKey = "Industry"
+                    )
+                    CompareRow(
+                        "Health",
+                        tickers.map { t -> cell(holdings[t]) { h -> h.healthScore?.let { "$it/100" } ?: EM_DASH } },
+                        explainKey = "Health score"
+                    )
+                    CompareRow("Price", tickers.map { t -> cell(holdings[t]) { h -> fmtPrice(h.price, h.currency) } })
+                    CompareRow("Change", tickers.map { t -> cell(holdings[t]) { h -> fmtPercent(h.changePct, 2, signed = true) } })
+                    CompareRow(
+                        "P/E",
+                        tickers.map { t -> cell(holdings[t]) { h -> fmtRatio(h.peRatio, 1, "x") } },
+                        explainKey = "Trailing P/E"
+                    )
+                    CompareRow(
+                        "ROIC",
+                        tickers.map { t -> cell(holdings[t]) { h -> fmtPercent(h.roicPct) } },
+                        explainKey = "ROIC"
+                    )
+                    // Altman Z is not defined for a bank, so a financial shows ROE in
+                    // its place rather than an em dash that looks like missing data.
+                    // The two metrics explain differently, and which one a given cell
+                    // is showing varies company by company — so this row explains per
+                    // value cell rather than by its own label.
+                    CompareRow(
+                        "Altman Z / ROE",
+                        tickers.map { t ->
+                            cell(holdings[t]) { h -> if (h.isFinancial) fmtPercent(h.roe) else fmtRatio(h.altmanZ, 2) }
+                        },
+                        valueExplainKeys = tickers.map { t ->
+                            when (holdings[t]?.isFinancial) {
+                                true -> "Return on equity"
+                                else -> "Altman Z-Score"
+                            }
+                        }
+                    )
+                }
+
+                BasicText(
+                    "Measures that do not apply to a business are shown as not reported rather " +
+                        "than as a low score — a bank has no Altman Z, and treating that as a " +
+                        "failing grade would rank it below companies it is not comparable to.",
+                    style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary)
+                )
+
+                val radarSeries = tickers.mapNotNull { t -> pillars[t]?.let { t to it } }
+                RadarChart(radarSeries)
+            }
+        }
+
+        if (pickerOpen) {
+            ComparePicker(
+                seedTicker = seedTicker,
+                candidates = candidates,
+                picked = tickers,
+                maxPicked = MAX_COMPARED,
+                onPick = onPick,
+                onClose = {
+                    pickerOpen = false
+                    onClosePicker()
+                }
+            )
+        }
     }
 }
 
-@Composable
-private fun Loaded(holdings: List<Holding>) {
-    var selected by remember {
-        mutableStateOf(holdings.take(3).map { it.ticker }.toSet())
+/** A cell reads "…" while its [Holding] is still loading, and blank ([EM_DASH]-shaped) if it errored — the field function itself decides the errored/em-dash text. */
+private fun cell(holding: Holding?, field: (Holding) -> String): String =
+    if (holding == null || holding.loading) "…" else field(holding)
+
+private fun industryOf(h: Holding): String {
+    val sector = h.sector?.takeIf { it.isNotBlank() }
+    val industry = h.industry?.takeIf { it.isNotBlank() }
+    return when {
+        sector != null && industry != null && sector != industry -> "$sector · $industry"
+        industry != null -> industry
+        sector != null -> sector
+        else -> EM_DASH
     }
+}
 
-    val chosen = holdings.filter { it.ticker in selected }.take(MAX_COMPARED)
-
-    Column(
-        Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+/** The picked tickers as removable chips, an "Add" chip while there's room, then empty placeholders — the limit is visible before it bites. */
+@Composable
+private fun CompareSlots(tickers: List<String>, onDrop: (String) -> Unit, onAdd: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        BasicText(
-            "Compare",
-            style = OmahaType.title1.toTextStyle(color = Omaha.colors.textPrimary)
-        )
-        BasicText(
-            "Pick up to $MAX_COMPARED from your watchlist.",
-            style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary)
-        )
-
-        Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            for (h in holdings) {
-                val on = h.ticker in selected
-                val full = selected.size >= MAX_COMPARED && !on
-                Box(
-                    Modifier
-                        .clip(RoundedCornerShape(OmahaRadius.pill))
-                        .background(
-                            if (on) Omaha.colors.brandCyan else Omaha.colors.bgSurfaceSubtle
-                        )
-                        .clickable(enabled = !full) {
-                            selected = if (on) selected - h.ticker else selected + h.ticker
-                        }
-                        .padding(horizontal = 12.dp, vertical = 7.dp)
-                ) {
-                    BasicText(
-                        h.ticker,
-                        style = OmahaType.caption
-                            .toTextStyle(
-                                color = when {
-                                    on -> Omaha.colors.bgCanvas
-                                    full -> Omaha.colors.textTertiary
-                                    else -> Omaha.colors.textSecondary
-                                }
-                            )
-                            .copy(fontFamily = Omaha.fonts.mono)
-                    )
+        for (t in tickers) {
+            Row(
+                Modifier
+                    .clip(RoundedCornerShape(OmahaRadius.pill))
+                    .background(Omaha.colors.bgSurfaceSubtle)
+                    .clickable { onDrop(t) }
+                    .padding(horizontal = 12.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                BasicText(
+                    t,
+                    style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary)
+                        .copy(fontFamily = Omaha.fonts.mono)
+                )
+                Box(Modifier.padding(start = 6.dp)) {
+                    BasicText("✕", style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary))
                 }
             }
         }
 
-        if (chosen.isEmpty()) {
-            BasicText(
-                "Nothing selected.",
-                style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textTertiary)
-            )
-            return@Column
+        if (tickers.size < MAX_COMPARED) {
+            Box(
+                Modifier
+                    .clip(RoundedCornerShape(OmahaRadius.pill))
+                    .background(Omaha.colors.brandCyan)
+                    .clickable(onClick = onAdd)
+                    .padding(horizontal = 12.dp, vertical = 7.dp)
+            ) {
+                BasicText(
+                    "+ Add",
+                    style = OmahaType.caption.toTextStyle(color = Omaha.colors.bgCanvas)
+                )
+            }
         }
 
-        OmahaCard(contentPadding = 12.dp) {
-            CompareRow("", chosen.map { it.ticker }, header = true)
-            Divider()
-            CompareRow(
-                "Industry",
-                chosen.map { h ->
-                    val sector = h.sector?.takeIf { it.isNotBlank() }
-                    val industry = h.industry?.takeIf { it.isNotBlank() }
-                    when {
-                        sector != null && industry != null && sector != industry -> "$sector · $industry"
-                        industry != null -> industry
-                        sector != null -> sector
-                        else -> EM_DASH
-                    }
-                },
-                explainKey = "Industry"
-            )
-            CompareRow(
-                "Health",
-                chosen.map { h -> h.healthScore?.let { "$it/100" } ?: EM_DASH },
-                explainKey = "Health score"
-            )
-            CompareRow("Price", chosen.map { fmtPrice(it.price, it.currency) })
-            CompareRow("Change", chosen.map { fmtPercent(it.changePct, 2, signed = true) })
-            CompareRow("P/E", chosen.map { fmtRatio(it.peRatio, 1, "x") }, explainKey = "Trailing P/E")
-            CompareRow("ROIC", chosen.map { fmtPercent(it.roicPct) }, explainKey = "ROIC")
-            // Altman Z is not defined for a bank, so a financial shows ROE in
-            // its place rather than an em dash that looks like missing data.
-            // The two metrics explain differently, and which one a given cell
-            // is showing varies company by company within the same row — so
-            // this row explains per value cell rather than by its own label.
-            CompareRow(
-                "Altman Z / ROE",
-                chosen.map { h ->
-                    if (h.isFinancial) fmtPercent(h.roe) else fmtRatio(h.altmanZ, 2)
-                },
-                valueExplainKeys = chosen.map { h ->
-                    if (h.isFinancial) "Return on equity" else "Altman Z-Score"
-                }
+        val empty = MAX_COMPARED - tickers.size - if (tickers.size < MAX_COMPARED) 1 else 0
+        repeat(empty) {
+            Box(
+                Modifier
+                    .size(width = 48.dp, height = 30.dp)
+                    .clip(RoundedCornerShape(OmahaRadius.pill))
+                    .border(1.dp, Omaha.colors.borderSubtle, RoundedCornerShape(OmahaRadius.pill))
             )
         }
-
-        BasicText(
-            "Measures that do not apply to a business are shown as not reported rather " +
-                "than as a low score — a bank has no Altman Z, and treating that as a " +
-                "failing grade would rank it below companies it is not comparable to.",
-            style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary)
-        )
     }
 }
 

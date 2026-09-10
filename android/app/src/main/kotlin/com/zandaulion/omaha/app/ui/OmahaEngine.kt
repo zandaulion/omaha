@@ -6,6 +6,7 @@ import com.zandaulion.omaha.data.AlertEngine
 import com.zandaulion.omaha.data.AlertRepository
 import com.zandaulion.omaha.data.AuthRepository
 import com.zandaulion.omaha.data.BillingRepository
+import com.zandaulion.omaha.data.CompareCandidatesRepository
 import com.zandaulion.omaha.data.OmahaDatabaseFactory
 import com.zandaulion.omaha.data.OmahaStore
 import com.zandaulion.omaha.data.RelayRepository
@@ -48,7 +49,8 @@ object OmahaEngine {
         val billing: BillingRepository,
         val relay: RelayRepository,
         val ai: AiRepository,
-        val widget: WidgetRepository
+        val widget: WidgetRepository,
+        val compareCandidates: CompareCandidatesRepository
     )
 
     @Synchronized
@@ -98,7 +100,8 @@ object OmahaEngine {
             billing = BillingRepository(app),
             relay = relay,
             ai = AiRepository(details, theses, settings, relay, store.aiSummaries),
-            widget = WidgetRepository(watchlists, store.alerts, alertEngine)
+            widget = WidgetRepository(watchlists, store.alerts, alertEngine),
+            compareCandidates = CompareCandidatesRepository(watchlists, store.stockCache, engine)
         )
     }
 }
