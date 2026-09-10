@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Adaptive icon background layer.
+
+  Full 108x108 bleed, unrounded — the launcher's own mask (circle, squircle,
+  rounded square, whatever the OEM picked) supplies the shape. Same navy
+  diagonal (#0F172A -> #020617) as web/icons/icon.svg's bgGrad, so the app
+  icon and the PWA's are the same mark rather than a reinterpretation.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <path android:pathData="M0,0h108v108h-108z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="0"
+                android:startY="0"
+                android:endX="108"
+                android:endY="108">
+                <item android:offset="0" android:color="#FF0F172A" />
+                <item android:offset="1" android:color="#FF020617" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>

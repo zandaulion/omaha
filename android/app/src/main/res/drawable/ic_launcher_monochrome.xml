@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Adaptive icon monochrome layer (Android 13+ themed/Material You icons).
+
+  Same silhouette as ic_launcher_foreground.xml, flattened to one colour —
+  the system replaces it with its own tint at draw time, so the actual
+  colour value here is arbitrary. Kept as the same hat/ring/spark mark
+  rather than swapping in ic_stat_omaha's ring-and-bars motif, so a themed
+  home screen icon still reads as the same brand mark as the full-colour one.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <group
+        android:pivotX="256"
+        android:pivotY="256"
+        android:scaleX="0.18"
+        android:scaleY="0.18"
+        android:translateX="-202"
+        android:translateY="-202">
+
+        <path
+            android:pathData="M256,66 A190,190 0 1,1 256,446 A190,190 0 1,1 256,66"
+            android:strokeColor="#FF000000"
+            android:strokeWidth="8"
+            android:fillColor="#00000000" />
+
+        <path
+            android:pathData="M256,66 A190,190 0 1,1 66.06,251.36"
+            android:strokeColor="#FF000000"
+            android:strokeWidth="16"
+            android:strokeLineCap="round"
+            android:fillColor="#00000000" />
+
+        <group
+            android:translateX="136"
+            android:translateY="126">
+
+            <path
+                android:pathData="M30,190 A90,18 0 1,1 210,190 A90,18 0 1,1 30,190"
+                android:fillColor="#FF000000"
+                android:strokeColor="#FF000000"
+                android:strokeWidth="4" />
+
+            <path
+                android:pathData="M60,185 L75,70 C75,60 85,55 95,55 L145,55 C155,55 165,60 165,70 L180,185 Z"
+                android:fillColor="#FF000000"
+                android:strokeColor="#FF000000"
+                android:strokeWidth="6" />
+
+            <path
+                android:pathData="M67,145 L173,145 L177,175 L63,175 Z"
+                android:fillColor="#FF000000" />
+
+            <path
+                android:pathData="M105,152 L135,152 L118,160 L135,168 L105,168"
+                android:strokeColor="#FF000000"
+                android:strokeWidth="3.5"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round"
+                android:fillColor="#00000000" />
+
+            <path
+                android:pathData="M120,15 L128,35 L148,43 L128,51 L120,71 L112,51 L92,43 L112,35 Z"
+                android:fillColor="#FF000000" />
+        </group>
+    </group>
+</vector>
