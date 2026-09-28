@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -44,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.ColorFilter
@@ -190,6 +192,7 @@ fun OmahaApp(
     val systemDark = isSystemInDarkTheme()
     val appContext = LocalContext.current
     val appScope = rememberCoroutineScope()
+    val isTablet = LocalConfiguration.current.smallestScreenWidthDp >= 600
 
     LaunchedEffect(initialTicker) {
         val ticker = initialTicker ?: return@LaunchedEffect
@@ -222,6 +225,20 @@ fun OmahaApp(
         navigateBack()
     }
 
+    val selectedPrimaryTab = if (
+        tab == OmahaTab.Scorecard && requestedSubtab == DeepDiveTab.Thesis
+    ) OmahaTab.Review else tab
+    fun selectPrimaryTab(selected: OmahaTab) {
+        if (selected == OmahaTab.Scorecard) {
+            requestedSubtab = DeepDiveTab.Overview
+            navigationRequest++
+            if (deepDive.state.value is DeepDiveUiState.Empty) appScope.launch {
+                OmahaEngine.get(appContext).settings.lastViewedTicker()?.let { openCompany(it) }
+            }
+        }
+        navigateTo(selected)
+    }
+
     CompositionLocalProvider(LocalExplainOpener provides { explainKey = it }) {
     Box(Modifier.fillMaxSize()) {
     Column(
@@ -242,12 +259,25 @@ fun OmahaApp(
             },
             onSettings = { settingsOpen = true }
         )
-        Box(
+        Row(
             Modifier
                 .weight(1f)
                 .fillMaxWidth()
         ) {
-            when (tab) {
+            if (isTablet) {
+                TabletNavigationRail(
+                    selected = selectedPrimaryTab,
+                    onSelect = ::selectPrimaryTab
+                )
+            }
+            Box(
+                Modifier.weight(1f).fillMaxHeight(),
+                contentAlignment = Alignment.TopCenter
+            ) {
+                Box(
+                    Modifier.fillMaxSize().widthIn(max = OmahaLayout.maxAppWidth)
+                ) {
+                when (tab) {
                 OmahaTab.Review -> ReviewScreen(
                     state = reviewState,
                     lists = watchlistRows,
@@ -362,20 +392,13 @@ fun OmahaApp(
                     )
                 }
 
-                OmahaTab.Settings -> SettingsTab()
-            }
-        }
-
-        BottomNav(selected = if (tab == OmahaTab.Scorecard && requestedSubtab == DeepDiveTab.Thesis) OmahaTab.Review else tab, onSelect = { selected ->
-            if (selected == OmahaTab.Scorecard) {
-                requestedSubtab = DeepDiveTab.Overview
-                navigationRequest++
-                if (deepDive.state.value is DeepDiveUiState.Empty) appScope.launch {
-                    OmahaEngine.get(appContext).settings.lastViewedTicker()?.let { openCompany(it) }
+                    OmahaTab.Settings -> SettingsTab()
                 }
             }
-            navigateTo(selected)
-        })
+        }
+        }
+
+        if (!isTablet) BottomNav(selectedPrimaryTab, ::selectPrimaryTab)
     }
 
     OmahaExplainSheet(
@@ -402,7 +425,10 @@ fun OmahaApp(
             properties = DialogProperties(usePlatformDefaultWidth = false)
         ) {
             Column(
-                Modifier.fillMaxWidth(0.94f).fillMaxHeight(0.90f)
+                Modifier
+                    .fillMaxWidth(if (isTablet) 0.82f else 0.94f)
+                    .widthIn(max = 760.dp)
+                    .fillMaxHeight(0.90f)
                     .clip(RoundedCornerShape(OmahaRadius.lg))
                     .background(Omaha.colors.bgSurface)
             ) {
@@ -630,6 +656,63 @@ private fun SearchAction(label: String, primary: Boolean = false, onClick: () ->
         BasicText(label, style = OmahaType.caption.toTextStyle(
             color = if (primary) Color.White else Omaha.colors.textPrimary
         ))
+    }
+}
+
+/** Primary navigation for screens with at least 600 dp of usable width. */
+@Composable
+private fun TabletNavigationRail(selected: OmahaTab, onSelect: (OmahaTab) -> Unit) {
+    Column(
+        Modifier
+            .width(96.dp)
+            .fillMaxHeight()
+            .background(Omaha.colors.bgSurface)
+            .border(1.dp, Omaha.colors.borderSubtle)
+            .padding(horizontal = 8.dp, vertical = 16.dp)
+            .windowInsetsPadding(WindowInsets.navigationBars),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        for (tab in listOf(OmahaTab.Review, OmahaTab.Watchlist, OmahaTab.Scorecard, OmahaTab.Compare)) {
+            TabletNavTab(
+                tab = tab,
+                active = tab == selected || (tab == OmahaTab.Scorecard && selected == OmahaTab.Filter),
+                onClick = { onSelect(tab) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun TabletNavTab(tab: OmahaTab, active: Boolean, onClick: () -> Unit) {
+    val tint = if (active) Omaha.colors.brandCyan else Omaha.colors.textTertiary
+    val shape = RoundedCornerShape(OmahaRadius.md)
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(if (active) Omaha.colors.bgSurfaceSubtle else Color.Transparent)
+            .border(
+                width = 1.dp,
+                color = if (active) Omaha.colors.borderProminent else Color.Transparent,
+                shape = shape
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 6.dp, vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Image(
+            painter = rememberVectorPainter(tab.icon),
+            contentDescription = tab.label,
+            colorFilter = ColorFilter.tint(tint),
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.size(22.dp)
+        )
+        BasicText(
+            tab.label,
+            style = OmahaType.caption.toTextStyle(color = tint).copy(textAlign = TextAlign.Center)
+        )
     }
 }
 

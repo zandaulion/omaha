@@ -78,7 +78,7 @@ dependencies {
     // Declared for the same reason: the numeric-locale check pokes QuickJS
     // directly rather than through an engine class, because what it is asking
     // about is the runtime underneath them all.
-    implementation("io.github.dokar3:quickjs-kt-android:1.0.0-alpha13")
+    implementation("io.github.dokar3:quickjs-kt-android:1.0.15")
 
     implementation("androidx.room:room-runtime:2.7.1")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")

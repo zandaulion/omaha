@@ -15,7 +15,8 @@ import kotlin.math.roundToInt
  * QuickJS, because a second implementation is a second set of answers. The
  * sandbox is the exception for one reason: it recomputes on every slider frame.
  * A QuickJS call costs a fresh interpreter and a bundle parse — about 21 ms per
- * call under the alpha13 workaround (doc 13 §24) — which a drag cannot afford.
+ * call with the conservative per-call interpreter path (doc 13 §24) — which a
+ * drag cannot afford.
  *
  * `core/analysis/dcf.js` remains the definition. `scripts/gen-dcf-vectors.mjs`
  * records its output into `core/__fixtures__/dcf.vectors.json`, and

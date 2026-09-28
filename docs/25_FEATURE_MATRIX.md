@@ -5,7 +5,7 @@ Both clients aim for the same financial meaning and comparable workflow. Platfor
 | Capability | PWA | Android | Notes |
 |---|---|---|---|
 | Default view | Watchlist | Watchlist | Explicit links/notification intents can override |
-| Bottom navigation | Review, Watchlist, Research, Compare | Review, Watchlist, Research, Compare | Filter is reached from actions, not a bottom tab |
+| Primary navigation | Bottom bar: Review, Watchlist, Research, Compare | Bottom bar on phones; navigation rail on tablets | Filter is reached from actions, not a primary tab |
 | Search | Server-backed cache + provider | Room cache + provider through QuickJS | Same provider seam/ranking intent |
 | Watchlists | SQLite on self-hosted server | Room on device | Shared backup format, no live synchronization |
 | Starter lists | 4 lists, including Promising Under $20 | 3 lists | The first three and default contents match |
