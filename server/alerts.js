@@ -177,8 +177,8 @@ function recordAndSend(alert) {
   return broadcastPush({
     title: alert.title,
     body: alert.body,
-    icon: '/icons/icon-192.png',
-    badge: '/icons/badge-96.png',
+    icon: '/icons/icon-192.png?v=rr1',
+    badge: '/icons/badge-96.png?v=rr1',
     // One bubble per ticker per alert type; the weekly digest has no ticker so
     // it gets a key of its own rather than colliding on an empty one.
     tag: alert.ticker ? `${alert.type}:${alert.ticker}` : alert.type,

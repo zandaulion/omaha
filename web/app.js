@@ -3739,8 +3739,8 @@ async function handleEnablePush() {
     if (reg.showNotification) {
       reg.showNotification('Pocket Omaha 🎩', {
         body: 'Notifications are on. Recorded financial changes will help you decide what to review.',
-        icon: '/icons/icon-192.png',
-        badge: '/icons/badge-96.png',
+        icon: '/icons/icon-192.png?v=rr1',
+        badge: '/icons/badge-96.png?v=rr1',
         tag: 'push-enabled',
         data: { url: '/' }
       });

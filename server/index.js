@@ -123,8 +123,8 @@ app.post('/api/push/test', requireDeviceAuth, async (req, res) => {
   const payload = {
     title: '🎩 Pocket Omaha — test',
     body: 'Notifications are working. Real alerts look like this: health changes, distress signals and entry points.',
-    icon: '/icons/icon-192.png',
-    badge: '/icons/badge-96.png',
+    icon: '/icons/icon-192.png?v=rr1',
+    badge: '/icons/badge-96.png?v=rr1',
     tag: 'TEST_NOTIFICATION',
     data: { url: '/', type: 'TEST_NOTIFICATION', severity: 'info' }
   };
