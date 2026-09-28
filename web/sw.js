@@ -28,15 +28,15 @@ const STATIC_ASSETS = [
   // because only web/ is served -- app.js cannot reach across to core/.
   '/glossary.js',
   '/manifest.webmanifest',
-  '/icons/icon.svg',
-  '/icons/favicon.svg',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-  '/icons/icon-maskable-192.png',
-  '/icons/icon-maskable-512.png',
+  '/icons/icon.svg?v=rr1',
+  '/icons/favicon.svg?v=rr1',
+  '/icons/icon-192.png?v=rr1',
+  '/icons/icon-512.png?v=rr1',
+  '/icons/icon-maskable-192.png?v=rr1',
+  '/icons/icon-maskable-512.png?v=rr1',
   // Precached: a push can arrive while offline, and a badge that 404s leaves
   // Android drawing the Chrome logo instead.
-  '/icons/badge-96.png'
+  '/icons/badge-96.png?v=rr1'
 ];
 
 importScripts('/sw-update.js');
@@ -118,8 +118,8 @@ self.addEventListener('push', (event) => {
   const d = data.data || {};
   const options = {
     body: data.body || 'Financial statement analysis ready.',
-    icon: '/icons/icon-192.png',
-    badge: '/icons/badge-96.png',
+    icon: '/icons/icon-192.png?v=rr1',
+    badge: '/icons/badge-96.png?v=rr1',
     // Tagged per ticker and alert type so a repeat replaces the previous
     // bubble instead of stacking another one on the lock screen. renotify
     // keeps it alerting, so a genuine second event is not delivered silently.

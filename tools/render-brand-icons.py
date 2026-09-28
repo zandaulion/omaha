@@ -4,6 +4,7 @@
 from pathlib import Path
 from math import cos, radians, sin
 import json
+import re
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
@@ -27,6 +28,14 @@ PALE_GOLD = (255, 243, 180, 255)
 OUTER = [(256, 129), (377, 217), (331, 359), (181, 359), (135, 217)]
 INNER = [(256, 160), (345, 227), (303, 321), (196, 339), (188, 234)]
 CENTER = (256, 256)
+
+# Every link to an icon carries this, so a new design gets new addresses.
+# The icons are served with a week's max-age under fixed names; without a new
+# address a phone keeps drawing the old icon, and an installed PWA's home-screen
+# icon is refreshed from that cached copy. Change it whenever the art changes.
+ICON_VERSION = "rr1"
+ICON_URL = re.compile(r"(/icons/[a-z0-9-]+\.(?:png|svg))(?:\?v=[\w.-]+)?(?=['\"])")
+LINKING_FILES = ["web/manifest.webmanifest", "web/index.html", "web/sw.js", "web/app.js", "server/alerts.js", "server/index.js"]
 
 
 def q(value):
@@ -295,12 +304,19 @@ def update_manifest():
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
+def stamp_icon_urls():
+    for relative in LINKING_FILES:
+        path = ROOT / relative
+        source = path.read_text(encoding="utf-8")
+        path.write_text(ICON_URL.sub(rf"\1?v={ICON_VERSION}", source), encoding="utf-8")
+
+
 def update_service_worker():
     path = ROOT / "web" / "sw.js"
     source = path.read_text(encoding="utf-8")
-    needle = "  '/icons/icon-512.png',\n"
-    addition = needle + "  '/icons/icon-maskable-192.png',\n  '/icons/icon-maskable-512.png',\n"
-    if "'/icons/icon-maskable-192.png'" not in source:
+    needle = f"  '/icons/icon-512.png?v={ICON_VERSION}',\n"
+    addition = needle + f"  '/icons/icon-maskable-192.png?v={ICON_VERSION}',\n  '/icons/icon-maskable-512.png?v={ICON_VERSION}',\n"
+    if "'/icons/icon-maskable-192.png" not in source:
         if needle not in source:
             raise RuntimeError("Could not find PWA icon cache list")
         path.write_text(source.replace(needle, addition, 1), encoding="utf-8")
@@ -331,12 +347,13 @@ def main():
     (ANDROID / "drawable" / "ic_launcher_monochrome.xml").write_text(android_monochrome(), encoding="utf-8")
     (ANDROID / "drawable" / "ic_stat_omaha.xml").write_text(android_status(), encoding="utf-8")
     update_manifest()
+    stamp_icon_urls()
     update_service_worker()
 
     # Apple supplies its own mask, so give it the opaque full-bleed asset.
     index = ROOT / "web" / "index.html"
     html = index.read_text(encoding="utf-8")
-    html = html.replace('href="/icons/icon-192.png">', 'href="/icons/icon-maskable-192.png">', 1)
+    html = html.replace(f'href="/icons/icon-192.png?v={ICON_VERSION}">', f'href="/icons/icon-maskable-192.png?v={ICON_VERSION}">', 1)
     index.write_text(html, encoding="utf-8")
 
     print("Rendered Review Radar icon family")
