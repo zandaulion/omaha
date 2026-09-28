@@ -1,5 +1,6 @@
 import java.io.FileInputStream
 import java.util.Properties
+import org.gradle.api.tasks.Sync
 
 plugins {
     id("com.android.application")
@@ -25,6 +26,14 @@ require(keystorePropertiesFile.exists()) {
 }
 val keystoreProperties = Properties().apply { load(FileInputStream(keystorePropertiesFile)) }
 
+val screenshotFixturesDir = layout.buildDirectory.dir("generated/screenshotFixtures")
+val stageScreenshotFixtures = tasks.register<Sync>("stageScreenshotFixtures") {
+    from(rootProject.file("../core/__fixtures__")) {
+        include("AAPL.model.json", "JPM.model.json", "NOK.model.json")
+    }
+    into(screenshotFixturesDir)
+}
+
 /**
  * The Compose client. Doc 13 §11 step 4; `docs/16_ROADMAP.md` phase 4.
  *
@@ -45,12 +54,16 @@ android {
         targetSdk = 37
         versionCode = 4
         versionName = "0.4"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     sourceSets {
         getByName("main") {
             // The engine, staged by :engine-android, exactly as :selftest reads it.
             assets.srcDir("../engine-android/build/generated/coreAssets")
+        }
+        getByName("androidTest") {
+            assets.srcDir(screenshotFixturesDir.get().asFile)
         }
     }
 
@@ -132,4 +145,13 @@ dependencies {
     // repeating the other's dependency declarations.
 
     debugImplementation("androidx.compose.ui:ui-tooling")
+
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
+    androidTestImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
+}
+
+tasks.matching { it.name == "mergeDebugAndroidTestAssets" }.configureEach {
+    dependsOn(stageScreenshotFixtures)
 }

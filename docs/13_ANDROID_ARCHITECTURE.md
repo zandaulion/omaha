@@ -791,11 +791,11 @@ size is still unmeasured, because the spike is a JVM module and carries no APK.
 targets, so the parity question was answerable without an emulator, in seconds,
 in CI. The Android variant follows.
 
-### The dependency is pre-release
+### The original dependency was pre-release
 
-`io.github.dokar3:quickjs-kt` is at **1.0.0-alpha13**, which doc 13 did not
-account for when D1 was decided. The spike found two defects in it. Neither
-changes the decision — the binding is a thin JNI layer over QuickJS itself,
+The original spike used `io.github.dokar3:quickjs-kt` **1.0.0-alpha13**, which
+doc 13 did not account for when D1 was decided. The spike found two defects in
+it. Neither changes the decision — the binding is a thin JNI layer over QuickJS itself,
 which is mature and widely embedded — but both had to be worked around, and
 both are the kind that fail silently rather than loudly.
 
@@ -819,10 +819,10 @@ bindings return.
 *Workaround*: one interpreter per scoring call. The measurements above show
 that is affordable.
 
-`QuickJsBindingQuirksTest` pins both defects. **A failure there is good news**:
-it means an upgrade fixed one, and `ScoringEngine` can drop the corresponding
-workaround. Without those tests the workarounds would be carried indefinitely
-on the strength of a comment.
+The app upgraded to **1.0.15** in September 2026. Both defects are fixed in that
+release, and `QuickJsBindingQuirksTest` now prevents them from regressing. The
+bridge temporarily retains the conservative fresh-interpreter and ASCII-safe
+result paths until the stable binding has received wider device soak testing.
 
 ### What the spike did not cover
 
@@ -967,9 +967,9 @@ Pixel 9a emulator via the instrumented suite.
 >
 > Its cached read came in at **21 ms — the same figure as the Fold 4**, which is
 > what §24 predicts. That number is dominated by starting a fresh interpreter and
-> re-parsing the bundle, so it tracks the alpha13 workaround rather than the
-> hardware, and reproducing across two very different phones is the evidence for
-> that reading.
+> re-parsing the bundle, so it tracks the then-current alpha13 workaround rather
+> than the hardware, and reproducing across two very different phones is the
+> evidence for that reading.
 
 | Artifact | Size |
 |---|---|
@@ -1241,10 +1241,12 @@ A cached read never scores anything — `getStockData` returns early from
 `formatCachedStock`. So those 21 ms are almost entirely the cost of *starting*:
 a fresh QuickJS interpreter, and parsing an 83 KB bundle, on every call.
 
-That is the price of the alpha13 workaround. A second evaluate on one instance
-throws, so each call gets its own interpreter and re-parses the whole bundle.
-When the binding is fixed and a warm instance can be held, a cached read should
-fall to something close to the Room query alone.
+That measurement captured the price of the alpha13 workaround. Alpha13 threw on
+a second evaluate, so each call received its own interpreter and re-parsed the
+whole bundle. Version 1.0.15 fixed repeated evaluation; the bridge retains the
+conservative lifecycle pending wider device soak testing. A future warm-instance
+implementation should reduce a cached read to something close to the Room query
+alone.
 
 It is not worth optimising now — 21 ms is imperceptible, and the cold path is
 eighty times larger and entirely network. But it is worth knowing that the

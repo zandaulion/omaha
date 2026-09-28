@@ -218,8 +218,8 @@ class WatchlistRepository(
      * scoring, so the network dominates and concurrency should have been free.
      *
      * It is not free, because the network happens *inside* the QuickJS call
-     * through the fetch shim, and `quickjs-kt` alpha13 cannot survive two live
-     * interpreters. On a handset that produced one scored company and four
+     * through the fetch shim, and `quickjs-kt` alpha13 could not survive two
+     * live interpreters. On a handset that produced one scored company and four
      * `JsBridgeException`s out of five. `JsBridge` now serialises through a
      * process-wide mutex, so this is serial whether or not it asks to be.
      *
