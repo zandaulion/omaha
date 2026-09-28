@@ -1,7 +1,7 @@
 # Google Play listing package
 
-Prepared for the default `en-US` store listing from the Android build installed
-on the connected Samsung Fold4 on 28 September 2026.
+Prepared for the default `en-US` store listing from the Android build captured
+on a Samsung Fold4 and a physical Pixel Tablet on 28 September 2026.
 
 ## Build snapshot
 
@@ -51,8 +51,17 @@ px. They were recaptured from the installed Review Radar build without adding
 promotional text or altering the interface. `screenshots/phone-raw/` keeps the
 original 904×2,316 device captures.
 
+`screenshots/tablet/` contains six upload-ready 1,600×2,560 opaque RGB PNG files
+captured on a physical Google Pixel Tablet running Android 16 (API 36) in
+Firebase Test Lab. `screenshots/tablet-raw/` preserves the returned artifacts;
+the upload-ready copies are identical because the original 10-inch tablet
+captures already satisfy the Play dimension and aspect-ratio constraints. The
+test uses fixed AAPL, JPM and NOK model fixtures and does not contact market-data
+providers. Its reproducible workflow is documented in
+`docs/24_CONTRIBUTING_AND_TESTING.md`.
+
 The upload order and optional campaign captions are in `screenshot-captions.md`.
-English accessibility descriptions for all six images are in
+English accessibility descriptions for both device sets are in
 `en-US/screenshot-alt-text.md`.
 
 These images satisfy Google Play's mandatory phone-screenshot dimensions and
@@ -68,6 +77,29 @@ edge; the Fold4 cover-display captures are 904 px wide.
 | Feature graphic | 1 | 1,024×500 | 24-bit RGB PNG |
 | Phone screenshots | 6 | 904×1,808 | 24-bit RGB PNG |
 | Raw phone captures | 6 | 904×2,316 | 24-bit RGB PNG |
+| 10-inch tablet screenshots | 6 | 1,600×2,560 | 24-bit RGB PNG |
+| Raw 10-inch tablet captures | 6 | 1,600×2,560 | 24-bit RGB PNG |
+
+## Android 16 native-library verification
+
+The first physical Pixel Tablet run exposed an Android compatibility warning:
+the `libquickjs.so` packaged by `quickjs-kt-android:1.0.0-alpha13` used `0x1000`
+ELF LOAD alignment. The app now uses `quickjs-kt-android:1.0.15`. Verification
+of the rebuilt APK found:
+
+- APK ZIP entries pass `zipalign -c -P 16 4`.
+- Every arm64 `libquickjs.so` LOAD segment uses `0x4000` alignment.
+- The engine's 23 JVM tests pass, including fixture parity, repeated evaluation,
+  and non-BMP string regression coverage.
+- A second physical Pixel Tablet/API 36 Test Lab run passed its complete
+  screenshot flow without showing the compatibility warning.
+
+This proves the packaged native-library alignment and operation on that physical
+Android 16 tablet. It does not identify the tablet's kernel page size, so a run
+on a device explicitly configured for 16 KB pages remains the final end-to-end
+compatibility check. Google has announced Play enforcement for apps targeting
+API 35 or higher from 1 February 2027; see the
+[Android 16 KB page-size guide](https://developer.android.com/guide/practices/page-sizes).
 
 ## Current Google Play constraints
 

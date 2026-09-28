@@ -78,6 +78,75 @@ Run connected tests when changing QuickJS integration, Room migrations, backups,
 
 These require an emulator or USB-connected device. Room migration tests are meaningful because theses, conditions, reviews, and watchlists cannot be regenerated.
 
+### Firebase Test Lab tablet screenshots
+
+`PlayStoreScreenshotTest` drives the real Android UI and writes six deterministic
+screenshots to the app-scoped external-files directory. It stages the recorded
+AAPL, JPM and NOK model fixtures from `core/__fixtures__/`, seeds the Room
+database before launching `MainActivity`, keeps the normal cache-hit path, and
+does not call Yahoo, SEC EDGAR, Gemini, or the Omaha server.
+
+Build the app and instrumentation APKs:
+
+```bash
+cd android
+./gradlew :app:assembleDebug :app:assembleDebugAndroidTest
+cd ..
+```
+
+Select the Firebase project without committing its identifier:
+
+```bash
+export OMAHA_FIREBASE_PROJECT="your-project-id"
+gcloud config set project "$OMAHA_FIREBASE_PROJECT"
+```
+
+Validate the flow on the virtual medium tablet first:
+
+```bash
+gcloud firebase test android run \
+  --type instrumentation \
+  --app android/app/build/outputs/apk/debug/app-debug.apk \
+  --test android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk \
+  --test-targets "class com.zandaulion.omaha.app.PlayStoreScreenshotTest" \
+  --device model=MediumTablet.arm,version=35,locale=en,orientation=portrait \
+  --timeout 15m \
+  --results-history-name "Omaha Play Store Screenshots" \
+  --directories-to-pull=/sdcard/Android/data/com.zandaulion.omaha/files/screenshots
+```
+
+After that passes, run the same command against the physical Pixel Tablet by
+changing the device argument to:
+
+```text
+--device model=tangorpro,version=36,locale=en,orientation=portrait
+```
+
+Device availability and API axes change over time. Query the current catalog
+before replacing that value:
+
+```bash
+gcloud firebase test android models list
+```
+
+The command prints the Firebase Console result URL and GCS result prefix. The
+six PNG files are under the pulled directory inside that prefix. Preserve the
+physical artifacts in `play-store/screenshots/tablet-raw/` and copy reviewed,
+upload-ready files to `play-store/screenshots/tablet/`.
+
+Do not run this instrumentation test on a personal installation: its setup
+deletes the target app database before inserting screenshot fixtures. Firebase
+devices are disposable and are the intended target.
+
+On Android 16 the test conditionally dismisses the system's compatibility
+warning for debuggable APKs so an incompatible build cannot cover the captures.
+The September 2026 run against `quickjs-kt-android:1.0.15` searched for that
+dialog and did not find it; the flow passed without dismissing anything. The
+rebuilt APK also passed `zipalign -c -P 16 4`, and every arm64 QuickJS ELF LOAD
+segment used `0x4000` alignment. A device explicitly configured for 16 KB pages
+is still required for the final end-to-end compatibility check; the physical
+Pixel Tablet axis alone does not state its kernel page size.
+
 ### Generator drift
 
 The normal test suite checks generated output where a check exists. Direct commands are also available:

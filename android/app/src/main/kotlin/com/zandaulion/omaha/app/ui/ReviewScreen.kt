@@ -5,12 +5,15 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,6 +28,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.zandaulion.omaha.data.CompanyReview
+import com.zandaulion.omaha.data.ReviewOverview
 import com.zandaulion.omaha.data.WatchlistRow
 import com.zandaulion.omaha.design.Omaha
 import com.zandaulion.omaha.design.OmahaCard
@@ -47,61 +51,154 @@ fun ReviewScreen(
     onResearch: (String) -> Unit
 ) {
     var choosingList by remember { mutableStateOf(false) }
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                BasicText("Your company review", style = OmahaType.title1.toTextStyle())
-                BasicText("Understand what changed. Revisit your reasons.",
-                    style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary))
-                ReviewAction((lists.firstOrNull { it.id == activeId }?.name ?: "Watchlist") + "  ⌄") {
-                    choosingList = !choosingList
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        if (maxWidth >= 660.dp && state is ReviewUiState.Ready) {
+            Row(
+                Modifier.fillMaxSize().padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                LazyColumn(
+                    Modifier.width(300.dp).fillMaxHeight(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    item {
+                        ReviewHeader(
+                            lists = lists,
+                            activeId = activeId,
+                            choosingList = choosingList,
+                            onToggleList = { choosingList = !choosingList },
+                            onSelectList = { onSelectList(it); choosingList = false }
+                        )
+                    }
+                    item { ReviewOverviewCard(state.overview, checking, notice, onCheck) }
                 }
-                if (choosingList) lists.forEach { list ->
-                    ReviewAction(list.name) { onSelectList(list.id); choosingList = false }
+                LazyColumn(
+                    Modifier.weight(1f).fillMaxHeight(),
+                    contentPadding = PaddingValues(bottom = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            BasicText("Review queue", style = OmahaType.title2.toTextStyle())
+                            BasicText(
+                                "${state.overview.items.size} companies",
+                                style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary)
+                            )
+                        }
+                    }
+                    if (state.overview.items.isEmpty()) item { ReviewEmptyCard(onAdd) }
+                    items(state.overview.items, key = { it.ticker }) { company ->
+                        CompanyReviewCard(company, { onReview(company.ticker) }, { onResearch(company.ticker) })
+                    }
                 }
             }
-        }
-        when (state) {
-            ReviewUiState.Loading -> item { BasicText("Loading your review history…", style = OmahaType.bodySm.toTextStyle()) }
-            is ReviewUiState.Failed -> item {
-                OmahaCard {
-                    BasicText(state.message, style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary))
-                    ReviewAction("Try again", primary = true, onClick = onRetry)
-                }
-            }
-            is ReviewUiState.Ready -> {
-                val overview = state.overview
+        } else {
+            LazyColumn(
+                Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 item {
-                    OmahaCard {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            val needsReview = overview.items.count { it.status != "reviewed" }
-                            BasicText(if (needsReview > 0) "$needsReview companies to revisit" else "Your review overview",
-                                style = OmahaType.title2.toTextStyle())
-                            BasicText(overview.lastCheckedAt?.let { "Latest recorded financial check: ${reviewDate(it)}" }
-                                ?: "No data check recorded yet. Your first check establishes a comparison baseline.",
-                                style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary))
-                            BasicText("Some companies or periods may be missing. No recorded alerts does not mean nothing changed. Your written conditions are checked by you.",
-                                style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary))
-                            ReviewAction(if (checking) "Checking companies…" else "Check for changes", primary = true,
-                                enabled = !checking, onClick = onCheck)
-                            notice?.let { BasicText(it, style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary)) }
+                    ReviewHeader(
+                        lists = lists,
+                        activeId = activeId,
+                        choosingList = choosingList,
+                        onToggleList = { choosingList = !choosingList },
+                        onSelectList = { onSelectList(it); choosingList = false }
+                    )
+                }
+                when (state) {
+                    ReviewUiState.Loading -> item {
+                        BasicText("Loading your review history…", style = OmahaType.bodySm.toTextStyle())
+                    }
+                    is ReviewUiState.Failed -> item {
+                        OmahaCard {
+                            BasicText(state.message, style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary))
+                            ReviewAction("Try again", primary = true, onClick = onRetry)
+                        }
+                    }
+                    is ReviewUiState.Ready -> {
+                        item { ReviewOverviewCard(state.overview, checking, notice, onCheck) }
+                        if (state.overview.items.isEmpty()) item { ReviewEmptyCard(onAdd) }
+                        items(state.overview.items, key = { it.ticker }) { company ->
+                            CompanyReviewCard(company, { onReview(company.ticker) }, { onResearch(company.ticker) })
                         }
                     }
                 }
-                if (overview.items.isEmpty()) item {
-                    OmahaCard {
-                        BasicText("Start with a company you follow", style = OmahaType.title2.toTextStyle())
-                        BasicText("Add a company, capture your reasons, and return when there is something to review.",
-                            style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary))
-                        ReviewAction("Add a company", primary = true, onClick = onAdd)
-                    }
-                }
-                items(overview.items, key = { it.ticker }) { company ->
-                    CompanyReviewCard(company, { onReview(company.ticker) }, { onResearch(company.ticker) })
-                }
             }
         }
+    }
+}
+
+@Composable
+private fun ReviewHeader(
+    lists: List<WatchlistRow>,
+    activeId: String?,
+    choosingList: Boolean,
+    onToggleList: () -> Unit,
+    onSelectList: (String) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        BasicText("Your company review", style = OmahaType.title1.toTextStyle())
+        BasicText(
+            "Understand what changed. Revisit your reasons.",
+            style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary)
+        )
+        ReviewAction(
+            (lists.firstOrNull { it.id == activeId }?.name ?: "Watchlist") + "  ⌄",
+            onClick = onToggleList
+        )
+        if (choosingList) lists.forEach { list ->
+            ReviewAction(list.name) { onSelectList(list.id) }
+        }
+    }
+}
+
+@Composable
+private fun ReviewOverviewCard(
+    overview: ReviewOverview,
+    checking: Boolean,
+    notice: String?,
+    onCheck: () -> Unit
+) {
+    OmahaCard {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            val needsReview = overview.items.count { it.status != "reviewed" }
+            BasicText(
+                if (needsReview > 0) "$needsReview companies to revisit" else "Your review overview",
+                style = OmahaType.title2.toTextStyle()
+            )
+            BasicText(
+                overview.lastCheckedAt?.let { "Latest recorded financial check: ${reviewDate(it)}" }
+                    ?: "No data check recorded yet. Your first check establishes a comparison baseline.",
+                style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary)
+            )
+            BasicText(
+                "Some companies or periods may be missing. No recorded alerts does not mean nothing changed. Your written conditions are checked by you.",
+                style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary)
+            )
+            ReviewAction(
+                if (checking) "Checking companies…" else "Check for changes",
+                primary = true,
+                enabled = !checking,
+                onClick = onCheck
+            )
+            notice?.let {
+                BasicText(it, style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary))
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReviewEmptyCard(onAdd: () -> Unit) {
+    OmahaCard {
+        BasicText("Start with a company you follow", style = OmahaType.title2.toTextStyle())
+        BasicText(
+            "Add a company, capture your reasons, and return when there is something to review.",
+            style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary)
+        )
+        ReviewAction("Add a company", primary = true, onClick = onAdd)
     }
 }
 

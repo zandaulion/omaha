@@ -7,27 +7,15 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * Characterisation of two defects in quickjs-kt 1.0.0-alpha13.
- *
- * ScoringEngine works around both. These tests exist so the workarounds are not
- * carried forever out of superstition: when the binding is upgraded, a failure
- * here means the defect is fixed and ScoringEngine can be simplified.
- *
- * Read a failure in this file as good news, and check the note it carries.
- */
+/** Regression coverage for binding defects found in quickjs-kt 1.0.0-alpha13. */
 class QuickJsBindingQuirksTest {
 
     /**
-     * Defect 1 — every second evaluate on one instance throws
-     * `TypeError: cannot read property 'value' of undefined`.
-     *
-     * Deterministic alternation, independent of payload size and of what the
-     * bindings return. This is why ScoringEngine builds a fresh interpreter per
-     * call rather than holding one open across scores.
+     * Alpha13 failed every second evaluate on one instance. Version 1.0.15
+     * repaired that lifecycle, so repeated calls must remain usable.
      */
     @Test
-    fun `a second evaluate on the same instance still fails`() = runTest {
+    fun `repeated evaluates on one instance succeed`() = runTest {
         val quickJs = QuickJs.create(Dispatchers.Default)
         quickJs.defineBinding("__sink", FunctionBinding { null })
 
@@ -41,27 +29,17 @@ class QuickJsBindingQuirksTest {
         }
         quickJs.close()
 
-        assertEquals(
-            listOf("ok", "threw", "ok", "threw"),
-            outcomes,
-            "The alternation changed. If every call now succeeds, ScoringEngine " +
-                "no longer needs one interpreter per score."
-        )
+        assertEquals(listOf("ok", "ok", "ok", "ok"), outcomes)
     }
 
     /**
-     * Defect 2 — a returned string loses one character per non-BMP character.
-     *
-     * The binding sizes the Kotlin string by code-point count rather than by
-     * UTF-16 code-unit count, so each surrogate pair costs one character off the
-     * end. It truncates the tail, which for JSON means the closing braces — so
-     * it surfaces as a parse error rather than as a visibly wrong character.
-     *
-     * The emoji are built with fromCharCode so this source stays pure ASCII and
-     * cannot itself be mangled in transit.
+     * Alpha13 truncated one UTF-16 code unit from the tail for every non-BMP
+     * character. Version 1.0.15 must preserve both surrogate pairs and the full
+     * ASCII suffix. The emoji are built in JavaScript so the source crossing
+     * the bridge remains ASCII.
      */
     @Test
-    fun `non-BMP characters still truncate the returned string`() = runTest {
+    fun `non-BMP characters and the complete suffix cross the bridge`() = runTest {
         val quickJs = QuickJs.create(Dispatchers.Default)
         var received: String? = null
         quickJs.defineBinding("__out", FunctionBinding { args ->
@@ -78,13 +56,8 @@ class QuickJsBindingQuirksTest {
         )
         quickJs.close()
 
-        assertEquals(
-            52,
-            received?.length,
-            "Expected one character lost per surrogate pair (54 -> 52). If this " +
-                "is now 54, the truncation is fixed and ScoringEngine can drop " +
-                "the ASCII-escaping bridge and return JSON directly."
-        )
+        assertEquals("💎🚀" + "x".repeat(50), received)
+        assertEquals(54, received?.length)
     }
 
     /**
