@@ -18,6 +18,7 @@ import com.zandaulion.omaha.app.ui.OmahaEngine
 import com.zandaulion.omaha.data.WidgetSnapshot
 import com.zandaulion.omaha.widget.PocketOmahaWidget
 import com.zandaulion.omaha.widget.WidgetKeys
+import java.time.Instant
 import java.util.concurrent.TimeUnit
 
 /**
@@ -70,6 +71,7 @@ class WidgetRefreshWorker(
             prefs[WidgetKeys.holdingsText] = snapshot.holdings.joinToString(";") {
                 "${it.ticker}|${it.score ?: ""}|${it.tier}"
             }
+            prefs[WidgetKeys.updatedAt] = Instant.now().toString()
         }
         PocketOmahaWidget().update(applicationContext, id)
     }

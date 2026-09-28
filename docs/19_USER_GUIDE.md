@@ -189,7 +189,7 @@ Keep exported files private; they contain the user's written investment reasonin
 
 ## Android home-screen widget
 
-Adding the widget opens a configuration screen to bind that widget instance to a watchlist. Small widgets show the list and composite. Medium widgets add leading movers. Large widgets add more holdings, up to the layout limit. Tapping the widget opens its bound watchlist, even if another list was active in the app. The refresh action requests an immediate refresh.
+Adding the widget opens a configuration screen to bind that widget instance to a watchlist. Small widgets show the list, composite score out of 100, health grade, and one-week score trend. Medium widgets add the company count, last successful refresh time, and the leading fundamental-score changes in points. Large widgets also rank companies by attention needed, with weak and mixed names first. Tapping the card opens its bound watchlist, tapping a ticker opens that company's research, and the refresh action requests an immediate refresh.
 
 When at least one widget exists, WorkManager refreshes widget state about hourly with network required. The widget renders its last stored state while a refresh is pending or fails.
 

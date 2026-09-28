@@ -115,7 +115,7 @@ private fun ConfigScreen(onChosen: (WatchlistRow) -> Unit) {
             style = OmahaType.title1.toTextStyle(color = Omaha.colors.textPrimary)
         )
         BasicText(
-            "This widget will show its health score and how it has moved.",
+            "See its health score, trend, and the companies that need attention.",
             style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary)
         )
 
