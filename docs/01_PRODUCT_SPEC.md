@@ -1,32 +1,28 @@
-# Pocket Omaha — PWA Product Specification
+# Pocket Omaha — Product Specification
 
-> **Target User**: Modern advanced investor who values deep fundamental rigor, clean cash flows, and durable moats.  
-> **Platform**: Progressive Web App (PWA) — Mobile-First (iOS / Android Home Screen installable) + Responsive Desktop/Tablet companion.  
-> **Design Philosophy**: Modern FinTech (Apple Stocks × Copilot × Linear aesthetic) — High information density balanced with breathability, crisp typography, and instant visual health diagnosis.
+> **Target User**: Self-directed long-term stock owner, with basic financial literacy, following a manageable set of companies.
+>
+> **Platform**: Mobile-first PWA and native Android, with the same review workflow.
+>
+> **Design Philosophy**: A clear next action, readable evidence, and an honest account of missing data.
 
 ---
 
 ## 1. Executive Summary & Vision
 
-> **Positioning — added 2026-08-24, per `docs/15_COMPETITIVE_POSITION.md` §6.5.**
->
-> **Pocket Omaha scores a company from its filed statements, and then holds you
-> to the exit rules you wrote while you were calm.**
->
-> Lead with that. Doc 15 checked the pre-committed sell triggers against all ten
-> platforms in the market survey and found nothing comparable: every competitor
-> optimises the *buy* decision, and none addresses the exit, which is where
-> undisciplined selling does its damage. Together with the thesis and journal
-> that makes this an **accountability instrument rather than an oracle** — a
-> position no incumbent occupies.
->
-> **Never describe it as a tracker.** The word sets an expectation of portfolio
-> accounting that §4 deliberately does not meet, and it gives away the one thing
-> nothing else in the market does. *Research and conviction*, not *tracking*.
+**Positioning, revised 2026-09-27:** Understand what changed in the companies you
+follow. Revisit your reasons.
 
-The goal of this PWA is to empower the user to rapidly assess, track, and monitor individual stock health without having to jump between complex financial spreadsheets, 10-K filings, and noisy social feeds. 
+Omaha supports ongoing fundamental reviews: recorded financial changes → saved
+reasons → the user's assessment → dated review history. It should make the next
+review easier without implying that a score proves a moat, predicts returns, or
+decides whether someone should sell.
 
-It unifies **macro health scoring**, **rule-based fundamental checklists**, **automated pros/cons risk detection**, and **deep ratio breakdowns** into an elegant, tactile mobile app.
+Primary navigation is **Review**, **Watchlist**, **Research**, with Watchlist as
+the default view. Filter and Compare remain research tools; AI is optional supporting analysis. Personal conditions
+are manual flags, independent of the automatic financial alert rules. See
+[18 — Review workflow](18_REVIEW_WORKFLOW.md) for current behavior. Older feature
+descriptions below are design history where they conflict with that contract.
 
 ---
 

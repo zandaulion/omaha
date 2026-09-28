@@ -32,7 +32,7 @@ function parseTimestamp(value) {
 }
 
 // core/backup.js
-var SCHEMA_VERSION = 1;
+var SCHEMA_VERSION = 2;
 var BackupError = class extends Error {
   constructor(kind, message) {
     super(message);
@@ -58,7 +58,7 @@ function readBackup(input) {
       'Expected "theses" or "watchlists". This does not look like a Pocket Omaha backup.'
     );
   }
-  const version = raw.schemaVersion ?? SCHEMA_VERSION;
+  const version = raw.schemaVersion ?? 1;
   if (!Number.isInteger(version) || version < 1) {
     throw new BackupError("malformed", `Bad schemaVersion: ${raw.schemaVersion}`);
   }
@@ -82,6 +82,7 @@ function normaliseThesis(t) {
     conviction: t.conviction ?? "high",
     targetBuyPrice: numberOrNull(t.targetBuyPrice),
     coreRationale: t.coreRationale ?? "",
+    mustRemainTrue: typeof t.mustRemainTrue === "string" ? t.mustRemainTrue : "",
     moatTags: asArray(t.moatTags),
     sellTriggers: asArray(t.sellTriggers),
     journalEntries: asArray(t.journalEntries).map(normaliseEntry).filter(Boolean),
@@ -96,9 +97,14 @@ function normaliseEntry(e) {
   return {
     // An entry with no id is still an entry. Derived rather than invented, so
     // importing the same file twice does not produce two copies of it.
-    id: e.id != null ? String(e.id) : derivedId(date, note),
+    id: e.id != null ? String(e.id) : derivedId(
+      date,
+      e.kind === "review" ? `${note}|review|${e.assessment || ""}` : note
+    ),
     date,
-    note
+    note,
+    kind: e.kind === "review" ? "review" : "note",
+    assessment: e.kind === "review" && ["intact", "watch", "changed"].includes(e.assessment) ? e.assessment : null
   };
 }
 function normaliseWatchlist(w) {
@@ -203,10 +209,12 @@ function mergeEntries(existing, incoming) {
       out.push(e);
       continue;
     }
-    if (clash.note === e.note && clash.date === e.date) continue;
+    const sameEntry = (candidate) => candidate.note === e.note && candidate.date === e.date && candidate.kind === e.kind && candidate.assessment === e.assessment;
+    if (sameEntry(clash)) continue;
     let suffixed = `${e.id}-b`;
     let n = 2;
-    while (byId2.has(suffixed)) suffixed = `${e.id}-b${n++}`;
+    while (byId2.has(suffixed) && !sameEntry(byId2.get(suffixed))) suffixed = `${e.id}-b${n++}`;
+    if (byId2.has(suffixed)) continue;
     const disambiguated = { ...e, id: suffixed };
     byId2.set(suffixed, disambiguated);
     out.push(disambiguated);

@@ -188,8 +188,8 @@
     "waccPct": null
   },
   "fcfConversionPct": null,
-  "healthGrade": "RISK",
-  "healthLabel": "High leverage or distress risk",
+  "healthGrade": "WEAK",
+  "healthLabel": "Several fundamental checks need attention",
   "healthScore": 47,
   "healthTier": "risk",
   "metrics": {
@@ -379,7 +379,7 @@
       ],
       "max": 20,
       "measured": 2,
-      "name": "Profitability & Moat Quality",
+      "name": "Profitability & Cash Quality",
       "of": 2,
       "pct": 50,
       "score": 10

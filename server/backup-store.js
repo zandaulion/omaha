@@ -17,6 +17,7 @@ export function readPersonalData() {
       conviction: t.conviction,
       targetBuyPrice: t.target_buy_price,
       coreRationale: t.core_rationale,
+      mustRemainTrue: t.must_remain_true || '',
       moatTags: JSON.parse(t.moat_tags_json || '[]'),
       sellTriggers: JSON.parse(t.sell_triggers_json || '[]'),
       journalEntries: JSON.parse(t.journal_entries_json || '[]'),
@@ -46,13 +47,14 @@ export function writePersonalData(merged) {
   db.prepare('BEGIN').run();
   try {
     const writeThesis = db.prepare(`
-      INSERT INTO theses (ticker, conviction, target_buy_price, core_rationale,
+      INSERT INTO theses (ticker, conviction, target_buy_price, core_rationale, must_remain_true,
                           moat_tags_json, sell_triggers_json, journal_entries_json, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(ticker) DO UPDATE SET
         conviction=excluded.conviction,
         target_buy_price=excluded.target_buy_price,
         core_rationale=excluded.core_rationale,
+        must_remain_true=excluded.must_remain_true,
         moat_tags_json=excluded.moat_tags_json,
         sell_triggers_json=excluded.sell_triggers_json,
         journal_entries_json=excluded.journal_entries_json,
@@ -60,7 +62,7 @@ export function writePersonalData(merged) {
     `);
     for (const t of merged.theses) {
       writeThesis.run(
-        t.ticker, t.conviction, t.targetBuyPrice, t.coreRationale,
+        t.ticker, t.conviction, t.targetBuyPrice, t.coreRationale, t.mustRemainTrue || '',
         JSON.stringify(t.moatTags), JSON.stringify(t.sellTriggers),
         JSON.stringify(t.journalEntries),
         // The merge decided which version won; preserving its timestamp is

@@ -296,17 +296,21 @@ export function buildDigest({ listName, holdings } = {}) {
     : Math.round(rows.reduce((s, r) => s + r.healthScore, 0) / rows.length);
 
   const rowMovers = movers(rows);
+  const compared = rows.filter((row) => typeof row.previousScore === 'number').length;
 
   const moverText = rowMovers.length
     ? ` Movers: ${rowMovers.slice(0, 3).map((mv) => `${mv.ticker} ${mv.delta > 0 ? '+' : ''}${mv.delta}`).join(', ')}.`
-    : ' No material health changes this week.';
+    : compared ? ' No score moves of 2+ points in the available comparisons.'
+      : ' No earlier scores available for comparison.';
+  const coverageText = compared && compared < rows.length
+    ? ` Earlier scores available for ${compared} of ${rows.length} companies.` : '';
 
   return {
     type: 'WEEKLY_DIGEST',
     ticker: '',
-    title: `🎩 ${listName}: ${composite}/100`,
-    body: `${rows.length} holdings scored.${moverText}`,
+    title: `${listName}: fundamental score ${composite}/100`,
+    body: `${rows.length} companies scored; company-size weighted.${moverText}${coverageText} Revisit your reasons in Review.`,
     severity: 'info',
-    url: '/?tab=watchlist'
+    url: '/?tab=review'
   };
 }

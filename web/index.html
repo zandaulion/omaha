@@ -3,17 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-  <title>Pocket Omaha — Stock Health, Moats & Valuation</title>
+  <title>Pocket Omaha — Review the companies you follow</title>
   
   <!-- SEO & Social Meta -->
-  <meta name="description" content="Instant 0-100 fundamental health scorecard, 12-point traffic-light checklist, 2-stage DCF sandbox, and moat analysis for disciplined value investors.">
+  <meta name="description" content="A financial checkup for companies you follow. Understand recorded changes, save your reasons, and revisit them over time.">
   <meta name="theme-color" content="#0B0E14">
   
   <!-- Apple Mobile Web App Meta -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Pocket Omaha">
-  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-maskable-192.png">
 
   <!-- Favicon & Manifest -->
   <link rel="icon" type="image/svg+xml" href="/icons/favicon.svg">
@@ -309,6 +309,24 @@
     <!-- Main View Router Container -->
     <main class="app-container" id="mainContent">
 
+      <section id="viewReview" class="view-panel hidden" aria-labelledby="reviewTitle">
+        <div class="review-intro">
+          <p class="review-eyebrow">Your ongoing company checkup</p>
+          <h2 id="reviewTitle">What needs a review?</h2>
+          <p>See what changed in the companies you follow, then revisit your reasons.</p>
+        </div>
+        <div class="review-controls">
+          <label class="sr-only" for="reviewWatchlistSelect">Watchlist to review</label>
+          <select id="reviewWatchlistSelect" class="form-select"></select>
+          <button class="btn-secondary" id="refreshReviewBtn" type="button">Refresh list</button>
+        </div>
+        <p id="reviewLastChecked" class="review-meta" role="status">Waiting for your watchlist…</p>
+        <div id="reviewDashboard" aria-live="polite" aria-busy="true">
+          <div class="card review-empty">Loading your review list…</div>
+        </div>
+        <p class="review-footnote">Scheduled financial checks populate this list. The latest check may cover only some companies. Your written reasons and reconsideration flags are reviewed by you.</p>
+      </section>
+
       <!-- ==================== VIEW 1: WATCHLIST & PORTFOLIO HEALTH ==================== -->
       <section id="viewWatchlist" class="view-panel fade-in">
         
@@ -316,12 +334,17 @@
         <div class="portfolio-hero" id="portfolioHero">
           <div class="hero-top">
             <div class="hero-title-group">
-              <h2 id="heroWatchlistName">The Compounders</h2>
-              <p id="heroStockCount">5 companies in portfolio</p>
+              <p class="review-eyebrow">Current watchlist</p>
+              <button class="hero-watchlist-picker" id="watchlistPickerBtn" type="button" aria-label="Change watchlist" aria-haspopup="dialog" aria-controls="watchlistPickerModal">
+                <span id="heroWatchlistName">Your watchlist</span>
+                <span class="hero-picker-action" aria-hidden="true">Change</span>
+                <span class="hero-picker-chevron" aria-hidden="true">⌄</span>
+              </button>
             </div>
-            <div class="hero-grade-badge pristine" id="heroGradeBadge">
-              EXCELLENT (88/100)
-            </div>
+          </div>
+          <div class="hero-meta-row">
+            <p id="heroStockCount">Loading companies…</p>
+            <div class="hero-grade-badge pristine" id="heroGradeBadge">—</div>
           </div>
 
           <!-- 5-Pillar Mini Horizontal Meters -->
@@ -329,35 +352,29 @@
             <!-- Populated by JS -->
           </div>
 
-          <!-- Checklist Mini Summary & Composite Moat -->
+          <!-- Checklist summary and weighting explanation -->
           <div style="margin-top: 14px; border-top: 1px solid var(--border-subtle); padding-top: 10px; font-size: 12px; display: flex; flex-direction: column; gap: 4px;">
-            <span id="heroChecklistText" style="color: var(--text-secondary);">🟢 48 Pass · 🟡 8 Watch · 🔴 4 Risk Flags</span>
-            <span class="mono" id="heroMoatText" style="color: var(--brand-cyan); font-size: 12px;">Composite Moat: Strong</span>
+            <span id="heroChecklistText" style="color: var(--text-secondary);"></span>
+            <span id="heroWeightingText" class="review-meta">Company-size weighted fundamental scores.</span>
           </div>
         </div>
 
-        <!-- Watchlist Selector & Controls -->
-        <div class="section-header">
-          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-            <select id="watchlistSelect" class="form-select" style="padding: 6px 12px; font-size: 13px; font-weight: 600;">
-              <!-- Watchlists populated by JS -->
+        <div class="watchlist-toolbar" aria-label="Watchlist actions">
+          <button class="watchlist-action watchlist-action-primary" id="addStockTriggerBtn" type="button">+ Add stock</button>
+          <label class="watchlist-sort-control">
+            <span class="sr-only">Sort companies</span>
+            <span aria-hidden="true">↕</span>
+            <select id="sortSelect" aria-label="Sort companies">
+              <option value="health">Score</option>
+              <option value="change">Change</option>
+              <option value="roic">ROIC</option>
+              <option value="pe">P/E</option>
             </select>
-            <div style="display: flex; align-items: center; gap: 6px;">
-              <span style="font-size: 11px; color: var(--text-tertiary);">Sort:</span>
-              <select id="sortSelect" class="form-select" style="padding: 5px 8px; font-size: 12px;">
-                <option value="health">Health Score</option>
-                <option value="change">Price Change</option>
-                <option value="roic">ROIC (Moat)</option>
-                <option value="pe">P/E Ratio</option>
-              </select>
-            </div>
-          </div>
-
-          <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
-            <button class="btn-primary" id="addStockTriggerBtn" style="padding: 6px 12px; font-size: 12px; font-weight: 600; white-space: nowrap;">+ Add Stock</button>
-            <button class="btn-secondary" id="newListBtn" style="padding: 6px 10px; font-size: 12px; white-space: nowrap;">+ New Watchlist</button>
-          </div>
+            <span aria-hidden="true">⌄</span>
+          </label>
+          <button class="watchlist-action watchlist-more" id="watchlistToolsBtn" type="button" aria-label="More watchlist tools" aria-haspopup="dialog" aria-controls="watchlistToolsModal">•••</button>
         </div>
+        <div id="addedReasonsPrompt" class="card reasons-prompt" hidden></div>
 
         <!-- Stock Cards Container -->
         <div id="stockCardsList">
@@ -369,7 +386,7 @@
           <div style="font-size: 40px; margin-bottom: 8px;">🏰</div>
           <h3 style="font-size: 17px; font-weight: 700; margin-bottom: 6px;">No Stocks in this Watchlist</h3>
           <p style="font-size: 13px; color: var(--text-secondary); max-width: 320px; margin: 0 auto 16px auto;">
-            Add companies with strong financial health and durable moats to calculate your composite score.
+            Add companies you own or want to follow. Keep their financial picture and your reasons together.
           </p>
           <button class="btn-primary" id="emptyAddStockBtn">🔍 Add Stocks</button>
         </div>
@@ -389,9 +406,6 @@
             <p id="deepDiveName" style="font-size: 12px; color: var(--text-secondary);"></p>
           </div>
           <div style="display: flex; align-items: center; gap: 6px;">
-            <button class="btn-ai-sparkle-pill" id="deepDiveGeminiHeaderBtn" title="Analyze with Gemini AI">
-              ✨ AI Summary
-            </button>
             <button class="icon-btn" id="bookmarkBtn" title="Bookmark to Watchlist">
               ⭐
             </button>
@@ -399,7 +413,7 @@
         </div>
 
         <!-- Price & Change Row -->
-        <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 16px; padding: 0 4px;">
+        <div id="deepDivePriceRow" style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 16px; padding: 0 4px;">
           <div>
             <span id="deepDivePrice" class="mono" style="font-size: 28px; font-weight: 800;">—</span>
             <span id="deepDiveCurrency" style="font-size: 12px; color: var(--text-tertiary); margin-left: 4px;"></span>
@@ -408,7 +422,8 @@
         </div>
 
         <!-- Hero Scorecard Ring Card -->
-        <div class="card card-elevated" style="margin-bottom: 16px;">
+        <div class="card card-elevated" id="deepDiveScoreCard" style="margin-bottom: 16px;">
+          <div class="section-title" data-explain="Fundamental score" tabindex="0" style="margin-bottom: 12px;">Fundamental score</div>
           <div class="score-ring-container">
             <div class="score-ring-wrapper">
               <svg class="score-ring-svg" viewBox="0 0 120 120">
@@ -438,38 +453,32 @@
         <!-- Segmented Sub-Tabs -->
         <div class="segmented-tabs" id="deepDiveSubtabs">
           <button class="tab-pill active" data-subtab="overview">Overview</button>
-          <button class="tab-pill tab-pill-ai" data-subtab="gemini">✨ Gemini AI</button>
+          <button class="tab-pill" data-subtab="thesis">My reasons &amp; reviews</button>
           <button class="tab-pill" data-subtab="checklist">12-Pt Checklist</button>
           <button class="tab-pill" data-subtab="trends">5Y Trends</button>
           <button class="tab-pill" data-subtab="dcf">DCF Sandbox</button>
-          <button class="tab-pill" data-subtab="thesis">My Thesis & Log</button>
+          <button class="tab-pill" data-subtab="gemini">AI analysis</button>
         </div>
+
+        <div id="researchLoadStatus" class="card review-empty" role="status" hidden></div>
 
         <!-- Subtab Panel 1: Overview -->
         <div id="subtabOverview" class="subtab-panel">
           
-          <!-- Gemini AI Analysis Teaser Card -->
-          <div class="card ai-teaser-card" id="overviewAiCard">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
-              <div class="section-title ai-gradient-text" style="display: flex; align-items: center; gap: 6px;">
-                <span>✨</span> <span>Gemini AI Moat & Health Summary</span>
-              </div>
-              <span class="score-badge ai-badge-pill">Buffett & Munger Framework</span>
-            </div>
-            <div id="overviewAiBody">
-              <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">
-                Sends all financial statements, computed ratios (Altman Z, Piotroski, ROIC, DCF), and 12-point checklist to Gemini for an executive summary, moat breakdown, and conclusion with explanations.
-              </p>
-              <button class="btn-ai-sparkle" id="overviewGeminiActionBtn" style="width: 100%;">
-                ✨ Analyze with Gemini AI
-              </button>
-            </div>
+          <div class="card reasons-prompt">
+            <div class="section-title">Connect the numbers to your reasons</div>
+            <p id="overviewReasonsSummary">Write down why you follow this company and what would change your mind.</p>
+            <button class="btn-primary" id="overviewReviewBtn" type="button">Review my reasons</button>
+          </div>
+          <div class="research-tools" aria-label="Company research tools">
+            <button class="btn-secondary" type="button" data-open-tool="viewFilter">Filter companies</button>
+            <button class="btn-secondary" type="button" data-open-tool="viewCompare">Compare companies</button>
           </div>
 
           <!-- Catalysts & Moats Card -->
           <div class="card">
             <div class="section-title" style="margin-bottom: 12px; color: var(--health-pristine);">
-              ⚡ Key Moat Catalysts & Strengths
+              Financial strengths
             </div>
             <div id="catalystsList" style="display: flex; flex-direction: column; gap: 10px;">
               <!-- Rendered by JS -->
@@ -502,11 +511,11 @@
         <div id="subtabChecklist" class="subtab-panel hidden">
           <div class="card">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-              <div class="section-title">🚦 Traffic-Light Health Tests</div>
+              <div class="section-title">Financial checks</div>
               <span id="checklistScoreBadge" class="score-badge pristine">10 Pass · 2 Watch</span>
             </div>
             <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 14px;">
-              Tap any rule to view benchmark targets and economic moat explanation.
+              Tap a check to understand its benchmark and calculation.
             </p>
             <div class="checklist-container" id="checklistFullList">
               <!-- Rendered by JS -->
@@ -643,52 +652,68 @@
 
         <!-- Subtab Panel 5: Thesis & Journal -->
         <div id="subtabThesis" class="subtab-panel hidden">
-          
-          <!-- Buy Thesis & Conviction Card -->
+          <div id="thesisLoadStatus" class="review-meta" role="status"></div>
+          <div id="companyReviewChanges" hidden></div>
           <div class="card thesis-card">
-            <div class="section-title">📝 Core Investment Thesis</div>
-            
+            <div class="section-title">My reasons</div>
             <div class="form-group">
-              <label class="form-label">Conviction Level</label>
-              <select id="thesisConvictionSelect" class="form-select">
-                <option value="fortress">⭐⭐⭐⭐⭐ Fortress Moat (Buffett Tier)</option>
-                <option value="high" selected>⭐⭐⭐⭐ High Conviction</option>
-                <option value="medium">⭐⭐⭐ Moderate / Valuation Dependent</option>
-                <option value="speculative">⭐⭐ Speculative Turnaround</option>
-              </select>
+              <label class="form-label" for="thesisRationale">Why I follow this company</label>
+              <textarea id="thesisRationale" class="form-textarea" placeholder="What makes this business worth following? What is my reason for owning it, if I do?"></textarea>
             </div>
-
             <div class="form-group">
-              <label class="form-label">Target Entry Buy Price ($)</label>
-              <input type="number" id="thesisTargetPrice" class="form-input mono" placeholder="e.g. 115.00" step="0.01">
+              <label class="form-label" for="thesisMustRemainTrue">What must remain true</label>
+              <textarea id="thesisMustRemainTrue" class="form-textarea" placeholder="Which business conditions underpin my reasons?" aria-describedby="manualReviewNote"></textarea>
             </div>
-
-            <div class="form-group">
-              <label class="form-label">Core Moat Rationale</label>
-              <textarea id="thesisRationale" class="form-textarea" placeholder="Why do you believe this company has a durable moat, pricing power, and fortress balance sheet?"></textarea>
-            </div>
-
-            <button class="btn-primary" id="saveThesisBtn">💾 Save Investment Thesis</button>
+            <details class="reasons-extra">
+              <summary>Optional conviction &amp; target price</summary>
+              <div class="form-group">
+                <label class="form-label" for="thesisConvictionSelect">My conviction</label>
+                <select id="thesisConvictionSelect" class="form-select">
+                  <option value="fortress">Very high</option>
+                  <option value="high" selected>High</option>
+                  <option value="medium">Moderate / valuation dependent</option>
+                  <option value="speculative">Speculative</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="thesisTargetPrice">My target entry price (trading currency)</label>
+                <input type="number" id="thesisTargetPrice" class="form-input mono" placeholder="Optional" step="0.01">
+              </div>
+            </details>
+            <button class="btn-primary" id="saveThesisBtn" type="button">Save my reasons</button>
           </div>
 
-          <!-- Pre-Committed Sell Guardrails -->
           <div class="card">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-              <div class="section-title">🛡️ Pre-Committed Exit Guardrails</div>
+              <div class="section-title">What would make me reconsider</div>
               <button class="btn-secondary" id="addGuardrailBtn" style="padding: 4px 8px; font-size: 11px;">+ Add</button>
             </div>
-            <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px;">
-              Objective conditions that invalidate your thesis if triggered.
+            <p id="manualReviewNote" class="review-meta">
+              Your manual flags. Check a condition when you believe it has occurred; Omaha does not monitor these written conditions automatically.
             </p>
             <div class="trigger-list" id="sellTriggersList">
               <!-- Rendered by JS -->
             </div>
           </div>
 
-          <!-- Chronological Journal Activity Log -->
+          <div class="card" id="recordReviewCard">
+            <div class="section-title">Record a review</div>
+            <p class="review-meta">After checking the financial picture and your reasons, record your own assessment.</p>
+            <fieldset class="review-assessments">
+              <legend>Where do my reasons stand?</legend>
+              <label><input type="radio" name="reviewAssessment" value="intact"> Reasons still hold</label>
+              <label><input type="radio" name="reviewAssessment" value="watch"> Needs watching</label>
+              <label><input type="radio" name="reviewAssessment" value="changed"> Reasons changed</label>
+            </fieldset>
+            <label class="form-label" for="reviewNote">What did I learn? <span class="review-meta">Optional</span></label>
+            <textarea id="reviewNote" class="form-textarea" placeholder="What changed, what I checked, and what I want to revisit."></textarea>
+            <button class="btn-primary" id="saveReviewBtn" type="button">Save review</button>
+            <p id="reviewSaveStatus" class="review-meta" role="status"></p>
+          </div>
+
           <div class="card">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-              <div class="section-title">📅 Journal & Activity Log</div>
+              <div class="section-title">Review &amp; note history</div>
               <button class="btn-secondary" id="addJournalNoteBtn" style="padding: 4px 8px; font-size: 11px;">+ Write Note</button>
             </div>
             <div class="journal-log" id="journalEntriesList">
@@ -727,7 +752,7 @@
         <!-- Quick Preset Pills -->
         <div style="display: flex; gap: 6px; overflow-x: auto; margin-bottom: 14px; scrollbar-width: none;">
           <button class="btn-secondary active" id="presetAllBtn" style="font-size: 12px; padding: 6px 10px;">All</button>
-          <button class="btn-secondary" id="presetFortressBtn" style="font-size: 12px; padding: 6px 10px;">👑 Fortress (Score ≥ 85)</button>
+          <button class="btn-secondary" id="presetFortressBtn" style="font-size: 12px; padding: 6px 10px;">Strong fundamentals (score ≥ 85)</button>
           <button class="btn-secondary" id="presetRoicBtn" style="font-size: 12px; padding: 6px 10px;">🚀 ROIC ≥ 20%</button>
           <button class="btn-secondary" id="presetCashBtn" style="font-size: 12px; padding: 6px 10px;">💎 Net Cash Only</button>
         </div>
@@ -735,7 +760,7 @@
         <!-- Filter Controls Grid -->
         <div class="card filter-controls">
           <div class="form-group">
-            <label class="form-label">Min Health Score: <span id="filterHealthVal" class="text-cyan mono">70</span></label>
+            <label class="form-label">Min fundamental score: <span id="filterHealthVal" class="text-cyan mono">70</span></label>
             <input type="range" class="range-slider" id="filterHealthSlider" min="0" max="95" value="70" step="5">
           </div>
           <div class="form-group">
@@ -780,7 +805,7 @@
               <tr>
                 <th>Ticker</th>
                 <th>Price</th>
-                <th>Health</th>
+                <th>Fundamental score</th>
                 <th>Piotroski</th>
                 <th>ROIC</th>
                 <th>Net Cash</th>
@@ -824,6 +849,10 @@
     <!-- Bottom Navigation Bar -->
     <nav class="bottom-nav">
       <div class="bottom-nav-inner">
+        <button class="nav-tab" data-view="viewReview" id="tabReview">
+          <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <span>Review</span>
+        </button>
         <button class="nav-tab active" data-view="viewWatchlist" id="tabWatchlist">
           <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
           <span>Watchlist</span>
@@ -831,16 +860,10 @@
 
         <button class="nav-tab" data-view="viewDeepDive" id="tabDeepDive">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-          <span>Scorecard</span>
+          <span>Research</span>
         </button>
-
-        <button class="nav-tab" data-view="viewFilter" id="tabFilter">
-          <svg viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-          <span>Filter</span>
-        </button>
-
         <button class="nav-tab" data-view="viewCompare" id="tabCompare">
-          <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3"/><path d="M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3"/><path d="M12 7v10"/><path d="M9 10l3-3 3 3"/><path d="M9 14l3 3 3-3"/></svg>
           <span>Compare</span>
         </button>
       </div>
@@ -855,6 +878,7 @@
           <h3 class="modal-title">🔍 Search & Add Stock</h3>
           <button class="icon-btn" id="closeSearchModalBtn">✕</button>
         </div>
+        <div id="searchReasonsPrompt" class="card reasons-prompt" hidden></div>
 
         <!-- Target Watchlist Row -->
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 12px; color: var(--text-secondary); background: var(--bg-surface-subtle); padding: 6px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
@@ -872,7 +896,7 @@
 
         <!-- Quick Suggestions Chips -->
         <div id="searchPopularChips" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; align-items: center;">
-          <span style="font-size: 11px; color: var(--text-tertiary);">Popular:</span>
+          <span style="font-size: 11px; color: var(--text-tertiary);">Examples:</span>
           <button class="popular-chip mono" data-chip-ticker="AAPL">AAPL</button>
           <button class="popular-chip mono" data-chip-ticker="MSFT">MSFT</button>
           <button class="popular-chip mono" data-chip-ticker="NVDA">NVDA</button>
@@ -908,7 +932,7 @@
           <div class="push-row">
             <div>
               <div class="section-title">🔔 Web Push Notifications</div>
-              <p class="push-sub">Alerts on health score shifts, distress signals and entry points</p>
+              <p class="push-sub">Recorded financial changes worth reviewing</p>
             </div>
             <button class="btn-secondary" id="enablePushBtn">Enable</button>
           </div>
@@ -926,7 +950,7 @@
           </p>
           <label class="check-row">
             <input type="checkbox" data-notify-pref="notify_earnings_filings" checked>
-            <span>Health score moves 3 points or a check changes state</span>
+            <span>Fundamental score moves 3 points or a check changes state</span>
           </label>
           <label class="check-row">
             <input type="checkbox" data-notify-pref="notify_red_flags" checked>
@@ -934,7 +958,7 @@
           </label>
           <label class="check-row">
             <input type="checkbox" data-notify-pref="notify_margin_of_safety" checked>
-            <span>Strong company reaches an attractive price</span>
+            <span>Valuation thresholds change</span>
           </label>
           <label class="check-row">
             <input type="checkbox" data-notify-pref="notify_capital_returns">
@@ -942,7 +966,7 @@
           </label>
           <label class="check-row">
             <input type="checkbox" data-notify-pref="notify_sunday_digest" checked>
-            <span>Sunday morning portfolio summary</span>
+            <span>Sunday morning watchlist review</span>
           </label>
         </div>
 
@@ -984,8 +1008,8 @@
             not measured rather than estimating one.
           </p>
           <p>
-            Your thesis, target price and sell guardrails are <strong>your own
-            writing</strong>, kept on your device. The app records them and reminds you
+            Your reasons, target price and reconsideration flags are <strong>your own
+            writing</strong>, saved in Omaha. The app records them and reminds you
             of them. It does not endorse them.
           </p>
           <p>
@@ -1001,9 +1025,9 @@
         <div class="card">
           <div class="section-title" style="margin-bottom: 8px;">💾 Backup & Restore</div>
           <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">
-            Download all your personal investment theses, sell guardrails, and journal notes —
+            Download your reasons, conditions, dated reviews, and journal notes —
             or restore them from a file. Restoring merges: the newer version of each thesis
-            wins, and journal notes from both sides are kept.
+            wins, and reviews and notes from both sides are kept.
           </p>
           <div style="display: flex; gap: 8px;">
             <button class="btn-primary" id="exportBackupBtn" style="flex: 1;">📥 Export Backup JSON</button>
@@ -1023,15 +1047,15 @@
           <h3 class="modal-title">🎩 Welcome to Pocket Omaha</h3>
         </div>
         <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
-          Score wonderful businesses from their filed statements — then hold yourself to
-          the exit rules you write while you are calm. Choose a starter watchlist to begin:
+          A financial checkup for companies you follow. See recorded financial changes,
+          save your reasons, and revisit them over time. Start with an example watchlist or add your own companies.
         </p>
 
         <div style="display: flex; flex-direction: column; gap: 10px;">
           <div class="card card-clickable" data-starter="compounders" style="margin-bottom: 0;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <div>
-                <div style="font-weight: 700;">👑 The Compounders Bundle</div>
+                <div style="font-weight: 700;">Large companies example</div>
                 <div style="font-size: 12px; color: var(--text-secondary);">AAPL · MSFT · GOOGL · BRK-B · NVDA</div>
               </div>
               <span class="score-badge bundle-size">5 companies</span>
@@ -1041,7 +1065,7 @@
           <div class="card card-clickable" data-starter="ai-semis" style="margin-bottom: 0;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <div>
-                <div style="font-weight: 700;">🚀 AI & Semiconductors Bundle</div>
+                <div style="font-weight: 700;">Technology example</div>
                 <div style="font-size: 12px; color: var(--text-secondary);">NVDA · MSFT · GOOGL · TSLA · AAPL</div>
               </div>
               <span class="score-badge bundle-size">5 companies</span>
@@ -1051,7 +1075,7 @@
           <div class="card card-clickable" data-starter="aristocrats" style="margin-bottom: 0;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <div>
-                <div style="font-weight: 700;">🛡️ Defensive Aristocrats Bundle</div>
+                <div style="font-weight: 700;">Established companies example</div>
                 <div style="font-size: 12px; color: var(--text-secondary);">BRK-B · MSFT · AAPL · GOOGL</div>
               </div>
               <span class="score-badge bundle-size">4 companies</span>
@@ -1060,10 +1084,11 @@
         </div>
 
         <div style="margin-top: 16px; text-align: center;">
-          <button class="btn-secondary" id="skipOnboardingBtn">Explore Default Watchlist →</button>
+          <button class="btn-primary" id="skipOnboardingBtn">Start my review →</button>
         </div>
 
         <p class="disclaimer-note">
+          Example lists are a starting point for exploring, not stock recommendations.
           Pocket Omaha scores companies from their filed statements — the same
           arithmetic for everyone, nothing tailored to you. It is a research tool,
           <strong>not investment advice</strong>.
@@ -1080,13 +1105,51 @@
         </div>
         <div class="form-group" style="margin-bottom: 12px;">
           <label class="form-label">Watchlist Name</label>
-          <input type="text" id="newWatchlistNameInput" class="form-input" placeholder="e.g. Dividend Fortress, Tech Radar">
+          <input type="text" id="newWatchlistNameInput" class="form-input" placeholder="e.g. Companies I own, Following">
         </div>
         <div class="form-group" style="margin-bottom: 16px;">
           <label class="form-label">Initial Tickers (comma separated)</label>
           <input type="text" id="newWatchlistTickersInput" class="form-input mono" placeholder="e.g. AAPL, MSFT, NVDA">
         </div>
         <button class="btn-primary" id="saveNewWatchlistBtn" style="width: 100%;">Create Watchlist</button>
+      </div>
+    </div>
+
+    <div class="modal-backdrop sheet-modal" id="watchlistPickerModal">
+      <div class="modal-content watchlist-sheet" role="dialog" aria-modal="true" aria-labelledby="watchlistPickerTitle">
+        <div class="modal-header">
+          <h3 class="modal-title" id="watchlistPickerTitle">Choose watchlist</h3>
+          <button class="icon-btn" id="closeWatchlistPickerBtn" type="button" aria-label="Close">✕</button>
+        </div>
+        <div class="watchlist-picker-list" id="watchlistPickerList"></div>
+        <button class="watchlist-create-action" id="pickerNewListBtn" type="button">+ Create new watchlist</button>
+      </div>
+    </div>
+
+    <div class="modal-backdrop sheet-modal" id="watchlistToolsModal">
+      <div class="modal-content watchlist-sheet" role="dialog" aria-modal="true" aria-labelledby="watchlistToolsTitle">
+        <div class="modal-header">
+          <h3 class="modal-title" id="watchlistToolsTitle">Watchlist tools</h3>
+          <button class="icon-btn" id="closeWatchlistToolsBtn" type="button" aria-label="Close">✕</button>
+        </div>
+        <div class="watchlist-tool-list">
+          <button type="button" data-open-tool="viewFilter"><span>Filter companies</span><span aria-hidden="true">›</span></button>
+          <button type="button" data-open-tool="viewCompare"><span>Compare companies</span><span aria-hidden="true">›</span></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop sheet-modal" id="removeConfirmModal">
+      <div class="modal-content watchlist-sheet" role="alertdialog" aria-modal="true" aria-labelledby="removeConfirmTitle" aria-describedby="removeConfirmMessage">
+        <div class="modal-header">
+          <h3 class="modal-title" id="removeConfirmTitle">Remove item?</h3>
+          <button class="icon-btn" id="closeRemoveConfirmBtn" type="button" aria-label="Close">✕</button>
+        </div>
+        <p class="remove-confirm-message" id="removeConfirmMessage"></p>
+        <div class="remove-confirm-actions">
+          <button class="btn-secondary" id="cancelRemoveBtn" type="button">Cancel</button>
+          <button class="btn-danger" id="confirmRemoveBtn" type="button">Remove</button>
+        </div>
       </div>
     </div>
 

@@ -25,10 +25,10 @@ data class GlossaryEntry(
 object Glossary {
     private val ENTRIES: Map<String, GlossaryEntry> = mapOf(
         "health-score" to GlossaryEntry(
-            title = "Health score",
+            title = "Fundamental score",
             means = "One number from 0 to 100 summarising the five pillars below it: solvency, profitability, valuation, growth and capital allocation.",
-            matters = "It is a starting point for a shortlist, not a verdict. Two companies scoring 70 can be strong in opposite ways, and the pillars are where that shows.",
-            computes = "Each pillar is scored out of 20 and the five are added. Within a pillar, the score is rescaled over the items that could actually be measured. A measure the filings do not contain is reported as unavailable and dropped from its pillar, so it neither helps nor hurts. It is never assumed to be zero. If too little of the scorecard can be measured at all, no composite is published rather than a confident number resting on three inputs."
+            matters = "Use it to choose what to examine during a review. Two companies scoring 70 can be strong in different ways. Valuation affects the total: a price move can change it without changing the business. The total does not establish a moat, predict returns or measure your portfolio risk.",
+            computes = "The total is earned points divided by the maximum points available from the measurable checks, scaled to 100. Each pillar is also shown out of 20 over its measurable checks. A measure the filings do not contain is reported as unavailable and dropped from its pillar, so it neither helps nor hurts. It is never assumed to be zero. At least 60% of the checks must be measurable before a total is published. Read the coverage and individual pillars alongside the total."
         ),
         "Financial Health & Solvency" to GlossaryEntry(
             title = "Financial health & solvency",
@@ -36,10 +36,10 @@ object Glossary {
             matters = "Solvency is the pillar that decides whether the other four ever get to matter. A company that cannot refinance does not get the chance to compound.",
             computes = "For an ordinary company: Altman Z, net debt to EBITDA, interest cover and the liquidity ratios. For a bank none of those are defined — there is no working-capital cycle and no EBITDA — so the pillar rests on equity to assets instead. That makes it a single measure carrying twenty points, which is worth knowing when a bank scores badly here."
         ),
-        "Profitability & Moat Quality" to GlossaryEntry(
-            title = "Profitability & moat quality",
+        "Profitability & Cash Quality" to GlossaryEntry(
+            title = "Profitability & cash quality",
             means = "How much the business earns on the capital it employs, and whether the earnings are real cash.",
-            matters = "A durable high return on capital is the clearest evidence of a moat. Anyone can grow revenue by buying it; earning well on what you already own is harder to copy.",
+            matters = "Sustained returns on capital and cash conversion help assess business quality. These financial checks alone do not establish a durable competitive advantage; review the business context as well.",
             computes = "Piotroski F-Score, plus return on invested capital for an ordinary company or return on equity for a lender — invested capital is not a meaningful denominator for a bank. Cash conversion is scored for ordinary companies only, because deposit and loan flows dominate a bank's cash flow and say nothing about its earnings quality."
         ),
         "Valuation & Margin of Safety" to GlossaryEntry(
@@ -285,7 +285,7 @@ object Glossary {
         "Checklist passed" to GlossaryEntry(
             title = "Checklist passed",
             means = "How many of the twelve qualitative tests this company clears, out of those that could be scored.",
-            matters = "It is a different reading from the health score: the score weighs and combines, while this simply counts how many separate things look right.",
+            matters = "It is a different reading from the fundamental score: the score weighs and combines, while this counts how many separate checks pass.",
             computes = "The denominator is the tests that could be evaluated, not always twelve. A measure the filings do not contain is left out of both halves rather than counted as a failure."
         ),
         "dcf-growth" to GlossaryEntry(
@@ -352,11 +352,13 @@ object Glossary {
 
     private val ALIASES: Map<String, String> = mapOf(
         "Health score" to "health-score",
+        "Fundamental score" to "health-score",
+        "Profitability & Moat Quality" to "Profitability & Cash Quality",
         "Cash conversion" to "Free cash flow conversion",
         "Net cash / (debt)" to "Net Cash",
         "Current ratio" to "Current & quick ratio",
         "Solvency" to "Financial Health & Solvency",
-        "Profitability" to "Profitability & Moat Quality",
+        "Profitability" to "Profitability & Cash Quality",
         "Valuation" to "Valuation & Margin of Safety",
         "Growth" to "Growth & Operating Leverage",
         "Capital Return" to "Capital Allocation & Returns",

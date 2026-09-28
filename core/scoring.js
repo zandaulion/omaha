@@ -999,7 +999,7 @@ function scorePillars(m) {
               [[100, 5], [80, 3.5], [50, 2]], 5)
     });
   }
-  pillars.push({ name: 'Profitability & Moat Quality', items: p2 });
+  pillars.push({ name: 'Profitability & Cash Quality', items: p2 });
 
   // --- Pillar 3: valuation and margin of safety ------------------------
   const p3 = [];
@@ -1710,20 +1710,20 @@ export function computeComprehensiveHealth(model = {}) {
     healthGrade = 'INSUFFICIENT';
     healthTier = 'insufficient';
   } else if (healthScore >= 85) {
-    healthLabel = 'Pristine financial health';
-    healthGrade = 'PRISTINE';
+    healthLabel = 'Strong across the measured fundamental checks';
+    healthGrade = 'STRONG';
     healthTier = 'pristine';
   } else if (healthScore >= 70) {
-    healthLabel = 'Solid moat and financials';
+    healthLabel = 'Mostly favourable fundamental checks';
     healthGrade = 'GOOD';
     healthTier = 'good';
   } else if (healthScore >= 50) {
     healthLabel = 'Mixed — watch the flagged items';
-    healthGrade = 'MODERATE';
+    healthGrade = 'MIXED';
     healthTier = 'moderate';
   } else {
-    healthLabel = 'High leverage or distress risk';
-    healthGrade = 'RISK';
+    healthLabel = 'Several fundamental checks need attention';
+    healthGrade = 'WEAK';
     healthTier = 'risk';
   }
 

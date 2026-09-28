@@ -16,12 +16,12 @@ plugins {
  */
 android {
     namespace = "com.zandaulion.omaha.probe"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.zandaulion.omaha.probe"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 1
         versionName = "0.1"
     }

@@ -497,7 +497,7 @@
       ],
       "max": 20,
       "measured": 4,
-      "name": "Profitability & Moat Quality",
+      "name": "Profitability & Cash Quality",
       "of": 4,
       "pct": 85,
       "score": 17
@@ -701,7 +701,7 @@
       "valuePerShare": 34.83,
       "waccPct": 9.51
     },
-    "healthGrade": "MODERATE",
+    "healthGrade": "MIXED",
     "healthLabel": "Mixed — watch the flagged items",
     "healthTier": "moderate",
     "metrics": {

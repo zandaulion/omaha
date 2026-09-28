@@ -55,6 +55,23 @@ test('a newer major version is refused rather than half-understood', () => {
   );
 });
 
+test('v1 remains readable and v2 preserves conditions and distinct review assessments', () => {
+  const legacy = readBackup({ schemaVersion: 1, theses: [thesis('ABC', null, [entry('old', '2026-01-01', 'note')])] });
+  assert.equal(legacy.theses[0].mustRemainTrue, '');
+  assert.equal(legacy.theses[0].journalEntries[0].kind, 'note');
+  assert.equal(legacy.theses[0].journalEntries[0].assessment, null);
+  const dated = '2026-09-01T00:00:00Z';
+  const local = thesis('ABC', dated, [{ ...entry('same', dated, ''), kind: 'review', assessment: 'intact' }], { mustRemainTrue: 'Customers renew.' });
+  const incoming = thesis('ABC', dated, [{ ...entry('same', dated, ''), kind: 'review', assessment: 'changed' }]);
+  const merged = mergeBackup(backup([incoming]), backup([local]));
+  const twice = mergeBackup(backup([incoming]), backup(merged.theses));
+  assert.equal(twice.theses[0].journalEntries.length, 2, 'metadata collisions survive and repeated import is idempotent');
+  assert.equal(twice.theses[0].mustRemainTrue, 'Customers renew.');
+  const exported = buildBackup(twice, dated);
+  assert.equal(exported.schemaVersion, 2, 'old readers must refuse a file containing new personal fields');
+  assert.deepEqual(readBackup(exported).theses, twice.theses);
+});
+
 test('a file that is not a backup says so', () => {
   assert.throws(() => readBackup('not json'), (e) => e.kind === 'malformed');
   assert.throws(() => readBackup({ hello: 'world' }), (e) => e.kind === 'not_a_backup');
@@ -160,6 +177,8 @@ test('an entry with no id is identified by its content, not duplicated', () => {
   const once = mergeBackup(file, backup([]));
   const twice = mergeBackup(file, backup(once.theses, once.watchlists));
   assert.equal(twice.theses[0].journalEntries.length, 1);
+  assert.equal(once.theses[0].journalEntries[0].id, 'derived-1ngx40n',
+    'v1 derived note IDs remain stable after the review schema migration');
 });
 
 test('a watchlist takes the newer version whole, without resurrecting removals', () => {

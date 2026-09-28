@@ -42,6 +42,7 @@ import com.zandaulion.omaha.design.toTextStyle
  */
 @Composable
 fun SettingsScreen(
+    showTitle: Boolean = true,
     includeNotes: Boolean,
     theme: ThemeChoice,
     backupStatus: String?,
@@ -61,7 +62,7 @@ fun SettingsScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        BasicText("Settings", style = OmahaType.title1.toTextStyle(color = Omaha.colors.textPrimary))
+        if (showTitle) BasicText("Settings", style = OmahaType.title1.toTextStyle(color = Omaha.colors.textPrimary))
 
         SettingsCard("🔒 AI analysis & your notes") {
             BasicText(
@@ -216,7 +217,7 @@ private fun AlertPreferencesCard(
         )
         Box(Modifier.height(12.dp))
 
-        CheckRow(s.earningsAndFilings, "Health score moves 3 points or a check changes state") {
+        CheckRow(s.earningsAndFilings, "Fundamental score moves 3 points or a check changes state") {
             onChange(s.copy(earningsAndFilings = it))
         }
         Box(Modifier.height(8.dp))
@@ -224,7 +225,7 @@ private fun AlertPreferencesCard(
             onChange(s.copy(redFlags = it))
         }
         Box(Modifier.height(8.dp))
-        CheckRow(s.marginOfSafety, "Strong company reaches an attractive price") {
+        CheckRow(s.marginOfSafety, "Valuation thresholds change") {
             onChange(s.copy(marginOfSafety = it))
         }
         Box(Modifier.height(8.dp))
@@ -232,7 +233,7 @@ private fun AlertPreferencesCard(
             onChange(s.copy(capitalReturns = it))
         }
         Box(Modifier.height(8.dp))
-        CheckRow(s.sundayDigest, "Sunday morning portfolio summary") {
+        CheckRow(s.sundayDigest, "Sunday morning watchlist summary") {
             onChange(s.copy(sundayDigest = it))
         }
 

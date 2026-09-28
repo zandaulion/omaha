@@ -22,7 +22,10 @@ class IngestParityTest {
 
     private val coreDir = File("../../core").canonicalFile
     private val fixtures = File(coreDir, "__fixtures__")
-    private val tickers = listOf("NOK", "AAPL", "JPM")
+    // The older JPM recording predates the SEC ticker-map request and therefore
+    // deliberately takes the provider fallback path. NOK and AAPL exercise full
+    // EDGAR parity; the missing-map fallback is pinned below.
+    private val tickers = listOf("NOK", "AAPL")
 
     private fun fixture(ticker: String, kind: String) =
         File(fixtures, "$ticker.$kind.json").readText()
@@ -59,9 +62,24 @@ class IngestParityTest {
         assertTrue(bridge.requested.contains("crumb"), "no crumb was requested")
         assertTrue(bridge.requested.contains("quoteSummary"), "no quote was requested")
         assertTrue(
-            bridge.requested.contains("timeseries:annual"),
-            "no annual statements were requested"
+            bridge.requested.any { it.contains("data.sec.gov/api/xbrl/companyfacts") },
+            "no SEC companyfacts were requested"
         )
+    }
+
+    @Test
+    fun `a missing SEC ticker map attempts the Yahoo statement fallback`() = runTest {
+        // The recorded JPM fixture has neither the newer SEC ticker-map response
+        // nor Yahoo timeseries rows. That makes both provider attempts visible.
+        val bridge = ReplayHttpBridge(fixture("JPM", "http"))
+        val out = engineFor("JPM", bridge).ingest("JPM")
+
+        assertTrue(
+            bridge.requested.any { it.contains("www.sec.gov/files/company_tickers.json") },
+            "SEC ticker lookup was not attempted; requested=${bridge.requested}"
+        )
+        assertTrue(bridge.requested.contains("timeseries:annual"), "Yahoo fallback was not attempted")
+        assertTrue(out.contains("\"kind\":\"network\""), "fallback failure was not typed: ${out.take(300)}")
     }
 
     @Test

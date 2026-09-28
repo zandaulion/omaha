@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.zandaulion.omaha.data"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         minSdk = 26
@@ -56,7 +56,7 @@ dependencies {
     // there; Firebase's SDK is a singleton reachable from anywhere once :app
     // has initialised it, the same way this module never had to know how
     // Room was opened.
-    implementation(platform("com.google.firebase:firebase-bom:34.17.0"))
+    implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-functions")
 

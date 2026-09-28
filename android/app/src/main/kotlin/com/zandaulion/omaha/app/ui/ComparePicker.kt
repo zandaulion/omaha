@@ -119,7 +119,7 @@ fun ComparePicker(
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
                 when {
                     candidates == null -> BasicText(
-                        "Could not load your lists.",
+                        "Loading suggestions…",
                         style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textTertiary)
                     )
                     else -> {

@@ -10,6 +10,7 @@ import com.zandaulion.omaha.data.CompareCandidatesRepository
 import com.zandaulion.omaha.data.OmahaDatabaseFactory
 import com.zandaulion.omaha.data.OmahaStore
 import com.zandaulion.omaha.data.RelayRepository
+import com.zandaulion.omaha.data.ReviewRepository
 import com.zandaulion.omaha.data.RoomAlertStore
 import com.zandaulion.omaha.data.RoomStockStore
 import com.zandaulion.omaha.data.StockDetailRepository
@@ -42,6 +43,7 @@ object OmahaEngine {
         val watchlists: WatchlistRepository,
         val details: StockDetailRepository,
         val theses: ThesisRepository,
+        val reviews: ReviewRepository,
         val settings: com.zandaulion.omaha.data.AppSettings,
         val backup: BackupIo,
         val alerts: AlertRepository,
@@ -80,13 +82,14 @@ object OmahaEngine {
         val theses = ThesisRepository(store.personalData)
         val settings = com.zandaulion.omaha.data.AppSettings(store.appSettings)
         val relay = RelayRepository()
-        val watchlists = WatchlistRepository(store.personalData, engine)
+        val watchlists = WatchlistRepository(store.personalData, engine, store.stockCache)
 
         return Handles(
             store = store,
             watchlists = watchlists,
             details = details,
             theses = theses,
+            reviews = ReviewRepository(store.personalData, store.stockCache, store.alerts, alertEngine),
             settings = settings,
             backup = BackupIo(
                 BackupEngine.fromSource(

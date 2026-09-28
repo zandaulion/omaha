@@ -16,9 +16,11 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,37 +37,84 @@ import com.zandaulion.omaha.design.OmahaType
 import com.zandaulion.omaha.design.toTextStyle
 
 private val CONVICTIONS = listOf(
-    "fortress" to "⭐⭐⭐⭐⭐ Fortress Moat",
-    "high" to "⭐⭐⭐⭐ High Conviction",
-    "medium" to "⭐⭐⭐ Moderate / Valuation Dependent",
-    "speculative" to "⭐⭐ Speculative Turnaround"
+    "fortress" to "Very high",
+    "high" to "High",
+    "medium" to "Moderate",
+    "speculative" to "Speculative"
 )
 
-/**
- * The thesis, the sell triggers and the journal.
- *
- * Doc 15 §3.1: the pre-committed exit rules have no equivalent in any of the
- * ten platforms surveyed, because every competitor optimises the buy decision
- * and none addresses the exit — which is where undisciplined selling does its
- * damage. This screen is the product's differentiator, so two things are
- * deliberate about how it behaves.
- *
- * **Nothing here is scored, ranked or advised on.** The app records what
- * somebody wrote and shows it back when the price moves. It does not agree or
- * disagree, and it must never look like it is grading the thesis.
- *
- * **Every edit saves.** There is no Save button to forget. A person who writes
- * an exit rule and then loses it to a back gesture has lost exactly the thing
- * this screen exists to keep.
- */
+/** Personal reasons are edited in place; dated reviews and notes remain append-only. */
 @Composable
 fun ThesisSection(
     thesis: Thesis,
     onChange: (Thesis) -> Unit,
-    onAddJournal: (String) -> Unit
+    onAddJournal: (String) -> Unit,
+    onRecordReview: (String, String) -> Unit,
+    reviewSaving: Boolean,
+    reviewSave: String?,
+    thesisSave: String?
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
 
+        Field("Why I follow this company", hint = "A few sentences in your own words. These notes save as you edit.") {
+            TextBox(
+                value = thesis.coreRationale,
+                placeholder = "What makes this company worth following?",
+                minLines = 4,
+                onValueChange = { onChange(thesis.copy(coreRationale = it)) }
+            )
+        }
+
+        Field("What must remain true") {
+            TextBox(
+                value = thesis.mustRemainTrue,
+                placeholder = "Which business conditions support your reasons?",
+                minLines = 3,
+                onValueChange = { onChange(thesis.copy(mustRemainTrue = it)) }
+            )
+        }
+
+        Field(
+            "What would make me reconsider",
+            hint = "Your manual checklist. Mark a condition when you believe it has occurred; the app does not monitor these written conditions."
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                thesis.sellTriggers.forEach { trigger ->
+                    TriggerRow(trigger) { updated ->
+                        onChange(
+                            thesis.copy(
+                                sellTriggers = thesis.sellTriggers.map {
+                                    if (it.id == updated.id) updated else it
+                                }
+                            )
+                        )
+                    }
+                }
+
+                AddTrigger { text ->
+                    onChange(
+                        thesis.copy(
+                            sellTriggers = thesis.sellTriggers +
+                                SellTrigger(System.currentTimeMillis().toString(), text)
+                        )
+                    )
+                }
+            }
+        }
+
+        thesisSave?.let {
+            BasicText(it, style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary))
+        }
+
+        Field("Record a review", hint = "Your assessment, after considering the financial picture and your own reasons.") {
+            RecordReview(thesis.ticker, reviewSaving, reviewSave, onRecordReview)
+        }
+
+        var detailsExpanded by remember(thesis.ticker) { mutableStateOf(false) }
+        ReviewAction(if (detailsExpanded) "Hide conviction & entry price" else "Conviction & entry price (optional)") {
+            detailsExpanded = !detailsExpanded
+        }
+        if (detailsExpanded) {
         Field("Conviction") {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 for ((key, label) in CONVICTIONS) {
@@ -117,51 +166,16 @@ fun ThesisSection(
             )
         }
 
-        Field("Core rationale") {
-            TextBox(
-                value = thesis.coreRationale,
-                placeholder = "Why this business, in your own words.",
-                minLines = 4,
-                onValueChange = { onChange(thesis.copy(coreRationale = it)) }
-            )
+
         }
 
-        Field(
-            "Sell guardrails",
-            hint = "Written now, while you are calm. Tick one when it fires — the app " +
-                "will not decide for you, it will only remind you what you decided."
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                thesis.sellTriggers.forEach { trigger ->
-                    TriggerRow(trigger) { updated ->
-                        onChange(
-                            thesis.copy(
-                                sellTriggers = thesis.sellTriggers.map {
-                                    if (it.id == updated.id) updated else it
-                                }
-                            )
-                        )
-                    }
-                }
-
-                AddTrigger { text ->
-                    onChange(
-                        thesis.copy(
-                            sellTriggers = thesis.sellTriggers +
-                                SellTrigger(System.currentTimeMillis().toString(), text)
-                        )
-                    )
-                }
-            }
-        }
-
-        Field("Journal") {
+        Field("Review history & notes") {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 AddJournal(onAddJournal)
 
                 if (thesis.journalEntries.isEmpty()) {
                     BasicText(
-                        "No entries yet. Log your earnings reactions and thesis milestones.",
+                        "No reviews or notes yet. Record your first assessment above.",
                         style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary)
                     )
                 } else {
@@ -171,6 +185,32 @@ fun ThesisSection(
                     thesis.journalEntries.sortedByDescending { it.date }.forEach { JournalRow(it) }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun RecordReview(ticker: String, saving: Boolean, notice: String?, onSave: (String, String) -> Unit) {
+    var assessment by rememberSaveable(ticker) { mutableStateOf<String?>(null) }
+    var note by rememberSaveable(ticker) { mutableStateOf("") }
+    var awaitingSave by rememberSaveable(ticker) { mutableStateOf(false) }
+    LaunchedEffect(notice) {
+        if (awaitingSave && notice == "Review saved") {
+            note = ""; assessment = null; awaitingSave = false
+        } else if (notice != null) awaitingSave = false
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        listOf("intact", "watch", "changed").forEach { value ->
+            ReviewAction((if (assessment == value) "✓ " else "") + reviewAssessmentLabel(value),
+                primary = assessment == value, enabled = !saving) { assessment = value }
+        }
+        TextBox(note, "What did you check or learn? (optional)", minLines = 3, enabled = !saving, onValueChange = { note = it })
+        SmallButton(if (saving) "Saving…" else "Save review", enabled = assessment != null && !saving) {
+            assessment?.let { awaitingSave = true; onSave(it, note.trim()) }
+        }
+        notice?.let {
+            BasicText(it, style = OmahaType.bodySm.toTextStyle(
+                color = if (it == "Review saved") Omaha.colors.healthGood else Omaha.colors.healthRisk))
         }
     }
 }
@@ -226,7 +266,7 @@ private fun AddTrigger(onAdd: (String) -> Unit) {
         Box(Modifier.weight(1f)) {
             TextBox(
                 value = text,
-                placeholder = "Add a guardrail…",
+                placeholder = "Add a condition to reconsider…",
                 onValueChange = { text = it }
             )
         }
@@ -264,13 +304,16 @@ private fun JournalRow(entry: JournalEntry) {
             .padding(10.dp)
     ) {
         BasicText(
-            "📅 ${entry.date.take(10)}",
+            reviewDate(entry.date),
             style = OmahaType.caption
                 .toTextStyle(color = Omaha.colors.textTertiary)
                 .copy(fontFamily = Omaha.fonts.mono)
         )
         Box(Modifier.height(4.dp))
-        BasicText(entry.note, style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textPrimary))
+        if (entry.kind == "review") entry.assessment?.let { assessment ->
+            BasicText(reviewAssessmentLabel(assessment), style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.brandCyan))
+        }
+        if (entry.note.isNotBlank()) BasicText(entry.note, style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textPrimary))
     }
 }
 
@@ -299,6 +342,7 @@ private fun TextBox(
     placeholder: String,
     minLines: Int = 1,
     keyboardType: KeyboardType = KeyboardType.Text,
+    enabled: Boolean = true,
     onValueChange: (String) -> Unit
 ) {
     Box(
@@ -321,6 +365,7 @@ private fun TextBox(
             textStyle = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textPrimary),
             cursorBrush = SolidColor(Omaha.colors.brandCyan),
             minLines = minLines,
+            enabled = enabled,
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             modifier = Modifier.fillMaxWidth()
         )

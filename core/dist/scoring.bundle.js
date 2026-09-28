@@ -674,7 +674,7 @@ function scorePillars(m) {
       )
     });
   }
-  pillars.push({ name: "Profitability & Moat Quality", items: p2 });
+  pillars.push({ name: "Profitability & Cash Quality", items: p2 });
   const p3 = [];
   p3.push({
     name: "Forward P/E vs. own history",
@@ -1224,20 +1224,20 @@ function computeComprehensiveHealth(model = {}) {
     healthGrade = "INSUFFICIENT";
     healthTier = "insufficient";
   } else if (healthScore >= 85) {
-    healthLabel = "Pristine financial health";
-    healthGrade = "PRISTINE";
+    healthLabel = "Strong across the measured fundamental checks";
+    healthGrade = "STRONG";
     healthTier = "pristine";
   } else if (healthScore >= 70) {
-    healthLabel = "Solid moat and financials";
+    healthLabel = "Mostly favourable fundamental checks";
     healthGrade = "GOOD";
     healthTier = "good";
   } else if (healthScore >= 50) {
     healthLabel = "Mixed \u2014 watch the flagged items";
-    healthGrade = "MODERATE";
+    healthGrade = "MIXED";
     healthTier = "moderate";
   } else {
-    healthLabel = "High leverage or distress risk";
-    healthGrade = "RISK";
+    healthLabel = "Several fundamental checks need attention";
+    healthGrade = "WEAK";
     healthTier = "risk";
   }
   const checklist = buildChecklist(metrics, fmt);

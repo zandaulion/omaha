@@ -1,5 +1,13 @@
 # 15 — Competitive Position
 
+> **2026-09-27 correction:** The historical survey below is not a basis for
+> claiming that no competitor supports investment theses, fundamental alerts,
+> or exit reviews. Those broad uniqueness claims are withdrawn. Current
+> positioning is the practical workflow in [18 — Review workflow](18_REVIEW_WORKFLOW.md):
+> understand recorded changes, revisit saved reasons, and record a personal
+> assessment. The opportunity must be validated with users; feature absence
+> in an earlier survey does not establish market uniqueness.
+
 > **Status**: analysis, no code. Written 2026-08-22 against an external market
 > survey of the Android stock-tracking sector (six archetypes, ten-platform
 > feature matrix, pricing tiers). Findings are summarised and attributed here

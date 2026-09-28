@@ -1,6 +1,7 @@
 package com.zandaulion.omaha.data
 
 import androidx.room.Dao
+import androidx.room.ColumnInfo
 import androidx.room.Database
 import androidx.room.Entity
 import androidx.room.Insert
@@ -9,6 +10,12 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.RoomDatabase
 import androidx.room.Transaction
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 
 /**
  * On-device storage for the things a person wrote.
@@ -33,7 +40,8 @@ data class ThesisRow(
     val sellTriggersJson: String = "[]",
     val journalEntriesJson: String = "[]",
     /** ISO-8601. Room has no `datetime('now')`, and ISO is what core/time.js prefers. */
-    val updatedAt: String
+    val updatedAt: String,
+    @ColumnInfo(defaultValue = "''") val mustRemainTrue: String = ""
 )
 
 @Entity(tableName = "watchlists")
@@ -56,8 +64,33 @@ interface PersonalDataDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertTheses(rows: List<ThesisRow>)
 
+    /** A stale edit must never replace a review appended since the form loaded. */
+    @Transaction
+    suspend fun saveThesisPreservingJournal(row: ThesisRow) {
+        val old = theses().firstOrNull { it.ticker == row.ticker }
+        val entries = old?.journalEntriesJson?.let { Json.parseToJsonElement(it).jsonArray }.orEmpty() +
+            Json.parseToJsonElement(row.journalEntriesJson).jsonArray
+        val unique = entries.distinctBy { entry ->
+            val o = entry.jsonObject
+            listOf(o["id"], o["date"], o["note"], o["kind"] ?: JsonPrimitive("note"),
+                o["assessment"] ?: JsonNull)
+        }
+        upsertTheses(listOf(row.copy(journalEntriesJson = JsonArray(unique).toString())))
+    }
+
+    /** Append a note/review without overwriting concurrently edited thesis fields. */
+    @Transaction
+    suspend fun appendThesisEntry(ticker: String, entryJson: String, at: String) {
+        val old = theses().firstOrNull { it.ticker == ticker } ?: ThesisRow(ticker = ticker, updatedAt = at)
+        val entries = Json.parseToJsonElement(old.journalEntriesJson).jsonArray + Json.parseToJsonElement(entryJson)
+        upsertTheses(listOf(old.copy(journalEntriesJson = JsonArray(entries).toString(), updatedAt = at)))
+    }
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertWatchlists(rows: List<WatchlistRow>)
+
+    @Query("DELETE FROM watchlists WHERE id = :id")
+    suspend fun deleteWatchlist(id: String)
 
     @Query("DELETE FROM theses")
     suspend fun clearTheses()
@@ -122,7 +155,8 @@ interface AiSummaryDao {
     //
     // 4: ai_summaries. Additive, and re-fetchable like stock_cache — losing it
     // costs a relay round trip, never material a person wrote.
-    version = 4,
+    // 5: the user's explicit conditions for an investment thesis.
+    version = 5,
     exportSchema = false
 )
 abstract class OmahaDatabase : RoomDatabase() {

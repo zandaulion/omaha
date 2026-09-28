@@ -100,13 +100,22 @@ function haptic(pattern = 8) {
 
 // Global Application State
 const state = {
-  activeView: localStorage.getItem('omaha_active_view') || 'viewWatchlist',
+  activeView: 'viewWatchlist',
   activeSubtab: localStorage.getItem('omaha_active_subtab') || 'overview',
   activeWatchlistId: localStorage.getItem('omaha_active_watchlist') || null,
   currentTicker: localStorage.getItem('omaha_current_ticker') || 'NVDA',
   currentStock: null,
+  stockStatus: 'idle',
+  stockRequest: 0,
   watchlists: [],
+  watchlistsLoadError: false,
+  pendingRemoval: null,
   currentWatchlistData: null,
+  reviews: null,
+  reviewRequest: 0,
+  thesisTicker: null,
+  thesisReady: false,
+  deepDiveBackView: 'viewWatchlist',
   allFilterStocks: [],
   // The comparison is a set of up to four picked tickers, not a parsed string.
   compareTickers: [],
@@ -121,6 +130,7 @@ const state = {
     conviction: 'high',
     targetBuyPrice: null,
     coreRationale: '',
+    mustRemainTrue: '',
     moatTags: [],
     sellTriggers: [],
     journalEntries: []
@@ -163,27 +173,11 @@ async function initApp() {
         openModal('onboardingModal');
       }
 
-      // Check URL parameters first; if none, restore last viewed screen
+      // Explicit links retain their destination. An ordinary launch always
+      // starts at the watchlist, regardless of the screen used last time.
       const hasUrlNav = handleUrlParams();
       if (!hasUrlNav) {
-        const savedView = localStorage.getItem('omaha_active_view') || 'viewWatchlist';
-        const savedTicker = localStorage.getItem('omaha_current_ticker');
-        const savedSubtab = localStorage.getItem('omaha_active_subtab') || 'overview';
-
-        if (savedView === 'viewDeepDive' && savedTicker) {
-          await openStockDeepDive(savedTicker, savedSubtab);
-        // 'viewScreener' is what existing installs have in localStorage. Left
-        // out, everyone whose last screen was this one would silently land on
-        // the watchlist after the rename.
-        } else if (savedView === 'viewFilter' || savedView === 'viewScreener') {
-          loadFilterData();
-          switchView('viewFilter');
-        } else if (savedView === 'viewCompare') {
-          runComparison();
-          switchView('viewCompare');
-        } else {
-          switchView('viewWatchlist');
-        }
+        switchView('viewWatchlist');
       }
     } catch (e) {
       console.warn('Non-fatal initial data load warning:', e);
@@ -515,11 +509,13 @@ function initPullToRefresh() {
 async function refreshActiveView() {
   try {
     if (state.activeView === 'viewDeepDive' && state.currentTicker) {
-      await openStockDeepDive(state.currentTicker, null, { forceRefresh: true });
+      await openStockDeepDive(state.currentTicker, state.activeSubtab, { forceRefresh: true });
     } else if (state.activeView === 'viewFilter') {
       await loadFilterData();
     } else if (state.activeView === 'viewCompare') {
       await runComparison();
+    } else if (state.activeView === 'viewReview') {
+      await loadReviewData();
     } else {
       await loadWatchlistData(state.activeWatchlistId);
     }
@@ -549,21 +545,44 @@ function switchView(viewId) {
   if (viewId === 'viewCompare') {
     initCompareView();
   }
+  if (viewId === 'viewReview') loadReviewData();
 
+  updatePrimaryNavigation();
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function updatePrimaryNavigation() {
+  const primaryView = state.activeView === 'viewDeepDive' && state.activeSubtab === 'thesis'
+    ? 'viewReview'
+    : state.activeView === 'viewFilter' ? 'viewDeepDive' : state.activeView;
   document.querySelectorAll('.nav-tab').forEach((tab) => {
-    if (tab.getAttribute('data-view') === viewId) {
+    const selected = tab.getAttribute('data-view') === primaryView;
+    tab.setAttribute('aria-current', selected ? 'page' : 'false');
+    if (selected) {
       tab.classList.add('active');
     } else {
       tab.classList.remove('active');
     }
   });
 
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function normalizeSubtab(subtabName) {
+  if (['review', 'reasons'].includes(subtabName)) return 'thesis';
+  return ['overview', 'gemini', 'checklist', 'trends', 'dcf', 'thesis'].includes(subtabName)
+    ? subtabName : 'overview';
 }
 
 function switchSubtab(subtabName) {
+  subtabName = normalizeSubtab(subtabName);
   state.activeSubtab = subtabName;
   localStorage.setItem('omaha_active_subtab', subtabName);
+  const stockReady = state.stockStatus === 'ready' && state.currentStock?.ticker === state.currentTicker;
+  document.getElementById('deepDivePriceRow').hidden = subtabName === 'thesis' || !stockReady;
+  document.getElementById('deepDiveScoreCard').hidden = subtabName === 'thesis' || !stockReady;
+  document.getElementById('researchLoadStatus').hidden = subtabName === 'thesis' || stockReady;
+  updatePrimaryNavigation();
 
   document.querySelectorAll('#deepDiveSubtabs .tab-pill').forEach((btn) => {
     if (btn.getAttribute('data-subtab') === subtabName) {
@@ -587,12 +606,12 @@ function switchSubtab(subtabName) {
   };
 
   const target = document.getElementById(subtabMap[subtabName]);
-  if (target) {
+  if (target && (subtabName === 'thesis' || stockReady)) {
     target.classList.remove('hidden');
     target.classList.add('fade-in');
   }
 
-  if (subtabName === 'gemini') {
+  if (subtabName === 'gemini' && stockReady) {
     ensureGeminiSubtabRendered(state.currentTicker);
   }
 }
@@ -603,6 +622,10 @@ function initEventListeners() {
   document.querySelectorAll('.nav-tab').forEach((tab) => {
     tab.addEventListener('click', () => {
       const view = tab.getAttribute('data-view');
+      if (view === 'viewDeepDive') {
+        openStockDeepDive(state.currentTicker, 'overview');
+        return;
+      }
       if (view === 'viewFilter') {
         loadFilterData();
       } else if (view === 'viewCompare') {
@@ -612,14 +635,31 @@ function initEventListeners() {
     });
   });
 
-  // Header Brand click -> return to watchlist
+  // The brand returns to the default watchlist view.
   document.getElementById('headerBrand')?.addEventListener('click', () => {
     switchView('viewWatchlist');
   });
 
   // Deep Dive Back Button
   document.getElementById('deepDiveBackBtn')?.addEventListener('click', () => {
-    switchView('viewWatchlist');
+    switchView(state.deepDiveBackView);
+  });
+
+  document.querySelectorAll('[data-open-tool]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const view = button.dataset.openTool;
+      button.closest('.modal-backdrop')?.classList.remove('open');
+      switchView(view);
+      if (view === 'viewFilter') loadFilterData();
+    });
+  });
+  document.getElementById('refreshReviewBtn')?.addEventListener('click', () => loadReviewData());
+  document.getElementById('overviewReviewBtn')?.addEventListener('click', () => switchSubtab('thesis'));
+  document.getElementById('saveReviewBtn')?.addEventListener('click', handleSaveReview);
+  document.getElementById('researchLoadStatus')?.addEventListener('click', (event) => {
+    if (event.target.closest('[data-retry-research]')) {
+      openStockDeepDive(state.currentTicker, state.activeSubtab);
+    }
   });
 
   // Deep Dive Subtabs
@@ -645,11 +685,40 @@ function initEventListeners() {
     }
   });
 
-  // Watchlist Selector change
-  document.getElementById('watchlistSelect')?.addEventListener('change', (e) => {
-    state.activeWatchlistId = e.target.value;
-    localStorage.setItem('omaha_active_watchlist', state.activeWatchlistId);
-    loadWatchlistData(state.activeWatchlistId);
+  document.getElementById('reviewWatchlistSelect')?.addEventListener('change', (e) => {
+    selectWatchlist(e.target.value);
+  });
+
+  document.getElementById('watchlistPickerBtn')?.addEventListener('click', () => {
+    renderWatchlistPicker();
+    openModal('watchlistPickerModal');
+  });
+  document.getElementById('closeWatchlistPickerBtn')?.addEventListener('click', () => closeModal('watchlistPickerModal'));
+  document.getElementById('watchlistPickerList')?.addEventListener('click', (event) => {
+    const deleteButton = event.target.closest('[data-delete-watchlist-id]');
+    if (deleteButton) {
+      const watchlist = state.watchlists.find((item) => item.id === deleteButton.dataset.deleteWatchlistId);
+      if (watchlist) requestWatchlistRemoval(watchlist);
+      return;
+    }
+    const option = event.target.closest('[data-watchlist-id]');
+    if (!option) return;
+    closeModal('watchlistPickerModal');
+    selectWatchlist(option.dataset.watchlistId);
+  });
+
+  document.getElementById('watchlistToolsBtn')?.addEventListener('click', () => openModal('watchlistToolsModal'));
+  document.getElementById('closeWatchlistToolsBtn')?.addEventListener('click', () => closeModal('watchlistToolsModal'));
+  document.getElementById('closeRemoveConfirmBtn')?.addEventListener('click', closeRemovalConfirmation);
+  document.getElementById('cancelRemoveBtn')?.addEventListener('click', closeRemovalConfirmation);
+  document.getElementById('confirmRemoveBtn')?.addEventListener('click', confirmPendingRemoval);
+  ['watchlistPickerModal', 'watchlistToolsModal', 'removeConfirmModal'].forEach((id) => {
+    const backdrop = document.getElementById(id);
+    backdrop?.addEventListener('click', (event) => {
+      if (event.target !== backdrop) return;
+      if (id === 'removeConfirmModal') closeRemovalConfirmation();
+      else closeModal(id);
+    });
   });
 
   // Watchlist Sorting change
@@ -657,8 +726,9 @@ function initEventListeners() {
     renderWatchlistCards();
   });
 
-  // New Watchlist Modal triggers
-  document.getElementById('newListBtn')?.addEventListener('click', () => {
+  // New watchlists live in the list picker rather than occupying the main toolbar.
+  document.getElementById('pickerNewListBtn')?.addEventListener('click', () => {
+    closeModal('watchlistPickerModal');
     openModal('newWatchlistModal');
   });
   document.getElementById('closeNewListModalBtn')?.addEventListener('click', () => {
@@ -681,6 +751,15 @@ function initEventListeners() {
   document.getElementById('searchTriggerBtn')?.addEventListener('click', openSearch);
   document.getElementById('addStockTriggerBtn')?.addEventListener('click', openSearch);
   document.getElementById('emptyAddStockBtn')?.addEventListener('click', openSearch);
+  document.getElementById('reviewDashboard')?.addEventListener('click', (event) => {
+    const button = event.target.closest('button');
+    if (!button) return;
+    if (button.dataset.reviewTicker) openStockDeepDive(button.dataset.reviewTicker, 'thesis');
+    if (button.dataset.researchTicker) openStockDeepDive(button.dataset.researchTicker, 'overview');
+    if (button.hasAttribute('data-review-add')) openSearch();
+    if (button.hasAttribute('data-review-create')) openModal('newWatchlistModal');
+    if (button.hasAttribute('data-review-retry')) loadReviewData();
+  });
   document.getElementById('closeSearchModalBtn')?.addEventListener('click', () => {
     closeModal('searchModal');
   });
@@ -825,11 +904,13 @@ function initEventListeners() {
       closeModal('onboardingModal');
       await loadWatchlists();
       await loadWatchlistData(starterId);
+      switchView('viewWatchlist');
     });
   });
   document.getElementById('skipOnboardingBtn')?.addEventListener('click', () => {
     localStorage.setItem('omaha_onboarded', 'true');
     closeModal('onboardingModal');
+    switchView('viewWatchlist');
   });
 
   // DCF Sliders & Presets
@@ -960,8 +1041,10 @@ function initEventListeners() {
 async function loadWatchlists() {
   try {
     const res = await apiFetch('/api/watchlists');
+    if (!res.ok) throw new Error('Watchlists unavailable');
     const data = await res.json();
     state.watchlists = data.watchlists || [];
+    state.watchlistsLoadError = false;
 
     const savedWlId = localStorage.getItem('omaha_active_watchlist');
     if (savedWlId && state.watchlists.some(w => w.id === savedWlId)) {
@@ -974,12 +1057,17 @@ async function loadWatchlists() {
       }
     }
 
-    const select = document.getElementById('watchlistSelect');
-    if (select) {
-      select.innerHTML = state.watchlists.map(w =>
-        `<option value="${w.id}" ${w.id === state.activeWatchlistId ? 'selected' : ''}>${w.name}</option>`
-      ).join('');
-    }
+    ['reviewWatchlistSelect'].forEach((id) => {
+      const select = document.getElementById(id);
+      if (select) {
+        select.replaceChildren(...state.watchlists.map((w) => {
+          const option = new Option(w.name, w.id);
+          option.selected = w.id === state.activeWatchlistId;
+          return option;
+        }));
+      }
+    });
+    renderWatchlistPicker();
 
     const searchSelect = document.getElementById('searchTargetWatchlistSelect');
     if (searchSelect) {
@@ -988,8 +1076,57 @@ async function loadWatchlists() {
       ).join('');
     }
   } catch (err) {
+    state.watchlistsLoadError = true;
     console.error('Error loading watchlists:', err);
   }
+}
+
+function renderWatchlistPicker() {
+  const container = document.getElementById('watchlistPickerList');
+  if (!container) return;
+  const options = state.watchlists.map((watchlist) => {
+    const row = document.createElement('div');
+    row.className = 'watchlist-picker-row';
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'watchlist-picker-option';
+    button.dataset.watchlistId = watchlist.id;
+    if (watchlist.id === state.activeWatchlistId) button.classList.add('is-active');
+
+    const label = document.createElement('span');
+    label.textContent = watchlist.name;
+    button.append(label);
+    if (watchlist.id === state.activeWatchlistId) {
+      const check = document.createElement('span');
+      check.className = 'watchlist-picker-check';
+      check.setAttribute('aria-label', 'Selected');
+      check.textContent = '✓';
+      button.append(check);
+    }
+    row.append(button);
+    if (state.watchlists.length > 1) {
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'watchlist-picker-delete';
+      remove.dataset.deleteWatchlistId = watchlist.id;
+      remove.setAttribute('aria-label', `Delete ${watchlist.name}`);
+      remove.textContent = 'Delete';
+      row.append(remove);
+    }
+    return row;
+  });
+  container.replaceChildren(...options);
+}
+
+function selectWatchlist(watchlistId) {
+  if (!watchlistId || !state.watchlists.some((watchlist) => watchlist.id === watchlistId)) return;
+  state.activeWatchlistId = watchlistId;
+  localStorage.setItem('omaha_active_watchlist', watchlistId);
+  const reviewSelect = document.getElementById('reviewWatchlistSelect');
+  if (reviewSelect) reviewSelect.value = watchlistId;
+  renderWatchlistPicker();
+  loadWatchlistData(watchlistId);
+  loadReviewData();
 }
 
 async function loadWatchlistData(watchlistId) {
@@ -1007,14 +1144,19 @@ async function loadWatchlistData(watchlistId) {
 function renderWatchlistHero(data) {
   if (!data) return;
 
-  document.getElementById('heroWatchlistName').textContent = data.name || 'My Watchlist';
+  const watchlistName = data.name || 'My Watchlist';
+  document.getElementById('heroWatchlistName').textContent = watchlistName;
+  document.getElementById('watchlistPickerBtn')?.setAttribute(
+    'aria-label',
+    `Change watchlist. Current watchlist: ${watchlistName}`
+  );
   document.getElementById('heroStockCount').textContent =
     `${data.stockCount || 0} companies` +
     (data.unscoredCount ? ` · ${data.unscoredCount} without enough filed data to score` : '');
 
   const gradeBadge = document.getElementById('heroGradeBadge');
   const score = isNum(data.compositeScore) ? data.compositeScore : null;
-  gradeBadge.textContent = score === null ? 'Not scored' : `${data.grade} (${score}/100)`;
+  gradeBadge.textContent = score === null ? 'Not scored' : `${fundamentalGrade(score)} (${score}/100)`;
   gradeBadge.title =
     data.weighting === 'market-cap'
       ? 'Weighted by market capitalisation'
@@ -1052,17 +1194,109 @@ function renderWatchlistHero(data) {
       (totalNa ? ` · ${totalNa} not reported` : '');
   }
 
-  // Composite Moat Dynamic Update
-  const moatEl = document.getElementById('heroMoatText');
-  if (moatEl) {
-    let moatLabel = 'Not assessed';
-    if (score === null) moatLabel = 'Not assessed';
-    else if (score >= 85) moatLabel = 'Wide / Fortress';
-    else if (score >= 70) moatLabel = 'Strong';
-    else if (score >= 50) moatLabel = 'Moderate';
-    else moatLabel = 'Narrow / Speculative';
-    moatEl.textContent = `Composite Moat: ${moatLabel}`;
+  const weightingEl = document.getElementById('heroWeightingText');
+  if (weightingEl) {
+    weightingEl.textContent = data.weighting === 'market-cap'
+      ? 'Company-size weighted fundamental scores. This snapshot does not use your ownership amounts or measure portfolio returns or risk.'
+      : 'Equally weighted fundamental scores; company sizes are unavailable. This snapshot does not measure portfolio returns or risk.';
   }
+}
+
+// ----------------- ONGOING COMPANY REVIEW -----------------
+const reviewAssessmentLabels = {
+  intact: 'Reasons still hold', watch: 'Needs watching', changed: 'Reasons changed'
+};
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[c]);
+}
+
+function reviewDate(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return null;
+  return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+async function loadReviewData() {
+  const host = document.getElementById('reviewDashboard');
+  const stamp = document.getElementById('reviewLastChecked');
+  const request = ++state.reviewRequest;
+  let watchlistId = state.activeWatchlistId;
+  if (!host) return;
+  host.setAttribute('aria-busy', 'true');
+  host.innerHTML = '<div class="card review-empty">Loading your review list…</div>';
+  stamp.textContent = 'Checking recorded changes…';
+  try {
+    if (!watchlistId && state.watchlistsLoadError) {
+      await loadWatchlists();
+      watchlistId = state.activeWatchlistId;
+      if (state.watchlistsLoadError) throw new Error('Watchlists unavailable');
+    }
+    if (!watchlistId) {
+      stamp.textContent = 'Choose or create a watchlist to begin.';
+      host.innerHTML = '<div class="card review-empty"><h3>Create your first watchlist</h3><p>Keep companies you own or want to understand together, then write down your reasons.</p><button class="btn-primary" type="button" data-review-create>Create a watchlist</button></div>';
+      return;
+    }
+    const res = await apiFetch(`/api/reviews?watchlistId=${encodeURIComponent(watchlistId)}`);
+    if (!res.ok) throw new Error('Review list unavailable');
+    const data = await res.json();
+    if (!Array.isArray(data.items)) throw new Error('Review list unavailable');
+    if (request !== state.reviewRequest) return;
+    state.reviews = { ...data, watchlistId };
+    const checked = reviewDate(data.lastCheckedAt)
+      ? new Date(data.lastCheckedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : null;
+    stamp.textContent = checked
+      ? `${res.headers.get('X-Omaha-From-Cache') ? 'Saved view · ' : ''}Latest recorded financial check: ${checked}`
+      : 'No financial checks recorded yet. A first check establishes a baseline.';
+    renderReviewDashboard(data.items);
+    renderCompanyReviewChanges(state.currentTicker);
+  } catch (err) {
+    if (request !== state.reviewRequest) return;
+    stamp.textContent = 'The review list could not be checked.';
+    host.innerHTML = '<div class="card review-empty"><h3>Unable to load reviews</h3><p>Your saved reasons remain available under Research. Reconnect and try again to check recorded changes.</p><button class="btn-secondary" type="button" data-review-retry>Try again</button></div>';
+  } finally {
+    if (request === state.reviewRequest) host.setAttribute('aria-busy', 'false');
+  }
+}
+
+function renderReviewDashboard(items) {
+  const host = document.getElementById('reviewDashboard');
+  if (!items.length) {
+    host.innerHTML = '<div class="card review-empty"><h3>Follow your first company</h3><p>Add a company you own or want to understand. Save your reasons now so your next review has a starting point.</p><button class="btn-primary" type="button" data-review-add>Add a company</button></div>';
+    return;
+  }
+  const sections = [
+    ['Needs a review', items.filter((item) => ['changed', 'due'].includes(item.status))],
+    ['Set your starting point', items.filter((item) => ['setup', 'unreviewed'].includes(item.status))],
+    ['Reviewed', items.filter((item) => !['changed', 'due', 'setup', 'unreviewed'].includes(item.status))]
+  ];
+  host.innerHTML = sections.filter(([, rows]) => rows.length).map(([label, rows]) => `
+    <section class="review-group" aria-label="${label}">
+      <h3 class="review-group-title">${label}<span>${rows.length}</span></h3>
+      ${rows.map((item) => {
+        const last = reviewDate(item.lastReviewedAt);
+        const assessment = reviewAssessmentLabels[item.assessment];
+        const status = ['changed', 'due', 'setup', 'unreviewed', 'reviewed'].includes(item.status) ? item.status : 'unreviewed';
+        return `<article class="card company-review-card">
+          <div class="company-review-heading"><div><h4 class="mono">${escapeHtml(item.ticker)}</h4><p>${escapeHtml(item.name || item.ticker)}</p></div><span class="review-status ${status}">${escapeHtml(item.label || 'Ready to review')}</span></div>
+          <p class="company-review-reason">${escapeHtml(item.reason || 'Revisit your reasons alongside the financial picture.')}</p>
+          ${item.changes?.length ? `<ul class="review-change-preview">${item.changes.slice(0, 2).map((change) => `<li>${escapeHtml(change.title)}</li>`).join('')}</ul>` : ''}
+          <p class="review-meta">${last ? `Last reviewed ${escapeHtml(last)}${assessment ? ` · ${assessment}` : ''}` : 'No review recorded yet'}</p>
+          <div class="review-card-actions"><button type="button" class="btn-primary" data-review-ticker="${escapeHtml(item.ticker)}" aria-label="Review ${escapeHtml(item.ticker)}">${item.hasThesis ? 'Review' : 'Add my reasons'}</button><button type="button" class="btn-secondary" data-research-ticker="${escapeHtml(item.ticker)}" aria-label="Research ${escapeHtml(item.ticker)}">Research</button></div>
+        </article>`;
+      }).join('')}
+    </section>`).join('');
+}
+
+function renderCompanyReviewChanges(ticker) {
+  const host = document.getElementById('companyReviewChanges');
+  const item = state.reviews?.items?.find((row) => row.ticker === ticker);
+  if (!host) return;
+  host.hidden = !item?.changes?.length;
+  host.innerHTML = item?.changes?.length ? `<div class="card"><h3 class="section-title">Recorded changes to consider</h3>${item.changes.map((change) => `<div class="review-change"><strong>${escapeHtml(change.title)}</strong><p>${escapeHtml(change.body)}</p><span class="review-meta">${escapeHtml(reviewDate(change.at) || '')}</span></div>`).join('')}</div>` : '';
 }
 
 function renderWatchlistCards() {
@@ -1159,7 +1393,7 @@ function renderWatchlistCards() {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const ticker = btn.getAttribute('data-remove-ticker');
-      handleRemoveStockFromWatchlist(ticker);
+      requestStockRemoval(ticker);
     });
   });
 }
@@ -1167,14 +1401,26 @@ function renderWatchlistCards() {
 // ----------------- STOCK DEEP DIVE SCORECARD -----------------
 async function openStockDeepDive(tickerSymbol, initialSubtab = null, opts = {}) {
   const ticker = tickerSymbol.toUpperCase();
+  const request = ++state.stockRequest;
+  if (state.activeView !== 'viewDeepDive') state.deepDiveBackView = state.activeView;
   state.currentTicker = ticker;
+  state.currentStock = null;
+  state.stockStatus = 'loading';
   localStorage.setItem('omaha_current_ticker', ticker);
 
-  const subtabToOpen = initialSubtab || (state.activeView === 'viewDeepDive' ? state.activeSubtab : (localStorage.getItem('omaha_active_subtab') || 'overview'));
+  const subtabToOpen = normalizeSubtab(initialSubtab);
+  const loadStatus = document.getElementById('researchLoadStatus');
+  loadStatus.textContent = `Loading the financial picture for ${ticker}…`;
 
   // Show loading state or navigate immediately
   switchView('viewDeepDive');
   switchSubtab(subtabToOpen);
+  document.getElementById('deepDiveTicker').textContent = ticker;
+  document.getElementById('deepDiveName').textContent = 'Loading financial picture…';
+  // Personal reasons must remain available when a quote provider is unavailable.
+  loadInvestmentThesis(ticker);
+  renderCompanyReviewChanges(ticker);
+  if (!state.reviews) loadReviewData();
 
   try {
     const res = await apiFetch(`/api/stock/${ticker}${opts.forceRefresh ? '?refresh=1' : ''}`);
@@ -1183,6 +1429,7 @@ async function openStockDeepDive(tickerSymbol, initialSubtab = null, opts = {}) 
       throw new Error(body.error || `Could not load ${ticker}`);
     }
     const data = await res.json();
+    if (state.currentTicker !== ticker || request !== state.stockRequest) return;
     state.currentStock = data;
 
     renderDeepDiveHero(data);
@@ -1191,9 +1438,16 @@ async function openStockDeepDive(tickerSymbol, initialSubtab = null, opts = {}) 
     renderChecklistSubtab(data);
     renderTrendsSubtab(data);
     initDCFSandbox(data);
-    loadInvestmentThesis(ticker);
+    state.stockStatus = 'ready';
+    switchSubtab(state.activeSubtab);
     fetchCachedAISummary(ticker);
   } catch (err) {
+    if (state.currentTicker !== ticker || request !== state.stockRequest) return;
+    state.currentStock = null;
+    state.stockStatus = 'error';
+    document.getElementById('deepDiveName').textContent = 'Financial picture unavailable';
+    loadStatus.innerHTML = `<p>Could not load the financial picture for ${escapeHtml(ticker)}. You can still open My reasons &amp; reviews.</p><button class="btn-secondary" type="button" data-retry-research>Try again</button>`;
+    switchSubtab(state.activeSubtab);
     console.error('Deep dive error:', err);
     showToast(err.message || `Could not load ${ticker}`, '⚠️');
   }
@@ -1211,8 +1465,7 @@ function renderDeepDiveHero(stock) {
   changeEl.className = `mono stock-change ${isPos ? 'positive' : 'negative'}`;
 
   document.getElementById('deepDiveScoreVal').textContent = fmtScore(stock.health_score);
-  document.getElementById('deepDiveScoreLabel').textContent =
-    stock.summary?.healthLabel || 'Not enough filed data to score';
+  document.getElementById('deepDiveScoreLabel').textContent = fundamentalLabel(stock.health_score);
   document.getElementById('deepDiveSectorInfo').textContent = `${stock.sector || 'Equities'} · ${stock.industry || 'Core Business'}`;
 
   // SVG Radial Circle Progress Animation
@@ -2371,103 +2624,126 @@ function calculateClientDCF() {
 
 // ----------------- INVESTMENT THESIS & JOURNAL -----------------
 async function loadInvestmentThesis(ticker) {
+  state.thesisTicker = ticker;
+  state.thesisReady = false;
+  setThesisControlsDisabled(true);
+  const status = document.getElementById('thesisLoadStatus');
+  status.textContent = 'Loading saved reasons and review history…';
+  document.getElementById('thesisRationale').value = '';
+  document.getElementById('thesisMustRemainTrue').value = '';
+  document.getElementById('sellTriggersList').replaceChildren();
+  document.getElementById('journalEntriesList').replaceChildren();
+  document.getElementById('reviewNote').value = '';
+  document.getElementById('reviewSaveStatus').textContent = '';
+  document.querySelectorAll('[name="reviewAssessment"]').forEach((input) => { input.checked = false; });
   try {
     const res = await apiFetch(`/api/theses/${ticker}`);
+    if (!res.ok) throw new Error('Could not load saved reasons');
     const data = await res.json();
+    if (state.currentTicker !== ticker || state.thesisTicker !== ticker) return;
     state.thesis = data;
+    state.thesisReady = true;
 
     document.getElementById('thesisConvictionSelect').value = data.conviction || 'high';
-    document.getElementById('thesisTargetPrice').value = data.targetBuyPrice || '';
+    document.getElementById('thesisTargetPrice').value = data.targetBuyPrice ?? '';
     document.getElementById('thesisRationale').value = data.coreRationale || '';
+    document.getElementById('thesisMustRemainTrue').value = data.mustRemainTrue || '';
+    status.textContent = res.headers.get('X-Omaha-From-Cache')
+      ? 'Showing saved reasons. Reconnect before saving changes.' : '';
 
     renderSellTriggers();
     renderJournalEntries();
+    updateOverviewReasons();
+    setThesisControlsDisabled(false);
   } catch (err) {
-    console.error('Error loading thesis:', err);
+    if (state.currentTicker !== ticker) return;
+    status.textContent = 'Your reasons could not be loaded. Refresh to try again; editing is paused to protect your saved writing.';
+    document.getElementById('overviewReasonsSummary').textContent = 'Your saved reasons could not be loaded. Try refreshing.';
   }
 }
 
+function setThesisControlsDisabled(disabled) {
+  document.querySelectorAll('#subtabThesis input, #subtabThesis select, #subtabThesis textarea, #subtabThesis button').forEach((control) => { control.disabled = disabled; });
+  document.getElementById('saveJournalNoteBtn').disabled = disabled;
+}
+
+function updateOverviewReasons() {
+  const latest = [...(state.thesis.journalEntries || [])]
+    .filter((entry) => entry.kind === 'review' && reviewAssessmentLabels[entry.assessment] &&
+      Number.isFinite(new Date(entry.date).getTime()) && new Date(entry.date).getTime() <= Date.now())
+    .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+  document.getElementById('overviewReasonsSummary').textContent = latest
+    ? `Last reviewed ${reviewDate(latest.date)} · ${reviewAssessmentLabels[latest.assessment] || 'Review recorded'}. Revisit your reasons alongside today’s financial picture.`
+    : state.thesis.coreRationale || state.thesis.mustRemainTrue
+      ? 'Your reasons are saved. Check them against the financial picture and record your first review.'
+      : 'Write down why you follow this company and what would change your mind.';
+}
+
 async function handleSaveThesis() {
-  if (!state.currentTicker) return;
-
-  const conviction = document.getElementById('thesisConvictionSelect').value;
-  const targetBuyPrice = parseFloat(document.getElementById('thesisTargetPrice').value) || null;
-  const coreRationale = document.getElementById('thesisRationale').value.trim();
-
-  state.thesis.conviction = conviction;
-  state.thesis.targetBuyPrice = targetBuyPrice;
-  state.thesis.coreRationale = coreRationale;
-
   try {
-    const res = await apiFetch(`/api/theses/${state.currentTicker}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(state.thesis)
-    });
-    if (res.ok) {
-      alert(`✅ Thesis saved for ${state.currentTicker}!`);
-    }
+    await handleSaveThesisSilent();
+    showToast('Your reasons are saved');
+    loadReviewData();
   } catch (err) {
-    console.error('Error saving thesis:', err);
+    showToast('Could not save your reasons. Your edits remain here; reconnect and try again.', '⚠️');
   }
 }
 
 function renderSellTriggers() {
   const container = document.getElementById('sellTriggersList');
-  const triggers = state.thesis.sellTriggers || [
-    { id: '1', text: 'Gross margin drops below 55% for 2 quarters', triggered: false },
-    { id: '2', text: 'Total debt exceeds 2.5x annual EBITDA', triggered: false },
-    { id: '3', text: 'Share dilution exceeds 3% from SBC', triggered: false }
-  ];
+  const triggers = state.thesis.sellTriggers || [];
 
   state.thesis.sellTriggers = triggers;
 
   container.innerHTML = triggers.map(trig => `
-    <div class="trigger-item">
-      <input type="checkbox" class="trigger-checkbox" data-trig-id="${trig.id}" ${trig.triggered ? 'checked' : ''}>
-      <span style="${trig.triggered ? 'text-decoration: line-through; color: var(--health-risk);' : ''}">${trig.text}</span>
-    </div>
-  `).join('');
+    <label class="trigger-item">
+      <input type="checkbox" class="trigger-checkbox" data-trig-id="${escapeHtml(trig.id)}" ${trig.triggered ? 'checked' : ''}>
+      <span>${escapeHtml(trig.text)}${trig.triggered ? '<small class="manual-flag">Flagged by you</small>' : ''}</span>
+    </label>
+  `).join('') || '<p class="review-meta">No conditions saved yet. Add one when you know what would make you reconsider.</p>';
 
   container.querySelectorAll('.trigger-checkbox').forEach(cb => {
-    cb.addEventListener('change', (e) => {
+    cb.addEventListener('change', async (e) => {
       const id = cb.getAttribute('data-trig-id');
       const item = state.thesis.sellTriggers.find(t => t.id === id);
       if (item) {
         item.triggered = e.target.checked;
-        handleSaveThesisSilent();
+        try { await handleSaveThesisSilent(); }
+        catch { item.triggered = !item.triggered; showToast('Could not save this flag. Try again when connected.', '⚠️'); }
         renderSellTriggers();
       }
     });
   });
 }
 
-function handleAddGuardrail() {
-  const text = prompt('Enter new objective exit guardrail:');
+async function handleAddGuardrail() {
+  const text = prompt('What condition would make you reconsider? You will check it manually.');
   if (text && text.trim()) {
     state.thesis.sellTriggers.push({
       id: Date.now().toString(),
       text: text.trim(),
       triggered: false
     });
-    handleSaveThesisSilent();
     renderSellTriggers();
+    try { await handleSaveThesisSilent(); }
+    catch { showToast('Condition added here but not saved. Reconnect and save your reasons.', '⚠️'); }
   }
 }
 
 function renderJournalEntries() {
   const container = document.getElementById('journalEntriesList');
-  const entries = state.thesis.journalEntries || [];
+  const entries = [...(state.thesis.journalEntries || [])].sort((a, b) => new Date(b.date) - new Date(a.date));
 
   if (entries.length === 0) {
-    container.innerHTML = `<div style="font-size: 12px; color: var(--text-tertiary);">No journal entries yet. Log your earnings reactions and thesis milestones.</div>`;
+    container.innerHTML = '<p class="review-meta">No reviews or notes yet. Your dated history will appear here after you save one.</p>';
     return;
   }
 
   container.innerHTML = entries.map(e => `
     <div class="journal-entry">
-      <div class="journal-date mono">📅 ${new Date(e.date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</div>
-      <div class="journal-text">${e.note}</div>
+      <div class="journal-date mono">${escapeHtml(reviewDate(e.date) || 'Date unavailable')} · ${e.kind === 'review' ? 'Review' : 'Note'}</div>
+      ${e.kind === 'review' ? `<div class="review-history-assessment">${reviewAssessmentLabels[e.assessment] || 'Review recorded'}</div>` : ''}
+      <div class="journal-text">${escapeHtml(e.note)}</div>
     </div>
   `).join('');
 }
@@ -2476,25 +2752,78 @@ async function handleSaveJournalNote() {
   const text = document.getElementById('newJournalNoteText').value.trim();
   if (!text) return;
 
-  state.thesis.journalEntries.unshift({
+  const entry = {
     id: Date.now().toString(),
     date: new Date().toISOString(),
     note: text
-  });
-
-  document.getElementById('newJournalNoteText').value = '';
-  closeModal('journalModal');
-  await handleSaveThesisSilent();
-  renderJournalEntries();
+  };
+  state.thesis.journalEntries = [entry, ...(state.thesis.journalEntries || [])];
+  try {
+    await handleSaveThesisSilent();
+    document.getElementById('newJournalNoteText').value = '';
+    closeModal('journalModal');
+    renderJournalEntries();
+  } catch {
+    state.thesis.journalEntries = state.thesis.journalEntries.filter((row) => row.id !== entry.id);
+    showToast('Could not save your note. It is still here; reconnect and try again.', '⚠️');
+  }
 }
 
 async function handleSaveThesisSilent() {
-  if (!state.currentTicker) return;
-  await apiFetch(`/api/theses/${state.currentTicker}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(state.thesis)
-  }).catch(() => {});
+  if (!state.thesisReady || state.thesisTicker !== state.currentTicker) throw new Error('Reasons are not loaded');
+  const ticker = state.currentTicker;
+  state.thesis = {
+    ...state.thesis,
+    conviction: document.getElementById('thesisConvictionSelect').value,
+    targetBuyPrice: parseFloat(document.getElementById('thesisTargetPrice').value) || null,
+    coreRationale: document.getElementById('thesisRationale').value.trim(),
+    mustRemainTrue: document.getElementById('thesisMustRemainTrue').value.trim()
+  };
+  setThesisControlsDisabled(true);
+  try {
+    const res = await apiFetch(`/api/theses/${encodeURIComponent(ticker)}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(state.thesis)
+    });
+    if (!res.ok) throw new Error('Could not save reasons');
+    const saved = await res.json();
+    if (state.currentTicker === ticker) {
+      state.thesis = saved;
+      updateOverviewReasons();
+      renderJournalEntries();
+    }
+  } finally {
+    if (state.currentTicker === ticker) setThesisControlsDisabled(false);
+  }
+}
+
+async function handleSaveReview() {
+  const assessment = document.querySelector('[name="reviewAssessment"]:checked')?.value;
+  const status = document.getElementById('reviewSaveStatus');
+  if (!assessment) { status.textContent = 'Choose an assessment before saving your review.'; return; }
+  const ticker = state.currentTicker;
+  const note = document.getElementById('reviewNote').value.trim();
+  status.textContent = 'Saving your review…';
+  try {
+    await handleSaveThesisSilent();
+    if (state.currentTicker === ticker) setThesisControlsDisabled(true);
+    const res = await apiFetch(`/api/theses/${encodeURIComponent(ticker)}/reviews`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ assessment, note })
+    });
+    if (!res.ok) throw new Error('Could not save review');
+    const saved = await res.json();
+    if (state.currentTicker !== ticker) return;
+    state.thesis = saved;
+    document.getElementById('reviewNote').value = '';
+    document.querySelectorAll('[name="reviewAssessment"]').forEach((input) => { input.checked = false; });
+    status.textContent = 'Review saved to your dated history.';
+    renderJournalEntries();
+    updateOverviewReasons();
+    loadReviewData();
+  } catch {
+    if (state.currentTicker === ticker) status.textContent = 'Review was not saved. Your note remains here; reconnect and try again.';
+  } finally {
+    if (state.currentTicker === ticker) setThesisControlsDisabled(false);
+  }
 }
 
 // ----------------- WATCHLIST FILTER LOGIC -----------------
@@ -2631,7 +2960,7 @@ async function runComparison() {
           </thead>
           <tbody>
             <tr>
-              <td><strong data-explain="Health score" tabindex="0">Health score</strong></td>
+              <td><strong data-explain="Fundamental score" tabindex="0">Fundamental score</strong></td>
               ${stocks.map((s) => `<td><span class="score-badge ${s.summary?.healthTier || 'good'}">${
                 isNum(s.health_score) ? `${s.health_score}/100` : 'N/A'
               }</span></td>`).join('')}
@@ -2969,7 +3298,7 @@ async function handleSearchInput() {
             <button class="btn-add-action ${inWl ? 'added' : 'add'}" data-add-ticker="${r.ticker}">
               ${inWl ? '✓ Added' : '+ Add'}
             </button>
-            <button class="btn-view-action" data-view-ticker="${r.ticker}">📊 Analyze</button>
+            <button class="btn-view-action" data-view-ticker="${r.ticker}">Research</button>
           </div>
         </div>
       `;
@@ -3045,7 +3374,7 @@ async function handleSearchInput() {
             <button class="btn-add-action ${inWl ? 'added' : 'add'}" data-add-ticker="${r.ticker}">
               ${inWl ? '✓ Added' : '+ Add'}
             </button>
-            <button class="btn-view-action" data-view-ticker="${r.ticker}">📊 Analyze</button>
+            <button class="btn-view-action" data-view-ticker="${r.ticker}">Research</button>
           </div>
         </div>
       `;
@@ -3121,12 +3450,14 @@ async function handleAddStockToWatchlist(tickerSymbol, targetWatchlistId, btnEl 
       btnEl.disabled = false;
     }
 
-    showToast(`Added ${ticker} to ${wlName}!`, '🏰');
+    showToast(`Added ${ticker} to ${wlName}`);
+    showAddedReasonsPrompt(ticker);
 
     // Update local state and reload
     await loadWatchlists();
     if (watchlistId === state.activeWatchlistId) {
       await loadWatchlistData(watchlistId);
+      loadReviewData();
     }
   } catch (err) {
     console.error('Error adding stock to watchlist:', err);
@@ -3137,6 +3468,19 @@ async function handleAddStockToWatchlist(tickerSymbol, targetWatchlistId, btnEl 
     }
     showToast(`Failed to add ${ticker}: ${err.message}`, '⚠️');
   }
+}
+
+function showAddedReasonsPrompt(ticker) {
+  ['addedReasonsPrompt', 'searchReasonsPrompt'].forEach((id) => {
+    const host = document.getElementById(id);
+    host.hidden = false;
+    host.innerHTML = `<div class="section-title">${escapeHtml(ticker)} is in your watchlist</div><p>Optional: save why you follow it while your reasons are fresh.</p><div class="review-card-actions"><button class="btn-primary" type="button" data-add-reasons>Add your reasons</button><button class="btn-secondary" type="button" data-later>Later</button></div>`;
+    const dismiss = () => ['addedReasonsPrompt', 'searchReasonsPrompt'].forEach((promptId) => { document.getElementById(promptId).hidden = true; });
+    host.querySelector('[data-add-reasons]').addEventListener('click', () => {
+      dismiss(); closeModal('searchModal'); openStockDeepDive(ticker, 'thesis');
+    });
+    host.querySelector('[data-later]').addEventListener('click', dismiss);
+  });
 }
 
 // Remove a stock from the active watchlist
@@ -3158,9 +3502,70 @@ async function handleRemoveStockFromWatchlist(tickerSymbol) {
     showToast(`Removed ${ticker} from ${wlName}.`, '🗑️');
     await loadWatchlists();
     await loadWatchlistData(watchlistId);
+    loadReviewData();
   } catch (err) {
     console.error('Error removing stock from watchlist:', err);
     showToast(`Failed to remove ${ticker}: ${err.message}`, '⚠️');
+  }
+}
+
+function requestStockRemoval(tickerSymbol) {
+  const ticker = tickerSymbol.trim().toUpperCase();
+  const watchlist = state.watchlists.find((item) => item.id === state.activeWatchlistId);
+  state.pendingRemoval = { kind: 'stock', ticker };
+  document.getElementById('removeConfirmTitle').textContent = `Remove ${ticker}?`;
+  document.getElementById('removeConfirmMessage').textContent =
+    `Remove ${ticker} from ${watchlist?.name || 'this watchlist'}? Your saved company data and research remain.`;
+  document.getElementById('confirmRemoveBtn').textContent = 'Remove';
+  openModal('removeConfirmModal');
+}
+
+function requestWatchlistRemoval(watchlist) {
+  if (state.watchlists.length <= 1) return;
+  state.pendingRemoval = { kind: 'watchlist', id: watchlist.id, name: watchlist.name };
+  document.getElementById('removeConfirmTitle').textContent = `Delete “${watchlist.name}”?`;
+  document.getElementById('removeConfirmMessage').textContent =
+    'This removes the watchlist. Your saved company data and research remain.';
+  document.getElementById('confirmRemoveBtn').textContent = 'Delete';
+  openModal('removeConfirmModal');
+}
+
+function closeRemovalConfirmation() {
+  state.pendingRemoval = null;
+  closeModal('removeConfirmModal');
+}
+
+async function confirmPendingRemoval() {
+  const removal = state.pendingRemoval;
+  if (!removal) return;
+  closeRemovalConfirmation();
+  if (removal.kind === 'stock') {
+    await handleRemoveStockFromWatchlist(removal.ticker);
+    updateBookmarkButtonState();
+    return;
+  }
+  await handleDeleteWatchlist(removal.id, removal.name);
+}
+
+async function handleDeleteWatchlist(watchlistId, watchlistName) {
+  try {
+    const res = await apiFetch(`/api/watchlists/${watchlistId}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Failed to delete watchlist');
+
+    const nextWatchlistId = state.activeWatchlistId === watchlistId
+      ? data.activeWatchlistId
+      : state.activeWatchlistId;
+    state.activeWatchlistId = nextWatchlistId;
+    localStorage.setItem('omaha_active_watchlist', nextWatchlistId);
+    closeModal('watchlistPickerModal');
+    await loadWatchlists();
+    await loadWatchlistData(nextWatchlistId);
+    loadReviewData();
+    showToast(`Deleted watchlist "${watchlistName}".`, '🗑️');
+  } catch (err) {
+    console.error('Error deleting watchlist:', err);
+    showToast(`Failed to delete watchlist: ${err.message}`, '⚠️');
   }
 }
 
@@ -3189,6 +3594,7 @@ async function handleCreateWatchlist() {
       localStorage.setItem('omaha_active_watchlist', data.id);
       await loadWatchlists();
       await loadWatchlistData(data.id);
+      loadReviewData();
       showToast(`Created watchlist "${name}"`, '✨');
     }
   } catch (err) {
@@ -3220,7 +3626,8 @@ async function handleToggleBookmark() {
 
   const inWl = (currentWl.tickers || []).includes(state.currentTicker);
   if (inWl) {
-    await handleRemoveStockFromWatchlist(state.currentTicker);
+    requestStockRemoval(state.currentTicker);
+    return;
   } else {
     await handleAddStockToWatchlist(state.currentTicker, state.activeWatchlistId);
   }
@@ -3331,7 +3738,7 @@ async function handleEnablePush() {
     // Trigger an immediate confirmation notification via Service Worker
     if (reg.showNotification) {
       reg.showNotification('Pocket Omaha 🎩', {
-        body: 'Notifications are on. You will hear about health changes, distress signals and entry points.',
+        body: 'Notifications are on. Recorded financial changes will help you decide what to review.',
         icon: '/icons/icon-192.png',
         badge: '/icons/badge-96.png',
         tag: 'push-enabled',
@@ -3353,6 +3760,7 @@ function handleUrlParams() {
   const params = new URLSearchParams(window.location.search);
   const ticker = params.get('ticker');
   const tab = params.get('tab');
+  const subtab = params.get('subtab');
   const view = params.get('view');
   const watchlist = params.get('watchlist') || params.get('wl');
 
@@ -3360,12 +3768,20 @@ function handleUrlParams() {
     state.activeWatchlistId = watchlist;
     localStorage.setItem('omaha_active_watchlist', watchlist);
     loadWatchlistData(watchlist);
-    const select = document.getElementById('watchlistSelect');
-    if (select) select.value = watchlist;
+    renderWatchlistPicker();
+    const reviewSelect = document.getElementById('reviewWatchlistSelect');
+    if (reviewSelect) reviewSelect.value = watchlist;
   }
 
   if (ticker) {
-    openStockDeepDive(ticker, tab || 'overview');
+    const requestedSubtab = ['review', 'reasons'].includes(tab)
+      ? 'thesis' : subtab || tab || 'overview';
+    openStockDeepDive(ticker, normalizeSubtab(requestedSubtab));
+    return true;
+  }
+
+  if (tab === 'review' || view === 'review' || view === 'viewReview') {
+    switchView('viewReview');
     return true;
   }
 
@@ -3406,6 +3822,26 @@ function getScoreColor(score) {
   if (score >= 70) return 'var(--health-good)';
   if (score >= 50) return 'var(--health-moderate)';
   return 'var(--health-risk)';
+}
+
+// Derive visible copy from the numeric score so older saved API responses do
+// not reintroduce claims that a composite score proves a moat or distress.
+function fundamentalGrade(score) {
+  if (!isNum(score)) return 'INSUFFICIENT';
+  if (score >= 85) return 'STRONG';
+  if (score >= 70) return 'GOOD';
+  if (score >= 50) return 'MIXED';
+  return 'WEAK';
+}
+
+function fundamentalLabel(score) {
+  return {
+    INSUFFICIENT: 'Not enough filed data to score',
+    STRONG: 'Strong across the measured fundamental checks',
+    GOOD: 'Mostly favourable fundamental checks',
+    MIXED: 'Mixed — watch the flagged items',
+    WEAK: 'Several fundamental checks need attention'
+  }[fundamentalGrade(score)];
 }
 
 function getPillarColor(pct) {

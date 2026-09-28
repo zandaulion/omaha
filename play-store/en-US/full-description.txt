@@ -1,0 +1,29 @@
+Pocket Omaha helps self-directed, long-term investors understand what changed in the companies they follow and revisit the reasons behind each investment idea.
+
+Start with a focused watchlist. See a measured fundamental score across solvency, profitability, valuation, growth and capital returns, then open the underlying evidence when something needs a closer look.
+
+REVIEW WHAT NEEDS ATTENTION
+
+The Review screen brings forward companies with newly recorded financial changes or reviews that are due. Record whether your reasons still hold, need watching or have changed, and keep a dated history of your own assessments.
+
+WRITE DOWN YOUR REASONS
+
+Save why you follow a company, what must remain true and what would make you reconsider. Add personal notes, conviction and an optional target entry price. Reconsideration conditions are checked by you; the app does not pretend to evaluate your personal thesis automatically.
+
+TRACE EVERY SCORE
+
+The company scorecard uses reported financial data and a traffic-light checklist of fundamental measures. Tap supported labels to read what a metric means, how it is calculated and where it has limitations. Missing data is shown as unreported instead of being replaced with a favourable estimate.
+
+RESEARCH THE DETAILS
+
+Explore financial trends, balance-sheet strength, margins, cash flow, valuation measures and a DCF sandbox where you control the assumptions. Compare up to five companies side by side, or filter the companies already in your research set.
+
+KEEP WATCHLISTS ORGANISED
+
+Create multiple watchlists, add or remove companies, sort the current list and view its aggregate fundamental picture. Pocket Omaha does not use position sizes and is not a brokerage portfolio tracker.
+
+YOUR RESEARCH STAYS PORTABLE
+
+Personal research is stored on the device and can be exported as a JSON backup. No brokerage connection is required. Optional AI analysis is clearly separated and controlled from Settings.
+
+Pocket Omaha is a research and review tool. Scores summarise historical reported fundamentals; they do not predict returns or provide personalised investment advice. Market and filing data can be delayed, incomplete or unavailable.

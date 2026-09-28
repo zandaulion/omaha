@@ -36,6 +36,7 @@ class PersonalDataStore(private val dao: PersonalDataDao) {
                 put("conviction", JsonPrimitive(t.conviction))
                 put("targetBuyPrice", t.targetBuyPrice?.let(::JsonPrimitive) ?: JsonNull)
                 put("coreRationale", JsonPrimitive(t.coreRationale))
+                put("mustRemainTrue", JsonPrimitive(t.mustRemainTrue))
                 // Already JSON on disk; re-encoding as a string would nest it.
                 put("moatTags", parseArray(t.moatTagsJson))
                 put("sellTriggers", parseArray(t.sellTriggersJson))
@@ -72,6 +73,7 @@ class PersonalDataStore(private val dao: PersonalDataDao) {
                 conviction = o.str("conviction") ?: "high",
                 targetBuyPrice = o["targetBuyPrice"]?.jsonPrimitive?.doubleOrNull,
                 coreRationale = o.str("coreRationale") ?: "",
+                mustRemainTrue = o.str("mustRemainTrue") ?: "",
                 moatTagsJson = (o["moatTags"] ?: JsonArray(emptyList())).toString(),
                 sellTriggersJson = (o["sellTriggers"] ?: JsonArray(emptyList())).toString(),
                 journalEntriesJson = (o["journalEntries"] ?: JsonArray(emptyList())).toString(),

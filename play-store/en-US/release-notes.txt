@@ -1,0 +1,9 @@
+Initial Android release.
+
+• Watchlist-first home with custom lists, sorting and quick company removal
+• Review queue for newly recorded changes and reviews that are due
+• Detailed fundamental scorecards, trends, valuation tools and DCF scenarios
+• Saved reasons, reconsideration conditions, notes and dated review history
+• Side-by-side comparison for up to five companies
+• Tap-to-explain financial metrics throughout the app
+• Local JSON backup and restore

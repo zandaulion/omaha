@@ -1,16 +1,20 @@
 # Pocket Omaha 🎩
 
-> **Scores a company from its filed statements — then holds you to the exit rules
-> you wrote while you were calm.**  
-> A mobile-first PWA for stock health, economic moats and fundamental rigor, built
-> for value investors who want balance-sheet clarity, durable free cash flows and
-> zero noise.
->
-> Every competitor optimises the *buy* decision. This one is built around the
-> exit: a written thesis, pre-committed sell triggers, and a journal that
-> remembers what you thought before the price moved. It is an accountability
-> instrument, not an oracle — and **not a portfolio tracker**; see
-> `docs/01_PRODUCT_SPEC.md` §4 for what it deliberately does not do.
+> **Understand what changed in the companies you follow. Revisit your reasons.**
+> Omaha helps long-term stock owners connect recorded financial changes with
+> their investment reasoning and keep a dated history of their own assessments.
+> Available as a mobile-first PWA and a native Android app.
+
+Start in **Watchlist**, use **Review** for the companies that need your attention,
+and investigate the evidence in **Research**. Write why you follow a company, what must remain true,
+and what would make you reconsider. Record whether those reasons still hold,
+need watching, or have changed. Conditions are manually assessed; Omaha does
+not automatically evaluate your investment thesis. See
+[the review workflow](docs/18_REVIEW_WORKFLOW.md) for the implemented rules.
+
+## Documentation
+
+The [documentation index](docs/README.md) separates current operating documentation from earlier design and migration records. Start with the [user guide](docs/19_USER_GUIDE.md), [runtime and architecture](docs/20_RUNTIME_AND_ARCHITECTURE.md), [data/privacy/security](docs/21_DATA_PRIVACY_AND_SECURITY.md), [API reference](docs/22_API_REFERENCE.md), [configuration and operations](docs/23_CONFIGURATION_AND_OPERATIONS.md), or [contributing and testing](docs/24_CONTRIBUTING_AND_TESTING.md).
 
 ---
 
@@ -39,17 +43,17 @@ reported as inapplicable and a measure that does fit is used instead.
 
 ## 🌟 Key Features
 
-1. **Composite Health Scorecard (0–100)**:
-   - Evaluates companies across 5 pillars (20 pts each):
+1. **Fundamental Scorecard (0–100)**:
+   - Summarises measured checks across 5 pillars, each displayed on a 20-point scale:
      - 🛡️ **Financial Health & Solvency** (Altman Z-Score, Net Debt / EBITDA, Current Ratio)
-     - 🚀 **Profitability & Moat Quality** (ROIC, Operating Margins, Piotroski F-Score)
+     - 🚀 **Profitability & Cash Quality** (ROIC, Operating Margins, Piotroski F-Score)
      - 🎯 **Valuation & Margin of Safety** (Historical P/E, PEG, EV/FCF, DCF Discount)
      - 📈 **Growth & Operating Leverage** (Revenue, EPS and FCF-per-share CAGR, Gross Margin Trend)
      - 💰 **Capital Allocation & Returns** (Share Dilution / Buyback Yield, Dividend Safety)
 
 2. **12-Point Traffic-Light Fundamental Checklist**:
    - Instant 🟢 `PASS` / 🟡 `WATCH` / 🔴 `FAIL` assessment against rigorous value-investing benchmarks.
-   - Interactive detail drawers explaining the economic moat logic behind each test.
+   - Interactive detail drawers explaining the calculation and limitations of each test.
 
 3. **Historical Financial Trajectory** (as many years as the company has filed):
    - Dual bar chart of **Revenue vs. Free Cash Flow ($B)** with real cash conversion analysis.
@@ -62,11 +66,13 @@ reported as inapplicable and a measure that does fit is used instead.
    - Real-time slider controls for 5-Year FCF Growth Rate, Terminal Exit Multiple, and Discount Hurdle Rate.
    - Instant 🐻 *Bear Case*, ⚖️ *Base Case*, and 🐂 *Bull Case* presets.
 
-5. **Personal Investment Thesis & Journaling Log**:
-   - Written buy thesis and conviction level (1 to 5 stars / *Fortress Moat*).
-   - Target entry buy price tracking.
-   - Pre-committed exit guardrails with interactive checklist triggers.
-   - Dated chronological journal entries with JSON backup export and restore.
+5. **Personal Reasons, Reviews & Journal**:
+   - Three prompts: why I follow this company, what must remain true, and what would make me reconsider.
+   - Optional conviction and target entry price.
+   - Reconsideration conditions with explicitly manual flags.
+   - Dated reviews with your assessment, plus ordinary journal notes.
+   - Review reminders after 90 days; newer recorded alerts return a company to the queue.
+   - JSON backup export and restore, including review history.
    - Restore **merges** rather than replaces: the newer version of each thesis wins,
      and journal notes from both sides are kept.
 
@@ -75,13 +81,15 @@ reported as inapplicable and a measure that does fit is used instead.
    - Filters the companies you already follow. It is **not a market screener**:
      there is no universe behind it, so nothing appears that you have not looked
      up before.
-   - Side-by-side comparison matrix for up to 4 peer tickers.
+   - Side-by-side comparison matrix for up to 5 tickers.
 
 7. **Alert Engine**:
-   - Watchlist holdings re-checked four times a day against a stored snapshot.
-   - Health score moves of 3+ points, checklist state changes, distress
-     thresholds, and margin-of-safety entry points.
-   - Sunday morning portfolio digest.
+   - Scheduled checks compare followed companies against stored snapshots.
+   - Fundamental score moves of 3+ points, checklist state changes, specific
+     distress-model thresholds, and valuation crossings.
+   - Sunday watchlist digest. Its score is weighted by company market size,
+     not by your holdings or investment exposure.
+   - No recorded alerts does not establish that a business or your reasons are unchanged.
    - Per-alert-type preferences and a delivered-alert history in Settings.
 
 8. **Zero-Recurring-Cost Architecture & Offline-First PWA**:
@@ -94,8 +102,8 @@ reported as inapplicable and a measure that does fit is used instead.
    - Standalone PWA installation for iOS (Safari) and Android (Chrome).
 
 9. **Admin Integration with `pwa-invite-console`**:
-   - Standard `/api/admin/*` endpoints, reachable only on the private listener
-     that injects `X-Admin: 1`.
+   - Standard `/api/admin/*` endpoints protected by `ADMIN_TOKEN` through
+     `X-Admin-Token`; production deployments expose them only on a private listener.
    - Passwordless invites: 12-character CSPRNG codes, single-device binding,
      per-IP and global redemption throttling.
 
@@ -122,8 +130,8 @@ regenerate rather than committing a snapshot that will drift.
 npm test
 ```
 
-163 assertions. The 48 in `core/scoring.test.js` each correspond to a defect that
-shipped in an earlier build of the scoring engine, and they are the reason the
+The scoring regression cases each correspond to a defect that shipped in an
+earlier build of the scoring engine, and they are the reason the
 engine can be changed with any confidence — every one of them produced a
 plausible, wrong number that looked correct on screen. The rest cover ingestion
 failure handling (`core/providers/yahoo.test.js`), portable decimal formatting
@@ -155,7 +163,7 @@ catching are the ones where that belief is wrong.
 ### 1. Install Dependencies & Run
 
 ```bash
-cd pocket-omaha
+cd omaha
 npm install
 npm start
 ```
@@ -172,7 +180,9 @@ npm run dev
 
 ## 🛠️ CLI Administration (`admin.sh`)
 
-Manage device invites and authorizations from the terminal:
+Manage device invites and authorizations from the terminal. The current script
+uses the private proxy's legacy `X-Admin: 1` marker; direct server calls must use
+`X-Admin-Token` with `ADMIN_TOKEN`. See the [operations guide](docs/23_CONFIGURATION_AND_OPERATIONS.md#administration).
 
 ```bash
 # Create a new 7-day invite code
@@ -205,8 +215,8 @@ Manage device invites and authorizations from the terminal:
 | `/api/backup/import` | `POST` | Restore a backup, merging rather than replacing |
 | `/api/auth/redeem` | `POST` | Redeem invite code and bind device |
 | `/api/auth/session` | `GET` | Validate device authorization |
-| `/api/admin/devices` | `GET` | Admin: List registered devices (`X-Admin: 1`) |
-| `/api/admin/invites` | `GET`, `POST` | Admin: Manage invite codes (`X-Admin: 1`) |
+| `/api/admin/devices` | `GET` | Admin: list registered devices (`X-Admin-Token`) |
+| `/api/admin/invites` | `GET`, `POST` | Admin: manage invite codes (`X-Admin-Token`) |
 | `/api/push/vapid-key` | `GET` | Retrieve Web Push public VAPID key |
 | `/api/push/subscribe` | `POST` | Register Web Push subscription |
 
@@ -227,7 +237,9 @@ pocket-omaha/
 │   ├── analysis/prompt.js     # Gemini payload, prompt and response schema
 │   ├── alerts/triggers.js     # Trigger rules — what counts as a real change
 │   └── __fixtures__/          # Recorded upstream responses for the golden tests
-├── docs/                      # Architecture and product specifications
+├── docs/                      # Current manuals plus architecture/product records
+├── android/                   # Native Compose app, Room data layer, QuickJS host, widget
+├── functions/                 # Firebase AI-credit and Play-purchase callables
 ├── scripts/
 │   ├── dump-prompt.mjs        # Renders the exact Gemini prompt as Markdown
 │   └── record-fixture.mjs     # Captures live upstream responses as fixtures
@@ -261,5 +273,3 @@ pocket-omaha/
 ## 📄 License
 
 This project is open-source software licensed under the [GNU General Public License v3.0 (GPL-3.0)](LICENSE).
-
-

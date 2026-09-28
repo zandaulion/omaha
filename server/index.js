@@ -26,6 +26,9 @@ import { assessSummaryStaleness } from '../core/analysis/staleness.js';
 import { PROMPT_VERSION } from '../core/analysis/prompt.js';
 import { buildBackup, mergeBackup } from '../core/backup.js';
 import { readPersonalData, writePersonalData } from './backup-store.js';
+import { buildReviewQueue } from '../core/review.js';
+import { parseTimestamp } from '../core/time.js';
+import { readThesis, saveThesis, recordReview } from './thesis-store.js';
 import {
   startAlertWorker,
   runSweep,
@@ -619,8 +622,19 @@ app.put('/api/watchlists/:id', requireDeviceAuth, (req, res) => {
 
 app.delete('/api/watchlists/:id', requireDeviceAuth, (req, res) => {
   const { id } = req.params;
+  const lists = db.prepare('SELECT * FROM watchlists ORDER BY is_default DESC, name ASC').all();
+  const target = lists.find(list => list.id === id);
+  if (!target) return res.status(404).json({ error: 'Watchlist not found' });
+  if (lists.length <= 1) return res.status(409).json({ error: 'Keep at least one watchlist.' });
+
   db.prepare('DELETE FROM watchlists WHERE id = ?').run(id);
-  return res.json({ success: true });
+  const remaining = lists.filter(list => list.id !== id);
+  const fallback = remaining.find(list => list.is_default) || remaining[0];
+  if (target.is_default || !remaining.some(list => list.is_default)) {
+    db.prepare('UPDATE watchlists SET is_default = 0').run();
+    db.prepare("UPDATE watchlists SET is_default = 1, updated_at = datetime('now') WHERE id = ?").run(fallback.id);
+  }
+  return res.json({ success: true, deletedId: id, activeWatchlistId: fallback.id });
 });
 
 // Add a Stock to a Watchlist
@@ -802,58 +816,45 @@ app.get('/api/watchlists/:id/health', requireDeviceAuth, async (req, res) => {
 
 // ----------------- INVESTMENT THESIS & JOURNAL API (PROTECTED) -----------------
 app.get('/api/theses/:ticker', requireDeviceAuth, (req, res) => {
-  const ticker = req.params.ticker.toUpperCase();
-  const thesis = db.prepare('SELECT * FROM theses WHERE ticker = ?').get(ticker);
-  if (!thesis) {
-    return res.json({
-      ticker,
-      conviction: 'high',
-      targetBuyPrice: null,
-      coreRationale: '',
-      moatTags: [],
-      sellTriggers: [],
-      journalEntries: []
-    });
-  }
-
-  return res.json({
-    ticker: thesis.ticker,
-    conviction: thesis.conviction,
-    targetBuyPrice: thesis.target_buy_price,
-    coreRationale: thesis.core_rationale,
-    moatTags: JSON.parse(thesis.moat_tags_json || '[]'),
-    sellTriggers: JSON.parse(thesis.sell_triggers_json || '[]'),
-    journalEntries: JSON.parse(thesis.journal_entries_json || '[]'),
-    updatedAt: thesis.updated_at
-  });
+  return res.json(readThesis(req.params.ticker));
 });
 
 app.post('/api/theses/:ticker', requireDeviceAuth, (req, res) => {
-  const ticker = req.params.ticker.toUpperCase();
-  const { conviction = 'high', targetBuyPrice = null, coreRationale = '', moatTags = [], sellTriggers = [], journalEntries = [] } = req.body || {};
+  const body = req.body || {};
+  if ((body.mustRemainTrue !== undefined && typeof body.mustRemainTrue !== 'string') ||
+      (body.coreRationale !== undefined && typeof body.coreRationale !== 'string') ||
+      ['moatTags', 'sellTriggers', 'journalEntries'].some(key => body[key] !== undefined && !Array.isArray(body[key]))) {
+    return res.status(400).json({ error: 'Invalid thesis fields.' });
+  }
+  const thesis = saveThesis(req.params.ticker, body);
+  return res.json({ ...thesis, success: true });
+});
 
-  db.prepare(`
-    INSERT INTO theses (ticker, conviction, target_buy_price, core_rationale, moat_tags_json, sell_triggers_json, journal_entries_json, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
-    ON CONFLICT(ticker) DO UPDATE SET
-      conviction=excluded.conviction,
-      target_buy_price=excluded.target_buy_price,
-      core_rationale=excluded.core_rationale,
-      moat_tags_json=excluded.moat_tags_json,
-      sell_triggers_json=excluded.sell_triggers_json,
-      journal_entries_json=excluded.journal_entries_json,
-      updated_at=datetime('now')
-  `).run(
-    ticker,
-    conviction,
-    targetBuyPrice,
-    coreRationale,
-    JSON.stringify(moatTags),
-    JSON.stringify(sellTriggers),
-    JSON.stringify(journalEntries)
-  );
+app.post('/api/theses/:ticker/reviews', requireDeviceAuth, (req, res) => {
+  const { assessment, note = '' } = req.body || {};
+  if (!['intact', 'watch', 'changed'].includes(assessment) || typeof note !== 'string') {
+    return res.status(400).json({ error: 'Choose intact, watch, or changed and provide a text note.' });
+  }
+  return res.json(recordReview(req.params.ticker, assessment, note));
+});
 
-  return res.json({ success: true, ticker });
+app.get('/api/reviews', requireDeviceAuth, (req, res) => {
+  const list = req.query.watchlistId
+    ? db.prepare('SELECT * FROM watchlists WHERE id = ?').get(String(req.query.watchlistId))
+    : db.prepare('SELECT * FROM watchlists ORDER BY is_default DESC, id LIMIT 1').get();
+  if (req.query.watchlistId && !list) return res.status(404).json({ error: 'Watchlist not found.' });
+  const tickers = JSON.parse(list?.tickers_json || '[]');
+  const companies = tickers.map(ticker => ({ ticker,
+    name: db.prepare('SELECT name FROM stock_cache WHERE ticker = ?').get(ticker)?.name || ticker
+  }));
+  const alerts = db.prepare('SELECT ticker, title, body, severity, delivered_at AS at FROM notification_history').all();
+  const checked = db.prepare('SELECT ticker, captured_at FROM stock_snapshots').all()
+    .filter(row => tickers.includes(row.ticker)).map(row => parseTimestamp(row.captured_at)).filter(at => at !== null);
+  const lastCheckedAt = checked.length ? new Date(Math.max(...checked)).toISOString() : null;
+  return res.json({
+    items: buildReviewQueue({ companies, theses: readPersonalData().theses, alerts, now: new Date().toISOString() }),
+    lastCheckedAt
+  });
 });
 
 // Full Backup Export

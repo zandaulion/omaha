@@ -67,6 +67,7 @@ export function initDatabase() {
   // delta zero by construction. See rollBaseline in core/alerts/sweep.js.
   addColumnIfMissing('stock_snapshots', 'week_ago_score', 'INTEGER');
   addColumnIfMissing('stock_snapshots', 'week_ago_at', 'TEXT');
+  addColumnIfMissing('theses', 'must_remain_true', "TEXT NOT NULL DEFAULT ''");
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS stock_cache (
@@ -131,6 +132,7 @@ export function initDatabase() {
       conviction TEXT DEFAULT 'high',
       target_buy_price REAL,
       core_rationale TEXT,
+      must_remain_true TEXT NOT NULL DEFAULT '',
       moat_tags_json TEXT DEFAULT '[]',
       sell_triggers_json TEXT DEFAULT '[]',
       journal_entries_json TEXT DEFAULT '[]',
