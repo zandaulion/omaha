@@ -372,9 +372,9 @@ rather than a floor.
 
 **The cached read is 21 ms, exactly as on the Fold 4.** That number is dominated
 by starting a fresh QuickJS interpreter and re-parsing the bundle, which is the
-alpha13 workaround cost doc 13 §24 describes — so it tracks the workaround
-rather than the hardware, and reproducing across two very different phones is
-what that predicts.
+then-current alpha13 workaround cost doc 13 §24 describes — so it tracks the
+workaround rather than the hardware, and reproducing across two very different
+phones is what that predicts.
 
 ### A wording imprecision in the harness
 

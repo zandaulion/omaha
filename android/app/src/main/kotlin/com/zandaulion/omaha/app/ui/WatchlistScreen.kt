@@ -6,9 +6,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -96,42 +99,17 @@ fun WatchlistScreen(
             onAction = onRetry
         )
 
-        is WatchlistUiState.Ready -> LazyColumn(
-            Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            item {
-                PortfolioHero(
-                    health = state.view.health,
-                    pending = state.view.pending,
-                    onChooseList = { controlSheet = "list" }
-                )
-            }
-            item {
-                WatchlistToolbar(
-                    sortBy = sortBy,
-                    onOpenSearch = onOpenSearch,
-                    onOpenSort = { controlSheet = "sort" },
-                    onOpenTools = { controlSheet = "tools" }
-                )
-            }
-            if (notice != null) {
-                item {
-                    BasicText(
-                        notice,
-                        style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary)
-                    )
-                }
-            }
-            items(sortedHoldings(state.view.holdings, sortBy), key = { it.ticker }) { holding ->
-                HoldingCard(
-                    holding,
-                    onClick = { if (!holding.loading) onSelect(holding.ticker) },
-                    onRemove = { pendingTickerRemoval = holding.ticker }
-                )
-            }
-        }
+        is WatchlistUiState.Ready -> WatchlistReadyContent(
+            state = state,
+            sortBy = sortBy,
+            notice = notice,
+            onChooseList = { controlSheet = "list" },
+            onOpenSearch = onOpenSearch,
+            onOpenSort = { controlSheet = "sort" },
+            onOpenTools = { controlSheet = "tools" },
+            onSelect = onSelect,
+            onRemove = { pendingTickerRemoval = it }
+        )
     }
 
     when (controlSheet) {
@@ -198,6 +176,117 @@ fun WatchlistScreen(
         ) {
             onRemoveTicker(ticker)
             pendingTickerRemoval = null
+        }
+    }
+}
+
+@Composable
+private fun WatchlistReadyContent(
+    state: WatchlistUiState.Ready,
+    sortBy: String,
+    notice: String?,
+    onChooseList: () -> Unit,
+    onOpenSearch: () -> Unit,
+    onOpenSort: () -> Unit,
+    onOpenTools: () -> Unit,
+    onSelect: (String) -> Unit,
+    onRemove: (String) -> Unit
+) {
+    val holdings = sortedHoldings(state.view.holdings, sortBy)
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        if (maxWidth >= 660.dp) {
+            Row(
+                Modifier.fillMaxSize().padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                LazyColumn(
+                    Modifier.width(300.dp).fillMaxHeight(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    item {
+                        PortfolioHero(
+                            health = state.view.health,
+                            pending = state.view.pending,
+                            onChooseList = onChooseList
+                        )
+                    }
+                    item {
+                        WatchlistToolbar(
+                            sortBy = sortBy,
+                            onOpenSearch = onOpenSearch,
+                            onOpenSort = onOpenSort,
+                            onOpenTools = onOpenTools
+                        )
+                    }
+                    notice?.let { message ->
+                        item {
+                            BasicText(
+                                message,
+                                style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary)
+                            )
+                        }
+                    }
+                }
+                LazyColumn(
+                    Modifier.weight(1f).fillMaxHeight(),
+                    contentPadding = PaddingValues(bottom = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            BasicText("Companies", style = OmahaType.title2.toTextStyle())
+                            BasicText(
+                                "${holdings.size} in this watchlist",
+                                style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary)
+                            )
+                        }
+                    }
+                    items(holdings, key = { it.ticker }) { holding ->
+                        HoldingCard(
+                            holding,
+                            onClick = { if (!holding.loading) onSelect(holding.ticker) },
+                            onRemove = { onRemove(holding.ticker) }
+                        )
+                    }
+                }
+            }
+        } else {
+            LazyColumn(
+                Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                item {
+                    PortfolioHero(
+                        health = state.view.health,
+                        pending = state.view.pending,
+                        onChooseList = onChooseList
+                    )
+                }
+                item {
+                    WatchlistToolbar(
+                        sortBy = sortBy,
+                        onOpenSearch = onOpenSearch,
+                        onOpenSort = onOpenSort,
+                        onOpenTools = onOpenTools
+                    )
+                }
+                notice?.let { message ->
+                    item {
+                        BasicText(
+                            message,
+                            style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary)
+                        )
+                    }
+                }
+                items(holdings, key = { it.ticker }) { holding ->
+                    HoldingCard(
+                        holding,
+                        onClick = { if (!holding.loading) onSelect(holding.ticker) },
+                        onRemove = { onRemove(holding.ticker) }
+                    )
+                }
+            }
         }
     }
 }

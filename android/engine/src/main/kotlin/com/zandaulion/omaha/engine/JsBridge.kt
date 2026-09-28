@@ -17,7 +17,13 @@ import kotlinx.coroutines.Dispatchers
  * definition of the same rules, and the two would diverge precisely in the
  * edge cases each is careful about.
  *
- * ## Three defects in quickjs-kt 1.0.0-alpha13 are worked around here
+ * ## Binding safeguards
+ *
+ * Version 1.0.15 fixes the repeated-evaluate and non-BMP truncation defects
+ * found in 1.0.0-alpha13. The bridge retains the fresh-interpreter and
+ * ASCII-safe result path while the Android runtime receives wider soak testing;
+ * both are cheap correctness safeguards and the regression tests now assert the
+ * fixed binding behaviour directly.
  *
  * **A second module crashes the process.** `addModule` called twice on one
  * instance faults in native code — `EXCEPTION_ACCESS_VIOLATION`, not a
@@ -25,13 +31,13 @@ import kotlinx.coroutines.Dispatchers
  * `tools/bundle-core.mjs`, one bundle per module, and each bundle gets an
  * interpreter to itself.
  *
- * **A second evaluate on one instance fails.** Calls alternate
+ * **A second evaluate on one alpha13 instance failed.** Calls alternated
  * deterministically — first succeeds, second throws `TypeError: cannot read
  * property 'value' of undefined`, third succeeds — regardless of payload size
  * or what the bindings return. Hence a fresh interpreter per call. Measured at
  * a few milliseconds, which is affordable; see `ScoringParityTest`.
  *
- * **Non-BMP characters truncate the result.** The binding sizes the returned
+ * **Alpha13 truncated results containing non-BMP characters.** The binding sized the returned
  * Kotlin string by code-point count rather than UTF-16 code-unit count, so
  * every surrogate pair costs one character off the *end* of the string. This
  * app is squarely in the blast radius — scoring output carries 💎 and 🚀 in
@@ -53,8 +59,7 @@ import kotlinx.coroutines.Dispatchers
  * than concurrent. Callers should stream results as they arrive rather than
  * waiting for the set; `WatchlistRepository` does.
  *
- * `QuickJsBindingQuirksTest` pins the evaluate and non-BMP defects. A failure
- * there is good news.
+ * `QuickJsBindingQuirksTest` prevents either repaired defect from returning.
  *
  * ## And one defect that is the host's, not the binding's
  *

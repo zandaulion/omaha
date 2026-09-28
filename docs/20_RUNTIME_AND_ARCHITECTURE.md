@@ -96,6 +96,15 @@ Android uses one `MainActivity` and Compose state rather than one activity per s
 
 The navigation stack records screen transitions. Back dismisses overlays before popping the stack and ultimately returns to Watchlist. Dialogs and bottom sheets implement outside-tap dismissal.
 
+The Compose shell adapts at a 600 dp smallest-width breakpoint. Phones retain
+the four-destination bottom bar. Tablets move the same destinations into a
+persistent 96 dp navigation rail and constrain screen content to the shared
+960 dp maximum width. Watchlist and Review use a second, content-level 660 dp
+breakpoint: their summary and controls remain in a 300 dp left pane while the
+company list or review queue scrolls independently on the right. Narrower
+windows keep the original single-column flow, including split-screen tablet
+windows that no longer have enough usable width for both panes.
+
 Room is opened once through `OmahaEngine`. The widget module receives rendered state via Glance storage rather than opening a second database connection.
 
 ## Android QuickJS bridge
