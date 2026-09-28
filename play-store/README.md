@@ -18,8 +18,8 @@ on a Samsung Fold4 and a physical Pixel Tablet on 28 September 2026.
 | Play Console field | File | Validated length | Limit |
 | --- | --- | ---: | ---: |
 | Short description | `en-US/short-description.txt` | 77 | 80 |
-| Full description | `en-US/full-description.txt` | 2,187 | 4,000 |
-| Release notes | `en-US/release-notes.txt` | 458 | 500 |
+| Full description | `en-US/full-description.txt` | 2,528 | 4,000 |
+| Release notes | `en-US/release-notes.txt` | 441 | 500 |
 
 The positioning is intentionally limited to research and ongoing review. It does
 not claim that a fundamental score proves a moat, predicts returns or provides a
@@ -46,10 +46,17 @@ background and reproducible generation prompt are preserved in `source/`.
 
 ## Screenshots
 
-`screenshots/phone/` contains six upload-ready opaque RGB PNG files at 904×1,808
-px. They were recaptured from the installed Review Radar build without adding
-promotional text or altering the interface. `screenshots/phone-raw/` keeps the
-original 904×2,316 device captures.
+`screenshots/phone/` contains seven upload-ready opaque RGB PNG files at
+904×1,808 px. They were captured from the installed Review Radar build without
+adding promotional text or altering the interface. `screenshots/phone-raw/`
+keeps the original 904×2,316 device captures.
+
+`04-widget.png` shows the medium Pocket Omaha widget bound to The Compounders
+on a clean Fold4 launcher page. Its upload-ready image is a 904×1,808 crop of
+the original 904×2,316 launcher capture, using crop box `(0, 0, 904, 1808)`
+(left, top, right, bottom). The displayed interface is unchanged.
+The phone sequence retains research overview at 03 and places checklist, DCF
+and compare at 05–07.
 
 `screenshots/tablet/` contains six upload-ready 1,600×2,560 opaque RGB PNG files
 captured on a physical Google Pixel Tablet running Android 16 (API 36) in
@@ -75,8 +82,8 @@ edge; the Fold4 cover-display captures are 904 px wide.
 | --- | ---: | ---: | --- |
 | App icon | 1 | 512×512 | 32-bit RGBA PNG, opaque alpha |
 | Feature graphic | 1 | 1,024×500 | 24-bit RGB PNG |
-| Phone screenshots | 6 | 904×1,808 | 24-bit RGB PNG |
-| Raw phone captures | 6 | 904×2,316 | 24-bit RGB PNG |
+| Phone screenshots | 7 | 904×1,808 | 24-bit RGB PNG |
+| Raw phone captures | 7 | 904×2,316 | 24-bit RGB PNG |
 | 10-inch tablet screenshots | 6 | 1,600×2,560 | 24-bit RGB PNG |
 | Raw 10-inch tablet captures | 6 | 1,600×2,560 | 24-bit RGB PNG |
 

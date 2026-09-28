@@ -34,11 +34,13 @@
         </activity>
 
         <!-- android/widget/src/main/res/xml/widget_info.xml's android:configure
-             target — shown once, when PocketOmahaWidget is placed. Not exported:
-             only the widget-placement flow launches it. -->
+             target — shown once, when PocketOmahaWidget is placed. The
+             privileged widget host runs outside this package, so this entry
+             is exported behind Android's signature-level widget permission. -->
         <activity
             android:name=".widget.WidgetConfigActivity"
-            android:exported="false">
+            android:exported="true"
+            android:permission="android.permission.BIND_APPWIDGET">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
             </intent-filter>

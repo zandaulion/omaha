@@ -34,7 +34,7 @@ Both clients aim for the same financial meaning and comparable workflow. Platfor
 | Android AI cache read | N/A | Shared notes-free cache can be anonymous | Local Room cache is checked first |
 | Android AI generation | N/A | One Firebase credit, Google sign-in | Five-credit one-time grant; ten-credit Play product |
 | Personal notes in AI | Explicit setting, default off | Explicit setting, default off | PWA stores private-derived result in its household cache; Android private results use UID path |
-| Home-screen widget | No dedicated widget | Glance widget | Bound to a selected watchlist, hourly/manual refresh |
+| Home-screen widget | No dedicated widget | Responsive Glance health card | Bound to a selected watchlist; compact score and grade; larger sizes add score trends, freshness, and attention-ranked companies; hourly/manual refresh |
 | Theme | System/dark/light | System/dark/light | Shared tokens, platform rendering |
 | Back behavior | Browser/app history and modal handling | Overlay dismissal then in-app stack | Android returns to Watchlist at root |
 | Crash trace UI | Server/browser logs | Previous fatal trace shown once | Android trace is selectable |

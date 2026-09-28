@@ -143,7 +143,7 @@ The PWA's timer runs inside the Node process and sends Web Push. Android uses a 
 
 ## Widget runtime
 
-Widget configuration stores a watchlist ID per widget instance. A unique hourly WorkManager job is present only while widgets exist and requires network. Manual refresh enqueues a one-time job. The app repository computes widget data and writes a presentation model into Glance state; the `:widget` module renders that stored model without knowing database or engine details.
+Widget configuration stores a watchlist ID per widget instance. A unique hourly WorkManager job is present only while widgets exist and requires network. Manual refresh enqueues a one-time job. The app repository computes widget data and writes a presentation model plus the successful refresh time into Glance state; the `:widget` module renders that stored model without knowing database or engine details. Widget ticker rows deep-link to the company's research screen, while the rest of the card opens the bound watchlist.
 
 ## AI runtime
 

@@ -22,6 +22,10 @@ KEEP WATCHLISTS ORGANISED
 
 Create multiple watchlists, add or remove companies, sort the current list and view its aggregate fundamental picture. Pocket Omaha does not use position sizes and is not a brokerage portfolio tracker.
 
+FOLLOW YOUR WATCHLIST FROM HOME
+
+Add a home-screen widget for a chosen watchlist. The medium layout shows its fundamental score and status, weekly score change, company count, last successful refresh and company score changes. Larger layouts also highlight companies needing attention. Tap through to the watchlist or a company’s research.
+
 YOUR RESEARCH STAYS PORTABLE
 
 Personal research is stored on the device and can be exported as a JSON backup. No brokerage connection is required. Optional AI analysis is clearly separated and controlled from Settings.
