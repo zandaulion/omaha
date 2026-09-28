@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.zandaulion.omaha.data.WatchlistRepository
 import com.zandaulion.omaha.data.WatchlistRow
 import com.zandaulion.omaha.data.WatchlistView
+import com.zandaulion.omaha.data.StockSearchResult
+import com.zandaulion.omaha.data.Holding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,6 +39,15 @@ class WatchlistViewModel(app: Application) : AndroidViewModel(app) {
     private val _lists = MutableStateFlow<List<WatchlistRow>>(emptyList())
     val lists: StateFlow<List<WatchlistRow>> = _lists.asStateFlow()
 
+    private val _filterUniverse = MutableStateFlow<List<Holding>>(emptyList())
+    val filterUniverse: StateFlow<List<Holding>> = _filterUniverse.asStateFlow()
+
+    fun refreshFilterUniverse() {
+        viewModelScope.launch {
+            _filterUniverse.value = repository.filterUniverse()
+        }
+    }
+
     private val _notice = MutableStateFlow<String?>(null)
     val notice: StateFlow<String?> = _notice.asStateFlow()
 
@@ -48,6 +59,9 @@ class WatchlistViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun load(watchlistId: String? = currentId) {
+        // Publish the selected identity with Loading so Review's picker changes
+        // immediately, even while financial data for the list is still loading.
+        if (watchlistId != null) currentId = watchlistId
         _state.value = WatchlistUiState.Loading
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
@@ -78,12 +92,15 @@ class WatchlistViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun addTicker(raw: String) {
-        val id = currentId ?: return
+    suspend fun search(query: String): List<StockSearchResult> = repository.search(query)
+
+    fun addTicker(raw: String, targetId: String? = currentId, onAdded: (String) -> Unit = {}) {
+        val id = targetId ?: currentId ?: return
         viewModelScope.launch {
             _notice.value = when (val result = repository.addTicker(id, raw)) {
                 is WatchlistRepository.AddResult.Added -> {
                     load(id)
+                    onAdded(result.ticker)
                     "Added ${result.ticker}${if (result.name.isNotBlank()) " — ${result.name}" else ""}."
                 }
                 is WatchlistRepository.AddResult.Duplicate ->
@@ -97,6 +114,7 @@ class WatchlistViewModel(app: Application) : AndroidViewModel(app) {
         val id = currentId ?: return
         viewModelScope.launch {
             repository.removeTicker(id, ticker)
+            _notice.value = "Removed $ticker."
             load(id)
         }
     }
@@ -106,6 +124,25 @@ class WatchlistViewModel(app: Application) : AndroidViewModel(app) {
             val id = repository.createWatchlist(name)
             _notice.value = "Created \"$name\"."
             load(id)
+        }
+    }
+
+    fun deleteWatchlist(id: String) {
+        viewModelScope.launch {
+            when (val result = repository.deleteWatchlist(id)) {
+                is WatchlistRepository.DeleteResult.Deleted -> {
+                    _notice.value = "Deleted \"${result.name}\"."
+                    if (currentId == id) {
+                        load(result.fallbackId)
+                    } else {
+                        _lists.value = repository.watchlists()
+                    }
+                }
+                WatchlistRepository.DeleteResult.LastList ->
+                    _notice.value = "Keep at least one watchlist."
+                WatchlistRepository.DeleteResult.NotFound ->
+                    _notice.value = "That watchlist no longer exists."
+            }
         }
     }
 

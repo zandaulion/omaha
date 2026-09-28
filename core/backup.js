@@ -31,7 +31,9 @@ import { parseTimestamp } from './time.js';
  * read them, and the first thing this format does should not be to reject
  * them.
  */
-export const SCHEMA_VERSION = 1;
+// v2 carries personal review assessments and conditions. Older readers must
+// refuse it instead of silently dropping those fields on the next export.
+export const SCHEMA_VERSION = 2;
 
 /** Thrown for a file this build cannot safely read. */
 export class BackupError extends Error {
@@ -75,7 +77,7 @@ export function readBackup(input) {
   }
 
   // Files exported before versioning are version 1 by definition.
-  const version = raw.schemaVersion ?? SCHEMA_VERSION;
+  const version = raw.schemaVersion ?? 1;
   if (!Number.isInteger(version) || version < 1) {
     throw new BackupError('malformed', `Bad schemaVersion: ${raw.schemaVersion}`);
   }
@@ -103,6 +105,7 @@ function normaliseThesis(t) {
     conviction: t.conviction ?? 'high',
     targetBuyPrice: numberOrNull(t.targetBuyPrice),
     coreRationale: t.coreRationale ?? '',
+    mustRemainTrue: typeof t.mustRemainTrue === 'string' ? t.mustRemainTrue : '',
     moatTags: asArray(t.moatTags),
     sellTriggers: asArray(t.sellTriggers),
     journalEntries: asArray(t.journalEntries).map(normaliseEntry).filter(Boolean),
@@ -118,9 +121,12 @@ function normaliseEntry(e) {
   return {
     // An entry with no id is still an entry. Derived rather than invented, so
     // importing the same file twice does not produce two copies of it.
-    id: e.id != null ? String(e.id) : derivedId(date, note),
+    id: e.id != null ? String(e.id) : derivedId(date,
+      e.kind === 'review' ? `${note}|review|${e.assessment || ''}` : note),
     date,
-    note
+    note,
+    kind: e.kind === 'review' ? 'review' : 'note',
+    assessment: e.kind === 'review' && ['intact', 'watch', 'changed'].includes(e.assessment) ? e.assessment : null
   };
 }
 
@@ -284,10 +290,13 @@ function mergeEntries(existing, incoming) {
       out.push(e);
       continue;
     }
-    if (clash.note === e.note && clash.date === e.date) continue; // same entry
+    const sameEntry = candidate => candidate.note === e.note && candidate.date === e.date &&
+      candidate.kind === e.kind && candidate.assessment === e.assessment;
+    if (sameEntry(clash)) continue;
     let suffixed = `${e.id}-b`;
     let n = 2;
-    while (byId.has(suffixed)) suffixed = `${e.id}-b${n++}`;
+    while (byId.has(suffixed) && !sameEntry(byId.get(suffixed))) suffixed = `${e.id}-b${n++}`;
+    if (byId.has(suffixed)) continue; // an earlier import already kept this collision
     const disambiguated = { ...e, id: suffixed };
     byId.set(suffixed, disambiguated);
     out.push(disambiguated);

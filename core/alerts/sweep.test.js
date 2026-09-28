@@ -152,8 +152,9 @@ test('the digest weights by capitalisation and names the biggest movers', () => 
   // 90*3000 + 50*20 + 80*3000 = 511000 over 6020 = 84.9 -> 85. An equal
   // weighting would give 73, letting a 20bn holding drag the headline as hard
   // as a 3tn one.
-  assert.strictEqual(alert.title, '🎩 The Compounders: 85/100');
-  assert.match(alert.body, /^3 holdings scored\./);
+  assert.strictEqual(alert.title, 'The Compounders: fundamental score 85/100');
+  assert.match(alert.body, /^3 companies scored;/);
+  assert.strictEqual(alert.url, '/?tab=review');
   assert.match(alert.body, /NOK -11/);
   assert.ok(!alert.body.includes('MSFT'), 'a flat holding is not a mover');
   assert.strictEqual(alert.type, 'WEEKLY_DIGEST');
@@ -164,7 +165,21 @@ test('the digest says so when nothing moved, rather than trailing off', () => {
     listName: 'Watchlist',
     holdings: [{ ticker: 'AAPL', healthScore: 90, marketCap: 3000, previousScore: 90 }]
   });
-  assert.match(alert.body, /No material health changes this week\./);
+  assert.match(alert.body, /No score moves of 2\+ points in the available comparisons\./);
+});
+
+test('a digest without earlier scores does not imply nothing changed', () => {
+  const alert = buildDigest({ listName: 'New', holdings: [{ ticker: 'A', healthScore: 70 }] });
+  assert.match(alert.body, /No earlier scores available for comparison/);
+  assert.doesNotMatch(alert.body, /No score moves|No material/);
+});
+
+test('a digest discloses partial comparison coverage', () => {
+  const alert = buildDigest({ listName: 'Partial', holdings: [
+    { ticker: 'A', healthScore: 70, previousScore: 70 },
+    { ticker: 'B', healthScore: 80 }
+  ] });
+  assert.match(alert.body, /Earlier scores available for 1 of 2 companies/);
 });
 
 test('an unscored list produces no digest at all', () => {
@@ -212,7 +227,7 @@ test('holdings with no known capitalisation still average', () => {
     listName: 'W',
     holdings: [{ ticker: 'A', healthScore: 80 }, { ticker: 'B', healthScore: 60 }]
   });
-  assert.strictEqual(alert.title, '🎩 W: 70/100');
+  assert.strictEqual(alert.title, 'W: fundamental score 70/100');
 });
 
 // --------------------------------------------------------------- defaults

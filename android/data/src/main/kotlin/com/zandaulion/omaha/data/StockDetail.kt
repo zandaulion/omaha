@@ -10,13 +10,17 @@ package com.zandaulion.omaha.data
  */
 data class Pillar(
     val name: String,
-    val score: Int,
+    val score: Double?,
     val max: Int,
     val pct: Int,
     /** How many of this pillar's measures the filings actually supported. */
     val measured: Int,
     val of: Int
 )
+
+data class StockInsight(val icon: String, val title: String, val text: String)
+
+data class StockMetric(val label: String, val value: Double?, val format: String)
 
 /**
  * One of the twelve checks.
@@ -143,5 +147,8 @@ data class StockDetail(
     val checklistSummary: ChecklistSummary,
     val history: History,
     val balanceSheet: BalanceSheet,
-    val dcf: DcfInputs
+    val dcf: DcfInputs,
+    val catalysts: List<StockInsight> = emptyList(),
+    val risks: List<StockInsight> = emptyList(),
+    val keyMetrics: List<StockMetric> = emptyList()
 )

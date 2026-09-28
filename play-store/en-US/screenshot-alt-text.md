@@ -1,0 +1,11 @@
+# Phone screenshot alt text
+
+Each description is 140 characters or fewer and follows the upload order in
+`screenshot-captions.md`.
+
+1. **01-watchlist.png** — Watchlist showing The Compounders aggregate scores and the first Microsoft company card.
+2. **02-review.png** — Review queue showing five companies to revisit, with controls to check changes and record reasons.
+3. **03-research-overview.png** — Apple research overview showing a 62 fundamental score and five category scores.
+4. **04-checklist.png** — Apple twelve-point checklist showing pass, watch and fail results for individual financial measures.
+5. **05-dcf.png** — Apple DCF sandbox with editable growth, exit multiple and discount-rate assumptions and a $136.44 fair value.
+6. **06-compare.png** — Comparison showing NVDA and Microsoft on a five-axis radar chart and fundamental-score table.

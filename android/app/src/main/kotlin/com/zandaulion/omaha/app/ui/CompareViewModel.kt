@@ -51,13 +51,24 @@ class CompareViewModel(app: Application) : AndroidViewModel(app) {
     val candidates: StateFlow<CompareCandidates?> = _candidates.asStateFlow()
 
     private val jobs = mutableMapOf<String, Job>()
+    private var initialised = false
+    private var pendingSeed: String? = null
 
     init {
         viewModelScope.launch {
             val saved = settings.compareTickers().take(MAX_COMPARED)
-            _tickers.value = saved
-            saved.forEach(::loadTicker)
+            val initial = if (saved.isNotEmpty()) saved
+                else listOf(pendingSeed ?: settings.lastViewedTicker() ?: "NVDA")
+            _tickers.value = initial
+            initial.forEach(::loadTicker)
+            initialised = true
         }
+    }
+
+    fun seedIfEmpty(ticker: String?) {
+        if (ticker.isNullOrBlank()) return
+        pendingSeed = ticker
+        if (initialised && _tickers.value.isEmpty()) pick(ticker)
     }
 
     fun pick(ticker: String) {
@@ -79,7 +90,8 @@ class CompareViewModel(app: Application) : AndroidViewModel(app) {
     /** Loaded on demand — the picker's candidates are only worth fetching while it's open. */
     fun openPicker(seedTicker: String?) {
         viewModelScope.launch {
-            _candidates.value = compareCandidates.candidates(seedTicker)
+            _candidates.value = runCatching { compareCandidates.candidates(seedTicker) }
+                .getOrElse { CompareCandidates(emptyList(), emptyList(), emptyList()) }
         }
     }
 

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
@@ -28,11 +29,20 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.zandaulion.omaha.design.ExplainableLabel
 import com.zandaulion.omaha.design.Omaha
+import com.zandaulion.omaha.design.OmahaRadius
 import com.zandaulion.omaha.design.OmahaType
 import com.zandaulion.omaha.design.toTextStyle
 
+internal fun fundamentalGrade(tier: String, score: Int?): String = when {
+    score == null -> "Not scored"
+    tier == "pristine" -> "Strong"
+    tier == "good" -> "Good"
+    tier == "moderate" -> "Mixed"
+    else -> "Weak"
+}
+
 /**
- * The radial health score, matching `#scoreRingProgress` in the PWA.
+ * The radial fundamental score, matching `#scoreRingProgress` in the PWA.
  *
  * The web version is an SVG circle whose `stroke-dashoffset` is animated from
  * the circumference down to the scored fraction. This is the same drawing with
@@ -110,7 +120,7 @@ fun ScoreRing(
                         .copy(fontFamily = Omaha.fonts.mono)
                 )
                 BasicText(
-                    "out of 100",
+                    "/ 100",
                     style = OmahaType.caption.toTextStyle(color = colors.textTertiary)
                 )
             }
@@ -127,16 +137,21 @@ fun ScoreRing(
 
 /** `.pillar-meter-item`: a labelled bar, scored out of twenty. */
 @Composable
-fun PillarMeter(name: String, score: Int, max: Int, pct: Int, measured: Int, of: Int) {
+fun PillarMeter(name: String, score: Double?, max: Int, pct: Int, measured: Int, of: Int) {
     val colors = Omaha.colors
     val fill = when {
-        pct >= 80 -> colors.healthPristine
-        pct >= 60 -> colors.healthGood
-        pct >= 40 -> colors.healthModerate
-        else -> colors.healthRisk
+        score == null -> colors.borderSubtle
+        pct >= 85 -> Color(0xFF10B981)
+        pct >= 70 -> Color(0xFF34D399)
+        pct >= 50 -> Color(0xFFFBBF24)
+        else -> Color(0xFFF87171)
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(OmahaRadius.sm))
+            .background(colors.bgSurfaceSubtle).padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
@@ -147,7 +162,8 @@ fun PillarMeter(name: String, score: Int, max: Int, pct: Int, measured: Int, of:
                 style = OmahaType.bodySm.toTextStyle(color = colors.textSecondary)
             )
             BasicText(
-                "$score/$max",
+                if (score == null) EM_DASH else
+                    "${if (score % 1.0 == 0.0) score.toInt().toString() else fmtRatio(score, 1)}/$max",
                 style = OmahaType.bodySm
                     .toTextStyle(color = colors.textPrimary)
                     .copy(fontFamily = Omaha.fonts.mono)
@@ -159,7 +175,7 @@ fun PillarMeter(name: String, score: Int, max: Int, pct: Int, measured: Int, of:
                 .fillMaxWidth()
                 .height(6.dp)
                 .clip(RoundedCornerShape(3.dp))
-                .background(colors.bgSurfaceSubtle)
+                .background(colors.borderSubtle)
         ) {
             Box(
                 Modifier

@@ -4,9 +4,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * [meanScore], the arithmetic [WatchlistRepository.composite] and
- * [WidgetRepository] both reduce to — the one number that must agree
- * between the Watchlist tab and a widget looking at the same list.
+ * Equal-weight means used by callers that request them. The Watchlist and
+ * widget headline instead share [aggregatePortfolioHealth].
  */
 class WidgetRepositoryTest {
 

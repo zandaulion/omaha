@@ -87,6 +87,9 @@ interface StockCacheDao {
     )
     suspend fun allScored(): List<StockSummaryRow>
 
+    @Query("SELECT * FROM stock_cache WHERE health_score IS NOT NULL ORDER BY health_score DESC")
+    suspend fun allScoredRecords(): List<StockCacheRow>
+
     @Query("DELETE FROM stock_cache")
     suspend fun clear()
 }

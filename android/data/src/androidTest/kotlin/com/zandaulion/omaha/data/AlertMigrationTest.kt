@@ -84,7 +84,8 @@ class AlertMigrationTest {
         seedVersion2Database()
 
         val db = Room.databaseBuilder(context, OmahaDatabase::class.java, dbName)
-            .addMigrations(OmahaDatabaseFactory.MIGRATION_1_2, OmahaDatabaseFactory.MIGRATION_2_3)
+            .addMigrations(OmahaDatabaseFactory.MIGRATION_1_2, OmahaDatabaseFactory.MIGRATION_2_3,
+                OmahaDatabaseFactory.MIGRATION_3_4, OmahaDatabaseFactory.MIGRATION_4_5)
             .build()
 
         try {

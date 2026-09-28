@@ -1,29 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  The status-bar icon.
-
-  Monochrome by requirement, not by choice: from API 21 the system tints the
-  small icon a flat white and discards everything but the alpha channel, so a
-  coloured mark would arrive as a white silhouette of itself. Drawn as a
-  silhouette from the start rather than discovering that on a device.
-
-  The motif is the score ring with a gap, which is the app's one recurring
-  shape — the same figure the watchlist hero and every scorecard draw.
--->
+<!-- Monochrome status-bar form of the Review Radar; Android uses its alpha channel as the system-tinted glyph. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="24dp"
-    android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24"
     android:tint="#FFFFFFFF">
-
-    <!-- The ring, open at the top right where a score arc would end. -->
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M12,2.6c-5.19,0 -9.4,4.21 -9.4,9.4s4.21,9.4 9.4,9.4s9.4,-4.21 9.4,-9.4h-2.6c0,3.76 -3.04,6.8 -6.8,6.8s-6.8,-3.04 -6.8,-6.8s3.04,-6.8 6.8,-6.8z" />
-
-    <!-- Three rising bars: the trend the ring is a verdict on. -->
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M8.4,13.2h1.9v3.4h-1.9zM11.05,10.6h1.9v6h-1.9zM13.7,8h1.9v8.6h-1.9z" />
+    <path android:pathData="M16.5,4.79 A8.5,8.5 0,1 1,8.27 4.37"
+        android:fillColor="#00000000" android:strokeColor="#FFFFFFFF" android:strokeWidth="1.8" android:strokeLineCap="round"/>
+    <path android:pathData="M12,6.2 L18,10.6 L15.7,17.6 L8.3,17.6 L6,10.6 Z"
+        android:fillColor="#00000000" android:strokeColor="#FFFFFFFF" android:strokeWidth="1.6" android:strokeLineJoin="round"/>
+    <path android:pathData="M12,12 L12,6.2 M12,12 L18,10.6 M12,12 L15.7,17.6 M12,12 L8.3,17.6 M12,12 L6,10.6"
+        android:fillColor="#00000000" android:strokeColor="#BFFFFFFF" android:strokeWidth="0.7"/>
+    <path android:pathData="M13.6,12 A1.6,1.6 0,1 1,10.4 12 A1.6,1.6 0,1 1,13.6 12" android:fillColor="#FFFFFFFF"/>
 </vector>

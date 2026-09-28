@@ -63,7 +63,7 @@ export function evaluateTriggers(stock, prev, settings) {
       const worsened = flips.filter((f) => f.worse);
       const parts = [];
       if (delta !== null && Math.abs(delta) >= SCORE_SHIFT_THRESHOLD) {
-        parts.push(`Health ${up ? 'up' : 'down'} ${Math.abs(delta)} points to ${stock.health_score}/100.`);
+        parts.push(`Fundamental score ${up ? 'up' : 'down'} ${Math.abs(delta)} points to ${stock.health_score}/100.`);
       }
       for (const f of flips.slice(0, 2)) {
         parts.push(`${CHECK_NAMES[f.id] || `Check ${f.id}`}: ${f.from} → ${f.to}.`);
@@ -72,10 +72,10 @@ export function evaluateTriggers(stock, prev, settings) {
       alerts.push({
         type: 'EARNINGS_HEALTH_SHIFT',
         ticker: t,
-        title: `${t} ${up && !worsened.length ? 'health upgrade' : 'health change'}${stock.health_score !== null ? ` (${stock.health_score}/100)` : ''}`,
+        title: `${t}: fundamental changes to review${stock.health_score !== null ? ` (${stock.health_score}/100)` : ''}`,
         body: parts.join(' '),
         severity: worsened.length ? 'warning' : 'positive',
-        url: `/?tab=deepdive&ticker=${t}`
+        url: `/?tab=review&ticker=${t}`
       });
     }
   }
@@ -108,7 +108,7 @@ export function evaluateTriggers(stock, prev, settings) {
         title: `⚠️ ${t}: ${breaches.length > 1 ? `${breaches.length} warning signs` : 'warning sign'}`,
         body: breaches.join(' '),
         severity: 'critical',
-        url: `/?tab=deepdive&ticker=${t}&subtab=checklist`
+        url: `/?tab=review&ticker=${t}`
       });
     }
   }
@@ -142,10 +142,10 @@ export function evaluateTriggers(stock, prev, settings) {
       alerts.push({
         type: 'MARGIN_OF_SAFETY',
         ticker: t,
-        title: `🎯 ${t} entry point (${stock.health_score}/100)`,
-        body: `Health is strong and the price has come in. ${reason}`,
+        title: `${t}: valuation change to review`,
+        body: `Fundamental score: ${stock.health_score}/100. ${reason}`,
         severity: 'info',
-        url: `/?tab=deepdive&ticker=${t}`
+        url: `/?tab=review&ticker=${t}`
       });
     }
   }
@@ -159,7 +159,7 @@ export function evaluateTriggers(stock, prev, settings) {
         title: `📈 ${t} stepped up buybacks`,
         body: `Diluted share count is down ${fixedDecimal(Math.abs(m.shareChangeYoY * 100), 1)}% year on year.`,
         severity: 'positive',
-        url: `/?tab=deepdive&ticker=${t}`
+        url: `/?tab=review&ticker=${t}`
       });
     }
   }

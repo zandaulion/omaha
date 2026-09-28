@@ -22,6 +22,7 @@
 
 import { stock } from './stock.js';
 import { evaluateTriggers } from '../alerts/triggers.js';
+export { buildReviewQueue as reviewQueue } from '../review.js';
 import {
   DEFAULT_NOTIFICATION_SETTINGS,
   DIGEST_HOUR,

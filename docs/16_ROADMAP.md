@@ -1,5 +1,11 @@
 # 16 — Roadmap
 
+> **2026-09-27 update:** A working native Android app now exists. The historical
+> build-gap analysis below describes the August baseline. Current work reshapes
+> both clients around Review → Watchlist → Research, documented in
+> [18 — Review workflow](18_REVIEW_WORKFLOW.md). The existing phase 0 cost-recovery
+> decision remains in force; this reshape does not introduce a new paid tier.
+
 > **Status**: plan. Written 2026-08-24 by cross-checking the built state of the
 > Android client against `BACKLOG.md` and doc 15's market analysis.
 > **Purpose**: sequence the remaining work under a hard constraint — the two

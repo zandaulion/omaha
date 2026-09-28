@@ -1,11 +1,13 @@
 package com.zandaulion.omaha.app.ui
 
 import android.app.Activity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,15 +16,22 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -38,12 +47,19 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.Dispatchers
@@ -56,29 +72,22 @@ import com.zandaulion.omaha.design.OmahaLayout
 import com.zandaulion.omaha.design.OmahaRadius
 import com.zandaulion.omaha.design.OmahaType
 import com.zandaulion.omaha.design.Glossary
+import com.zandaulion.omaha.design.OmahaCard
+import com.zandaulion.omaha.design.ThemeChoice
 import com.zandaulion.omaha.design.toTextStyle
+import com.zandaulion.omaha.app.R
+import com.zandaulion.omaha.data.StockSearchResult
+import kotlinx.coroutines.delay
 
-/**
- * The four views, in the PWA's order.
- *
- * `Scorecard` is the label the web client shows for the deep dive, and the two
- * should not diverge — a person reading the release notes for one client is
- * reading them for both. The route names match the PWA's deep-link aliases so
- * `?view=filter` and this enum cannot drift apart.
- */
+/** Stable route names retain saved navigation; the four bottom-bar destinations are primary. */
 enum class OmahaTab(val label: String, val route: String, val icon: ImageVector) {
+    Review("Review", "review", IconScorecard),
     Watchlist("Watchlist", "watchlist", IconWatchlist),
-    Scorecard("Scorecard", "deepdive", IconScorecard),
+    Scorecard("Research", "deepdive", IconScorecard),
     Filter("Filter", "filter", IconFilter),
     Compare("Compare", "compare", IconCompare),
 
-    /**
-     * The PWA reaches Settings from a header button rather than a tab, because
-     * a browser page has a header to put it in. A fifth tab is the Android
-     * equivalent: the alternative is an overflow menu, which is one more tap to
-     * reach the privacy opt-in and the backup — the two things most worth
-     * finding.
-     */
+    /** Kept for saved tab state from earlier builds; new navigation opens a modal. */
     Settings("Settings", "settings", IconSettings)
 }
 
@@ -116,6 +125,11 @@ fun OmahaApp(
     onWatchlistConsumed: () -> Unit = {}
 ) {
     var tab by rememberSaveable { mutableStateOf(OmahaTab.Watchlist) }
+    var backStackRoutes by rememberSaveable { mutableStateOf("") }
+    var requestedSubtab by rememberSaveable { mutableStateOf(DeepDiveTab.Overview) }
+    var navigationRequest by rememberSaveable { mutableStateOf(0) }
+    var searchOpen by remember { mutableStateOf(false) }
+    var settingsOpen by remember { mutableStateOf(false) }
     // Not rememberSaveable: a glossary key is not navigation state, and
     // surviving a rotation with the sheet re-opened would be surprising.
     var explainKey by remember { mutableStateOf<String?>(null) }
@@ -126,12 +140,66 @@ fun OmahaApp(
     // activity regardless of call site, so selecting here is selecting for
     // all three.
     val watchlist: WatchlistViewModel = viewModel()
+    val watchlistRows by watchlist.lists.collectAsState()
+    val watchlistState by watchlist.state.collectAsState()
+    val activeListId = (watchlistState as? WatchlistUiState.Ready)?.view?.id ?: watchlist.activeId
+    val reviews: ReviewViewModel = viewModel()
+    val reviewState by reviews.state.collectAsState()
+    val reviewChecking by reviews.checking.collectAsState()
+    val reviewNotice by reviews.notice.collectAsState()
+    val reviewSave by deepDive.reviewSave.collectAsState()
+    val reviewSaving by deepDive.reviewSaving.collectAsState()
+    val thesisSave by deepDive.thesisSave.collectAsState()
+
+    fun routeStack(): List<String> = backStackRoutes
+        .split('|')
+        .filter { it.isNotBlank() }
+
+    fun navigateTo(destination: OmahaTab) {
+        if (destination == tab) return
+        backStackRoutes = (routeStack() + tab.route).takeLast(20).joinToString("|")
+        tab = destination
+    }
+
+    fun navigateBack() {
+        val routes = routeStack()
+        val previous = routes.lastOrNull()?.let { route ->
+            OmahaTab.entries.firstOrNull { it.route == route }
+        }
+        if (previous != null) {
+            backStackRoutes = routes.dropLast(1).joinToString("|")
+            tab = previous
+        } else if (tab != OmahaTab.Watchlist) {
+            tab = OmahaTab.Watchlist
+        }
+    }
+
+    LaunchedEffect(tab, activeListId, watchlistRows, reviewSave) {
+        if (tab == OmahaTab.Review || reviewSave == "Review saved") reviews.load(activeListId)
+    }
+
+    fun openCompany(ticker: String, review: Boolean = false) {
+        requestedSubtab = if (review) DeepDiveTab.Thesis else DeepDiveTab.Overview
+        navigationRequest++
+        deepDive.open(ticker)
+        ai.open(ticker)
+        navigateTo(OmahaTab.Scorecard)
+    }
+    val settings: SettingsViewModel = viewModel()
+    val theme by settings.theme.collectAsState()
+    val systemDark = isSystemInDarkTheme()
+    val appContext = LocalContext.current
+    val appScope = rememberCoroutineScope()
 
     LaunchedEffect(initialTicker) {
         val ticker = initialTicker ?: return@LaunchedEffect
+        backStackRoutes = OmahaTab.Review.route
+        requestedSubtab = DeepDiveTab.Thesis
+        navigationRequest++
         deepDive.open(ticker)
         ai.open(ticker)
         tab = OmahaTab.Scorecard
+        reviews.load(activeListId)
         // Cleared so returning to the app later does not re-open the same
         // company over whatever the person navigated to since.
         onTickerConsumed()
@@ -140,8 +208,18 @@ fun OmahaApp(
     LaunchedEffect(initialWatchlistId) {
         val id = initialWatchlistId ?: return@LaunchedEffect
         watchlist.select(id)
+        backStackRoutes = ""
         tab = OmahaTab.Watchlist
         onWatchlistConsumed()
+    }
+
+    BackHandler(enabled = explainKey != null) {
+        explainKey = null
+    }
+    BackHandler(
+        enabled = explainKey == null && (tab != OmahaTab.Watchlist || backStackRoutes.isNotBlank())
+    ) {
+        navigateBack()
     }
 
     CompositionLocalProvider(LocalExplainOpener provides { explainKey = it }) {
@@ -152,12 +230,37 @@ fun OmahaApp(
             .background(Omaha.colors.bgCanvas)
     ) {
         Box(
+            Modifier.fillMaxWidth().background(Color(0xFF0B0E14))
+                .windowInsetsPadding(WindowInsets.statusBars)
+        )
+        OmahaHeader(
+            onHome = { navigateTo(OmahaTab.Watchlist) },
+            onSearch = { searchOpen = true },
+            onTheme = {
+                val dark = theme == ThemeChoice.Dark || (theme == ThemeChoice.System && systemDark)
+                settings.setTheme(if (dark) ThemeChoice.Light else ThemeChoice.Dark)
+            },
+            onSettings = { settingsOpen = true }
+        )
+        Box(
             Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.statusBars)
         ) {
             when (tab) {
+                OmahaTab.Review -> ReviewScreen(
+                    state = reviewState,
+                    lists = watchlistRows,
+                    activeId = activeListId,
+                    checking = reviewChecking,
+                    notice = reviewNotice,
+                    onSelectList = { watchlist.select(it); reviews.load(it) },
+                    onCheck = { reviews.checkNow() },
+                    onRetry = { reviews.load(activeListId) },
+                    onAdd = { searchOpen = true },
+                    onReview = { openCompany(it, review = true) },
+                    onResearch = { openCompany(it) }
+                )
                 OmahaTab.Watchlist -> {
                     val vm: WatchlistViewModel = viewModel()
                     val ui by vm.state.collectAsState()
@@ -169,15 +272,14 @@ fun OmahaApp(
                         activeId = vm.activeId,
                         notice = notice,
                         onRetry = { vm.load() },
-                        onSelect = { ticker ->
-                            deepDive.open(ticker)
-                            ai.open(ticker)
-                            tab = OmahaTab.Scorecard
-                        },
+                        onSelect = { ticker -> openCompany(ticker) },
                         onSelectList = { vm.select(it) },
-                        onAddTicker = { vm.addTicker(it) },
+                        onOpenSearch = { searchOpen = true },
                         onRemoveTicker = { vm.removeTicker(it) },
-                        onCreateList = { vm.createWatchlist(it) }
+                        onCreateList = { vm.createWatchlist(it) },
+                        onDeleteList = { vm.deleteWatchlist(it) },
+                        onFilter = { navigateTo(OmahaTab.Filter) },
+                        onCompare = { navigateTo(OmahaTab.Compare) }
                     )
                 }
                 OmahaTab.Scorecard -> {
@@ -185,6 +287,10 @@ fun OmahaApp(
                     val thesis by deepDive.thesis.collectAsState()
                     val aiState by ai.state.collectAsState()
                     val context = LocalContext.current
+                    val ticker = (ui as? DeepDiveUiState.Ready)?.detail?.ticker
+                    val activeList = watchlistRows.firstOrNull { it.id == watchlist.activeId }
+                    val bookmarked = ticker != null && activeList?.tickersJson
+                        ?.contains("\"$ticker\"") == true
                     DeepDiveScreen(
                         state = ui,
                         thesis = thesis,
@@ -201,23 +307,33 @@ fun OmahaApp(
                         onAiGenerate = { ai.generate() },
                         onAiClaimFreeGrant = { ai.claimFreeGrant() },
                         onAiPurchase = { (context as? Activity)?.let { ai.purchase(it) } },
-                        onAiDismissError = { ai.dismissError() }
+                        onAiDismissError = { ai.dismissError() },
+                        onBack = { navigateBack() },
+                        requestedTab = requestedSubtab,
+                        navigationRequest = navigationRequest,
+                        onRecordReview = { assessment, note -> deepDive.recordReview(assessment, note) },
+                        reviewSaving = reviewSaving,
+                        reviewSave = reviewSave,
+                        thesisSave = thesisSave,
+                        reviewChanges = (reviewState as? ReviewUiState.Ready)?.overview?.items?.firstOrNull { it.ticker == ticker }?.changes.orEmpty(),
+                        onFilter = { navigateTo(OmahaTab.Filter) },
+                        onCompare = { navigateTo(OmahaTab.Compare) },
+                        onSearch = { searchOpen = true },
+                        onSubtabChange = { requestedSubtab = it },
+                        isBookmarked = bookmarked,
+                        onBookmark = { symbol ->
+                            if (bookmarked) watchlist.removeTicker(symbol)
+                            else watchlist.addTicker(symbol)
+                        }
                     )
                 }
                 OmahaTab.Filter -> {
-                    // Shares the watchlist's view model: the filter acts on
-                    // what is already loaded and scored, so it neither fetches
-                    // nor keeps a second copy that could disagree.
                     val vm: WatchlistViewModel = viewModel()
-                    val ui by vm.state.collectAsState()
+                    androidx.compose.runtime.LaunchedEffect(Unit) { vm.refreshFilterUniverse() }
+                    val universe by vm.filterUniverse.collectAsState()
                     FilterScreen(
-                        state = ui,
-                        onRetry = { vm.load() },
-                        onSelect = { ticker ->
-                            deepDive.open(ticker)
-                            ai.open(ticker)
-                            tab = OmahaTab.Scorecard
-                        }
+                        holdings = universe,
+                        onSelect = { ticker -> openCompany(ticker) }
                     )
                 }
                 OmahaTab.Compare -> {
@@ -232,6 +348,7 @@ fun OmahaApp(
                     // initCompareView uses.
                     val deepDiveTicker = (deepDive.state.collectAsState().value as? DeepDiveUiState.Ready)
                         ?.detail?.ticker
+                    androidx.compose.runtime.LaunchedEffect(deepDiveTicker) { vm.seedIfEmpty(deepDiveTicker) }
                     CompareScreen(
                         tickers = tickers,
                         holdings = holdings,
@@ -249,15 +366,271 @@ fun OmahaApp(
             }
         }
 
-        BottomNav(selected = tab, onSelect = { tab = it })
+        BottomNav(selected = if (tab == OmahaTab.Scorecard && requestedSubtab == DeepDiveTab.Thesis) OmahaTab.Review else tab, onSelect = { selected ->
+            if (selected == OmahaTab.Scorecard) {
+                requestedSubtab = DeepDiveTab.Overview
+                navigationRequest++
+                if (deepDive.state.value is DeepDiveUiState.Empty) appScope.launch {
+                    OmahaEngine.get(appContext).settings.lastViewedTicker()?.let { openCompany(it) }
+                }
+            }
+            navigateTo(selected)
+        })
     }
 
     OmahaExplainSheet(
         entry = Glossary.explain(explainKey),
         onClose = { explainKey = null }
     )
+    if (searchOpen) {
+        SearchTickerDialog(
+            watchlist = watchlist,
+            onDismiss = { searchOpen = false },
+            onOpen = { ticker ->
+                openCompany(ticker)
+                searchOpen = false
+            },
+            onReview = { ticker ->
+                openCompany(ticker, review = true)
+                searchOpen = false
+            }
+        )
+    }
+    if (settingsOpen) {
+        Dialog(
+            onDismissRequest = { settingsOpen = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Column(
+                Modifier.fillMaxWidth(0.94f).fillMaxHeight(0.90f)
+                    .clip(RoundedCornerShape(OmahaRadius.lg))
+                    .background(Omaha.colors.bgSurface)
+            ) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    BasicText("⚙️ App Settings", style = OmahaType.title2.toTextStyle())
+                    HeaderAction("✕", "Close settings") { settingsOpen = false }
+                }
+                Box(Modifier.weight(1f)) { SettingsTab(showTitle = false) }
+            }
+        }
+    }
     } // Box
     } // CompositionLocalProvider
+}
+
+@Composable
+private fun OmahaHeader(
+    onHome: () -> Unit,
+    onSearch: () -> Unit,
+    onTheme: () -> Unit,
+    onSettings: () -> Unit
+) {
+    Row(
+        Modifier.fillMaxWidth().height(OmahaLayout.headerHeight)
+            .background(Omaha.colors.bgSurface)
+            .border(1.dp, Omaha.colors.borderSubtle)
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            Modifier.weight(1f).clickable(onClick = onHome),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Image(
+                painter = painterResource(R.drawable.omaha_brand),
+                contentDescription = null,
+                modifier = Modifier.size(30.dp).clip(RoundedCornerShape(OmahaRadius.sm))
+            )
+            BasicText("Pocket Omaha", style = OmahaType.title2.toTextStyle())
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            HeaderAction("🔍", "Search", onSearch)
+            HeaderAction("🌓", "Toggle theme", onTheme)
+            HeaderAction("⚙️", "Settings", onSettings)
+        }
+    }
+}
+
+@Composable
+private fun HeaderAction(symbol: String, description: String, onClick: () -> Unit) {
+    Box(
+        Modifier.size(36.dp).clip(RoundedCornerShape(50))
+            .background(Omaha.colors.bgSurfaceSubtle)
+            .border(1.dp, Omaha.colors.borderSubtle, RoundedCornerShape(50))
+            .semantics { contentDescription = description }
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        BasicText(symbol, style = OmahaType.bodyMd.toTextStyle(), maxLines = 1)
+    }
+}
+
+@Composable
+private fun SearchTickerDialog(
+    watchlist: WatchlistViewModel,
+    onDismiss: () -> Unit,
+    onOpen: (String) -> Unit,
+    onReview: (String) -> Unit
+) {
+    var query by remember { mutableStateOf("") }
+    val lists by watchlist.lists.collectAsState()
+    val notice by watchlist.notice.collectAsState()
+    var targetId by remember { mutableStateOf(watchlist.activeId) }
+    var choosingList by remember { mutableStateOf(false) }
+    var results by remember { mutableStateOf<List<StockSearchResult>>(emptyList()) }
+    var searching by remember { mutableStateOf(false) }
+    var searchError by remember { mutableStateOf<String?>(null) }
+    var addedTicker by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(query) {
+        results = emptyList()
+        searchError = null
+        if (query.isBlank()) { searching = false; return@LaunchedEffect }
+        searching = true
+        delay(200)
+        try {
+            results = watchlist.search(query.trim())
+        } catch (err: Throwable) {
+            searchError = err.message ?: "Search is unavailable right now."
+        } finally {
+            searching = false
+        }
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        OmahaCard(modifier = Modifier.widthIn(max = 380.dp), contentPadding = 20.dp) {
+            BasicText("🔍 Search & Add Stock", style = OmahaType.title2.toTextStyle())
+            Box(Modifier.height(14.dp))
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(OmahaRadius.sm))
+                    .background(Omaha.colors.bgSurfaceSubtle)
+                    .clickable { choosingList = !choosingList }
+                    .padding(10.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                BasicText("Add to Watchlist:", style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary))
+                BasicText(
+                    (lists.firstOrNull { it.id == targetId }?.name ?: "Watchlist") + "  ⌄",
+                    style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textPrimary)
+                )
+            }
+            if (choosingList) {
+                lists.forEach { list ->
+                    Box(Modifier.fillMaxWidth().clickable {
+                        targetId = list.id; choosingList = false
+                    }.padding(10.dp)) {
+                        BasicText(list.name, style = OmahaType.bodySm.toTextStyle())
+                    }
+                }
+            }
+            Box(Modifier.height(12.dp))
+            BasicTextField(
+                value = query,
+                onValueChange = { query = it },
+                singleLine = true,
+                textStyle = OmahaType.bodyMd.toTextStyle(),
+                cursorBrush = SolidColor(Omaha.colors.brandCyan),
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(OmahaRadius.sm))
+                    .background(Omaha.colors.bgSurfaceSubtle)
+                    .border(1.dp, Omaha.colors.borderSubtle, RoundedCornerShape(OmahaRadius.sm))
+                    .padding(12.dp),
+                decorationBox = { inner ->
+                    Box {
+                        if (query.isBlank()) BasicText(
+                            "Search by symbol or company name",
+                            style = OmahaType.bodyMd.toTextStyle(color = Omaha.colors.textTertiary)
+                        )
+                        inner()
+                    }
+                }
+            )
+            Box(Modifier.height(12.dp))
+            if (query.isBlank()) {
+                BasicText("Popular:", style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary))
+                Box(Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf("AAPL", "MSFT", "NVDA", "COST").forEach { symbol ->
+                        Box(Modifier.clip(RoundedCornerShape(OmahaRadius.sm))
+                            .background(Omaha.colors.bgSurfaceSubtle)
+                            .clickable { query = symbol }.padding(horizontal = 8.dp, vertical = 5.dp)) {
+                            BasicText(symbol, style = OmahaType.caption.toTextStyle())
+                        }
+                    }
+                }
+            } else if (searching) {
+                BasicText("Searching global markets…", style = OmahaType.bodySm.toTextStyle(
+                    color = Omaha.colors.textSecondary
+                ))
+            } else if (searchError != null) {
+                BasicText(searchError ?: "", style = OmahaType.bodySm.toTextStyle(
+                    color = Omaha.colors.healthRisk
+                ))
+            } else if (results.isEmpty()) {
+                BasicText("No matching companies found.", style = OmahaType.bodySm.toTextStyle(
+                    color = Omaha.colors.textSecondary
+                ))
+                Box(Modifier.height(8.dp))
+                SearchAction("+ Add ${query.trim().uppercase()} directly", primary = true) {
+                    watchlist.addTicker(query.trim(), targetId) { addedTicker = it }
+                }
+            } else {
+                Column(Modifier.heightIn(max = 340.dp).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    results.forEach { result ->
+                        val inList = lists.firstOrNull { it.id == targetId }?.tickersJson
+                            ?.contains("\"${result.ticker}\"") == true
+                        Column(
+                            Modifier.fillMaxWidth().clip(RoundedCornerShape(OmahaRadius.sm))
+                                .border(1.dp, Omaha.colors.borderSubtle, RoundedCornerShape(OmahaRadius.sm))
+                                .padding(10.dp)
+                        ) {
+                            BasicText(result.ticker, style = OmahaType.bodyMd.toTextStyle().copy(
+                                fontFamily = Omaha.fonts.mono
+                            ))
+                            BasicText(result.name, style = OmahaType.bodySm.toTextStyle(
+                                color = Omaha.colors.textSecondary
+                            ))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                SearchAction(if (inList) "✓ Added" else "+ Add", primary = !inList) {
+                                    if (!inList) watchlist.addTicker(result.ticker, targetId) { addedTicker = it }
+                                }
+                                SearchAction("Research") { onOpen(result.ticker) }
+                            }
+                        }
+                    }
+                }
+            }
+            addedTicker?.let { ticker ->
+                Box(Modifier.height(10.dp))
+                BasicText("$ticker is on your watchlist. Capture your reasons whenever you are ready.",
+                    style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary))
+                SearchAction("Add your reasons", primary = true) { onReview(ticker) }
+            }
+            if (notice != null) {
+                Box(Modifier.height(8.dp))
+                BasicText(notice ?: "", style = OmahaType.caption.toTextStyle(
+                    color = Omaha.colors.textSecondary
+                ))
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchAction(label: String, primary: Boolean = false, onClick: () -> Unit) {
+    Box(Modifier.padding(top = 8.dp).clip(RoundedCornerShape(OmahaRadius.sm))
+        .background(if (primary) Omaha.colors.brandBlue else Omaha.colors.bgSurfaceSubtle)
+        .clickable(onClick = onClick).padding(horizontal = 10.dp, vertical = 7.dp)) {
+        BasicText(label, style = OmahaType.caption.toTextStyle(
+            color = if (primary) Color.White else Omaha.colors.textPrimary
+        ))
+    }
 }
 
 /**
@@ -291,10 +664,10 @@ private fun BottomNav(selected: OmahaTab, onSelect: (OmahaTab) -> Unit) {
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            for (t in OmahaTab.entries) {
+            for (t in listOf(OmahaTab.Review, OmahaTab.Watchlist, OmahaTab.Scorecard, OmahaTab.Compare)) {
                 NavTab(
                     tab = t,
-                    active = t == selected,
+                    active = t == selected || (t == OmahaTab.Scorecard && selected == OmahaTab.Filter),
                     onClick = { onSelect(t) },
                     modifier = Modifier.weight(1f)
                 )
@@ -389,7 +762,7 @@ private fun PlaceholderScreen(title: String, detail: String) {
  * should land somewhere they chose and can find again.
  */
 @Composable
-private fun SettingsTab() {
+private fun SettingsTab(showTitle: Boolean = true) {
     val vm: SettingsViewModel = viewModel()
     val includeNotes by vm.includeNotes.collectAsState()
     val theme by vm.theme.collectAsState()
@@ -434,6 +807,7 @@ private fun SettingsTab() {
     ) { uri -> uri?.let { vm.importFrom(it) } }
 
     SettingsScreen(
+        showTitle = showTitle,
         includeNotes = includeNotes,
         theme = theme,
         backupStatus = status,

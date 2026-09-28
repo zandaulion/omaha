@@ -69,6 +69,36 @@ class StockDetailRepository(private val engine: StockEngine) {
     private fun parse(d: JsonObject): StockDetail {
         val summary = d["summary"]?.jsonObject
         val metrics = summary?.get("metrics")?.jsonObject
+        val ratios = summary?.get("ratios")?.jsonObject
+
+        fun insights(key: String): List<StockInsight> = (d[key] as? JsonArray).orEmpty().map { item ->
+            val insight = item.jsonObject
+            StockInsight(
+                icon = insight.text("icon") ?: "",
+                title = insight.text("title") ?: "",
+                text = insight.text("text") ?: ""
+            )
+        }
+
+        val keyMetrics = if (metrics?.bool("isFinancial") == true) listOf(
+            StockMetric("Return on equity", metrics.dbl("roe"), "percent"),
+            StockMetric("Equity / assets", metrics.dbl("equityToAssets"), "percent"),
+            StockMetric("Piotroski F-Score", d.dbl("piotroski_score"), "score9"),
+            StockMetric("Revenue CAGR", metrics.dbl("revenueCAGR"), "percent"),
+            StockMetric("Trailing P/E", ratios?.dbl("pe"), "multiple"),
+            StockMetric("Price / book", ratios?.dbl("priceToBook"), "multiple"),
+            StockMetric("Share count YoY", metrics.dbl("shareChangeYoY"), "percent"),
+            StockMetric("Dividend yield", metrics.dbl("dividendYield"), "percent")
+        ) else listOf(
+            StockMetric("ROIC", d.dbl("roic_pct"), "percent-point"),
+            StockMetric("ROIC − WACC", metrics?.dbl("roicSpread"), "percent-point"),
+            StockMetric("Altman Z-Score", d.dbl("altman_z"), "number"),
+            StockMetric("Piotroski F-Score", d.dbl("piotroski_score"), "score9"),
+            StockMetric("FCF conversion", d.dbl("fcf_conversion_pct"), "percent-point"),
+            StockMetric("Gross margin", metrics?.dbl("grossMargin"), "percent"),
+            StockMetric("Trailing P/E", ratios?.dbl("pe"), "multiple"),
+            StockMetric("Net cash", d.dbl("net_cash_b"), "billions")
+        )
 
         return StockDetail(
             ticker = d.text("ticker") ?: "",
@@ -104,7 +134,7 @@ class StockDetailRepository(private val engine: StockEngine) {
                 val p = el.jsonObject
                 Pillar(
                     name = p.text("name") ?: "",
-                    score = p.int("score") ?: 0,
+                    score = p.dbl("score"),
                     max = p.int("max") ?: 20,
                     pct = p.int("pct") ?: 0,
                     measured = p.int("measured") ?: 0,
@@ -169,7 +199,10 @@ class StockDetailRepository(private val engine: StockEngine) {
                     fail = it?.int("failCount") ?: 0,
                     na = it?.int("naCount") ?: 0
                 )
-            }
+            },
+            catalysts = insights("catalysts"),
+            risks = insights("risks"),
+            keyMetrics = keyMetrics
         )
     }
 }

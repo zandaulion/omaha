@@ -16,7 +16,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-import { buildBackup, mergeBackup } from '../core/backup.js';
+import { buildBackup, mergeBackup, readBackup } from '../core/backup.js';
 
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'omaha-backup-'));
 process.env.DATA_DIR = scratch;
@@ -80,11 +80,11 @@ test('restoring onto a device that already has the same data changes nothing', (
   seed();
 
   const exported = buildBackup(readPersonalData(), '2026-08-20T12:00:00.000Z');
-  const before = readPersonalData();
+  const before = readBackup(readPersonalData());
 
   writePersonalData(mergeBackup(exported, readPersonalData()));
 
-  assert.deepEqual(readPersonalData(), before, 'a repeated restore is a no-op');
+  assert.deepEqual(readBackup(readPersonalData()), before, 'a repeated restore is a no-op');
 });
 
 test('a note written on the other device arrives without displacing local edits', () => {
@@ -156,7 +156,7 @@ test('the committed PWA fixture is a valid backup and imports cleanly', () => {
   writePersonalData(mergeBackup(file, readPersonalData()));
 
   const reExported = buildBackup(readPersonalData(), file.exportedAt);
-  assert.deepEqual(reExported.theses, file.theses, 'the fixture no longer round-trips');
+  assert.deepEqual(reExported.theses, readBackup(file).theses, 'legacy fields survive and new fields receive neutral defaults');
   assert.deepEqual(reExported.watchlists, file.watchlists);
 });
 

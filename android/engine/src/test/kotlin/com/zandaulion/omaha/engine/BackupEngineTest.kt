@@ -38,7 +38,7 @@ class BackupEngineTest {
             """{"theses":[],"watchlists":[]}""",
             "2026-08-20T12:00:00.000Z"
         )
-        assertTrue(out.contains("\"schemaVersion\":1"), "got: $out")
+        assertTrue(out.contains("\"schemaVersion\":2"), "got: $out")
         assertTrue(out.contains("2026-08-20T12:00:00.000Z"), "got: $out")
     }
 

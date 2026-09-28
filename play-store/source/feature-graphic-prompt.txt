@@ -1,0 +1,9 @@
+Use case: ads-marketing
+Asset type: Google Play feature graphic background, final canvas 1024 by 500 pixels
+Primary request: Create a premium abstract visual expressing disciplined long-term company research, review, and measured evidence.
+Scene/backdrop: Deep navy field with a subtle luminous five-axis radar geometry, concentric review rings, restrained horizontal data traces, and one small warm amber beacon-star motif. No readable data.
+Style/medium: polished editorial fintech illustration, vector-like geometry with refined soft gradients and depth, crisp and modern, sophisticated rather than flashy.
+Composition/framing: very wide 2.05:1 landscape. Keep the left 55 percent calm and uncluttered as negative space for a wordmark and tagline that will be added later. Place the main radar/beacon focal point in the center-right safe area, away from edges. Background accents may extend toward edges but no key element may touch the crop zones.
+Lighting/mood: calm, trustworthy, analytical, quietly optimistic.
+Color palette: deep navy #081225, cyan #06B6D4, teal #14B8A6, emerald #10B981, warm amber #FBBF24, muted blue-gray. Avoid pure black and pure white.
+Constraints: background only; no text, no letters, no numbers, no logos, no app icon, no device mockup, no people, no coins or currency symbols, no candlestick chart, no third-party marks, no watermark. Keep fine detail low enough to remain clear at phone size.

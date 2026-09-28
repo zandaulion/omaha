@@ -174,6 +174,73 @@ body {
   padding: 0 8px;
 }
 
+/* Review brings the financial picture and the investor's own reasoning together. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.review-intro { margin: 16px 0 20px; }
+.review-eyebrow { color: var(--brand-cyan); font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; margin-bottom: 6px; }
+.review-intro h2 { font-size: clamp(24px, 6vw, 32px); font-weight: 800; line-height: 1.2; letter-spacing: -.025em; margin-bottom: 8px; }
+.review-intro > p:last-child { color: var(--text-secondary); font-size: 14px; line-height: 1.55; max-width: 510px; }
+.review-controls { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.review-controls select { flex: 1; min-width: 0; }
+.review-meta, .review-footnote { font-size: 12px; color: var(--text-secondary); line-height: 1.55; }
+.review-meta { margin: 8px 0; }
+.review-footnote { margin: 16px 2px 8px; }
+.review-group { margin-top: 22px; }
+.review-group-title { display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; margin: 0 2px 10px; }
+.review-group-title span { color: var(--text-tertiary); font-weight: 500; }
+.company-review-card { padding: 18px; }
+.company-review-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.company-review-heading > div { min-width: 0; }
+.company-review-heading h4 { font-size: 18px; font-weight: 800; margin-bottom: 3px; }
+.company-review-heading p { font-size: 12px; color: var(--text-secondary); overflow-wrap: anywhere; }
+.review-status { border-radius: 20px; padding: 5px 9px; background: var(--bg-surface-subtle); border: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: 11px; line-height: 1.3; flex-shrink: 0; max-width: 48%; }
+.review-status.changed, .review-status.due { color: var(--health-moderate); }
+.review-status.reviewed { color: var(--health-good); }
+.company-review-reason { font-size: 13px; line-height: 1.55; margin: 14px 0 7px; }
+.review-change-preview { margin: 0 0 10px; padding-left: 18px; color: var(--text-secondary); font-size: 12px; line-height: 1.6; }
+.review-card-actions, .research-tools { display: flex; flex-wrap: wrap; gap: 8px; }
+.review-card-actions { margin-top: 14px; }
+.review-card-actions button { flex: 1; }
+.research-tools { margin: 0 0 16px; }
+.research-tools button { font-size: 12px; }
+.review-empty { padding: 28px 20px; }
+.review-empty h3 { font-size: 18px; margin-bottom: 8px; }
+.review-empty p, .reasons-prompt p { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin: 8px 0 16px; }
+.reasons-prompt .section-title { margin-bottom: 6px; }
+.reasons-extra { margin-bottom: 18px; }
+.reasons-extra summary { color: var(--text-secondary); font-size: 13px; cursor: pointer; padding: 6px 0 12px; }
+.review-assessments { border: 0; padding: 0; margin: 16px 0; }
+.review-assessments legend { font-size: 12px; font-weight: 600; margin-bottom: 8px; }
+.review-assessments label { display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); margin-bottom: 7px; font-size: 13px; cursor: pointer; }
+.review-assessments label:has(input:checked) { background: var(--bg-surface-subtle); border-color: var(--brand-cyan); }
+.review-assessments input { accent-color: var(--brand-cyan); }
+#recordReviewCard .form-textarea { margin-bottom: 12px; }
+.review-history-assessment { font-size: 13px; font-weight: 700; margin: 5px 0 7px; }
+.journal-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.manual-flag { display: block; font-size: 11px; margin-top: 3px; color: var(--health-moderate); }
+.review-change { padding: 12px 0; border-bottom: 1px solid var(--border-subtle); }
+.review-change:last-child { border: 0; padding-bottom: 0; }
+.review-change strong { font-size: 13px; }
+.review-change p { font-size: 12px; line-height: 1.55; color: var(--text-secondary); margin-top: 5px; }
+.reasons-prompt[hidden], #companyReviewChanges[hidden], #deepDivePriceRow[hidden], #deepDiveScoreCard[hidden], #researchLoadStatus[hidden] { display: none !important; }
+button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px solid var(--brand-cyan); outline-offset: 3px; }
+button:disabled { cursor: wait; opacity: .6; }
+@media (max-width: 380px) {
+  .company-review-card { padding: 14px; }
+  .company-review-heading { gap: 8px; }
+  .review-status { max-width: 44%; }
+}
+
 .nav-tab {
   display: flex;
   flex-direction: column;
@@ -309,18 +376,140 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
 }
 
-.hero-title-group h2 {
+.hero-title-group {
+  width: 100%;
+  min-width: 0;
+}
+
+.hero-title-group h2,
+.hero-watchlist-picker {
   font-size: 20px;
   font-weight: 700;
   letter-spacing: -0.02em;
 }
 
+.hero-watchlist-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  margin: 3px 0 5px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-prominent);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface-subtle);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.hero-watchlist-picker:hover {
+  border-color: var(--brand-cyan);
+  background: var(--brand-glow);
+}
+.hero-watchlist-picker:focus-visible {
+  outline: 2px solid var(--brand-cyan);
+  outline-offset: 4px;
+  border-radius: 3px;
+}
+.hero-watchlist-picker > span:first-child {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hero-picker-action {
+  color: var(--brand-cyan);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.hero-picker-chevron { color: var(--text-secondary); font-size: 15px; }
+
+.hero-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 6px 0 16px;
+}
+
+.hero-meta-row p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
 .hero-title-group p {
   font-size: 13px;
   color: var(--text-secondary);
+}
+
+.watchlist-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 14px;
+}
+
+.watchlist-action,
+.watchlist-sort-control {
+  min-height: 38px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface-subtle);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.watchlist-action {
+  padding: 7px 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.watchlist-action-primary {
+  border-color: var(--brand-blue);
+  background: var(--brand-blue);
+  color: #fff;
+}
+
+.watchlist-sort-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 10px;
+  cursor: pointer;
+}
+
+.watchlist-sort-control select {
+  appearance: none;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.watchlist-more {
+  min-width: 42px;
+  padding-inline: 10px;
+  letter-spacing: 2px;
+}
+
+.watchlist-action:hover,
+.watchlist-sort-control:hover { border-color: var(--border-prominent); }
+.watchlist-action-primary:hover { border-color: var(--brand-cyan); }
+.watchlist-action:focus-visible,
+.watchlist-sort-control:focus-within {
+  outline: 2px solid var(--brand-cyan);
+  outline-offset: 2px;
 }
 
 .hero-grade-badge {
@@ -1301,6 +1490,110 @@ body {
 
 .modal-backdrop.open .modal-content {
   transform: scale(1);
+}
+
+.sheet-modal {
+  align-items: flex-end;
+  padding: 0;
+}
+
+.sheet-modal .watchlist-sheet {
+  width: min(560px, 100%);
+  max-width: 560px;
+  padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  border-bottom: 0;
+  transform: translateY(18px);
+}
+
+.sheet-modal.open .watchlist-sheet { transform: translateY(0); }
+
+.watchlist-picker-list,
+.watchlist-tool-list {
+  display: grid;
+  gap: 3px;
+}
+
+.watchlist-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: var(--radius-sm);
+}
+
+.watchlist-picker-row .watchlist-picker-option { flex: 1; }
+
+.watchlist-picker-delete {
+  min-height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--health-risk);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.watchlist-picker-delete:hover { background: var(--health-risk-bg); }
+
+.watchlist-picker-option,
+.watchlist-tool-list button,
+.watchlist-create-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 48px;
+  padding: 11px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.remove-confirm-message {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.remove-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.btn-danger {
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid var(--health-risk-border);
+  border-radius: var(--radius-sm);
+  background: var(--health-risk-bg);
+  color: var(--health-risk);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.watchlist-picker-option:hover,
+.watchlist-tool-list button:hover,
+.watchlist-create-action:hover { background: var(--bg-surface-subtle); }
+
+.watchlist-picker-option.is-active { color: var(--brand-cyan); font-weight: 700; }
+.watchlist-picker-check { color: var(--brand-cyan); }
+.watchlist-create-action {
+  justify-content: flex-start;
+  margin-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+  border-radius: 0;
+  color: var(--brand-cyan);
+  font-weight: 700;
 }
 
 .modal-header {

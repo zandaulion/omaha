@@ -21,18 +21,25 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.runtime.saveable.SaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.zandaulion.omaha.data.Check
 import com.zandaulion.omaha.data.StockDetail
+import com.zandaulion.omaha.data.StockInsight
+import com.zandaulion.omaha.data.StockMetric
 import com.zandaulion.omaha.data.assessStaleness
 import com.zandaulion.omaha.design.ExplainableLabel
 import com.zandaulion.omaha.design.Omaha
@@ -50,11 +57,11 @@ import com.zandaulion.omaha.design.toTextStyle
  */
 enum class DeepDiveTab(val label: String) {
     Overview("Overview"),
+    Thesis("My reasons & reviews"),
     Checklist("12-Pt Checklist"),
     Trends("5Y Trends"),
     Dcf("DCF Sandbox"),
-    Thesis("My Thesis"),
-    Ai("Gemini")
+    Ai("AI analysis")
 }
 
 @Composable
@@ -70,12 +77,55 @@ fun DeepDiveScreen(
     onAiGenerate: () -> Unit,
     onAiClaimFreeGrant: () -> Unit,
     onAiPurchase: () -> Unit,
-    onAiDismissError: () -> Unit
+    onAiDismissError: () -> Unit,
+    onBack: () -> Unit = {},
+    onBookmark: (String) -> Unit = {},
+    isBookmarked: Boolean = false,
+    requestedTab: DeepDiveTab = DeepDiveTab.Overview,
+    navigationRequest: Int = 0,
+    onRecordReview: (String, String) -> Unit = { _, _ -> },
+    reviewSaving: Boolean = false,
+    reviewSave: String? = null,
+    thesisSave: String? = null,
+    reviewChanges: List<com.zandaulion.omaha.data.ReviewChange> = emptyList(),
+    onFilter: () -> Unit = {},
+    onCompare: () -> Unit = {},
+    onSearch: () -> Unit = {},
+    onSubtabChange: (DeepDiveTab) -> Unit = {}
 ) {
+    val thesisState = rememberSaveableStateHolder()
+    // A data-provider outage must not hide the user's saved reasoning.
+    if (requestedTab == DeepDiveTab.Thesis && thesis != null && state !is DeepDiveUiState.Ready) {
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    ReviewAction("← Back", onClick = onBack)
+                    BasicText(thesis.ticker, style = OmahaType.title1.toTextStyle())
+                }
+            }
+            item { BasicText("My reasons & reviews", style = OmahaType.title2.toTextStyle()) }
+            if (state is DeepDiveUiState.Failed) item {
+                BasicText("Financial data unavailable: ${state.message}", style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary))
+                ReviewAction("Retry financial data", onClick = onRetry)
+            }
+            if (state is DeepDiveUiState.Loading) item {
+                BasicText("Updating financial data…", style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary))
+            }
+            item { OmahaCard {
+                thesisState.SaveableStateProvider(thesis.ticker) {
+                    ThesisSection(thesis, onThesisChange, onAddJournal, onRecordReview, reviewSaving, reviewSave, thesisSave)
+                }
+            } }
+        }
+        return
+    }
     when (state) {
         is DeepDiveUiState.Empty -> CentredMessage(
             "No company selected",
-            "Open one from the watchlist."
+            "Search for a company or open one from your watchlist.",
+            actionLabel = "Search companies",
+            onAction = onSearch
         )
 
         is DeepDiveUiState.Loading -> CentredMessage(
@@ -102,7 +152,21 @@ fun DeepDiveScreen(
                 onAiGenerate,
                 onAiClaimFreeGrant,
                 onAiPurchase,
-                onAiDismissError
+                onAiDismissError,
+                onBack,
+                onBookmark,
+                isBookmarked,
+                requestedTab,
+                navigationRequest,
+                onRecordReview,
+                reviewSaving,
+                reviewSave,
+                thesisSave,
+                reviewChanges,
+                onFilter,
+                onCompare,
+                onSubtabChange,
+                thesisState
             )
     }
 }
@@ -119,22 +183,45 @@ private fun Loaded(
     onAiGenerate: () -> Unit,
     onAiClaimFreeGrant: () -> Unit,
     onAiPurchase: () -> Unit,
-    onAiDismissError: () -> Unit
+    onAiDismissError: () -> Unit,
+    onBack: () -> Unit,
+    onBookmark: (String) -> Unit,
+    isBookmarked: Boolean,
+    requestedTab: DeepDiveTab,
+    navigationRequest: Int,
+    onRecordReview: (String, String) -> Unit,
+    reviewSaving: Boolean,
+    reviewSave: String?,
+    thesisSave: String?,
+    reviewChanges: List<com.zandaulion.omaha.data.ReviewChange>,
+    onFilter: () -> Unit,
+    onCompare: () -> Unit,
+    onSubtabChange: (DeepDiveTab) -> Unit,
+    thesisState: SaveableStateHolder
 ) {
-    var tab by rememberSaveable(stock.ticker) { mutableStateOf(DeepDiveTab.Overview) }
+    var tab by rememberSaveable(stock.ticker) { mutableStateOf(requestedTab) }
+    LaunchedEffect(stock.ticker, navigationRequest) { tab = requestedTab }
+    val selectTab: (DeepDiveTab) -> Unit = { tab = it; onSubtabChange(it) }
 
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        item { Header(stock) }
-        item { SubTabs(tab) { tab = it } }
+        item { Header(stock, onBack, { selectTab(DeepDiveTab.Thesis) }, onBookmark, isBookmarked, tab != DeepDiveTab.Thesis) }
+        if (tab != DeepDiveTab.Thesis) item { ScoreCard(stock) }
+        item { SubTabs(tab, selectTab) }
 
         when (tab) {
             DeepDiveTab.Overview -> {
-                item { ScoreCard(stock) }
-                item { PillarsCard(stock) }
+                item { OverviewTeaser { selectTab(DeepDiveTab.Thesis) } }
+                item { Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ReviewAction("Filter companies", onClick = onFilter)
+                    ReviewAction("Compare", onClick = onCompare)
+                } }
+                item { InsightCard("Financial strengths", stock.catalysts, Omaha.colors.healthPristine) }
+                item { InsightCard("Watchpoints", stock.risks, Omaha.colors.healthModerate) }
+                item { KeyMetricsCard(stock) }
             }
             DeepDiveTab.Checklist -> {
                 item { ChecklistSummaryBar(stock) }
@@ -170,15 +257,30 @@ private fun Loaded(
             DeepDiveTab.Dcf -> item {
                 OmahaCard { DcfSandbox(stock) }
             }
-            DeepDiveTab.Thesis -> item {
-                OmahaCard {
-                    if (thesis == null) {
-                        BasicText(
-                            "Loading your notes…",
-                            style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textTertiary)
-                        )
-                    } else {
-                        ThesisSection(thesis, onThesisChange, onAddJournal)
+            DeepDiveTab.Thesis -> {
+                if (reviewChanges.isNotEmpty()) item {
+                    OmahaCard {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            BasicText("Changes to consider", style = OmahaType.title2.toTextStyle())
+                            reviewChanges.take(3).forEach { change ->
+                                BasicText(change.title, style = OmahaType.bodySm.toTextStyle())
+                                BasicText(change.body, style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary))
+                            }
+                        }
+                    }
+                }
+                item {
+                    OmahaCard {
+                        if (thesis == null) {
+                            BasicText(
+                                "Loading your notes…",
+                                style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textTertiary)
+                            )
+                        } else {
+                            thesisState.SaveableStateProvider(thesis.ticker) {
+                                ThesisSection(thesis, onThesisChange, onAddJournal, onRecordReview, reviewSaving, reviewSave, thesisSave)
+                            }
+                        }
                     }
                 }
             }
@@ -224,12 +326,31 @@ private fun Loaded(
     }
 }
 
-/** `.deep-dive-hero`: identity, price, and what the numbers were filed against. */
+/** The PWA's back, company, AI, bookmark, then price row. */
 @Composable
-private fun Header(stock: StockDetail) {
+private fun Header(
+    stock: StockDetail,
+    onBack: () -> Unit,
+    onReview: () -> Unit,
+    onBookmark: (String) -> Unit,
+    isBookmarked: Boolean,
+    showPrice: Boolean
+) {
     Column(Modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Column(Modifier.weight(1f)) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                Modifier.clip(RoundedCornerShape(OmahaRadius.sm))
+                    .background(Omaha.colors.bgSurfaceSubtle)
+                    .clickable(onClick = onBack)
+                    .padding(horizontal = 10.dp, vertical = 8.dp)
+            ) {
+                BasicText("← Back", style = OmahaType.bodySm.toTextStyle())
+            }
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                 BasicText(
                     stock.ticker,
                     style = OmahaType.title1.toTextStyle(color = Omaha.colors.textPrimary)
@@ -237,49 +358,54 @@ private fun Header(stock: StockDetail) {
                 )
                 BasicText(
                     stock.name,
-                    style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary)
-                )
-                BasicText(
-                    "${stock.sector} · ${stock.industry}",
-                    style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary)
+                    style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary),
+                    maxLines = 1
                 )
             }
-            Column(horizontalAlignment = Alignment.End) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier.clip(RoundedCornerShape(OmahaRadius.pill))
+                        .background(Omaha.colors.bgSurfaceSubtle)
+                        .clickable(onClick = onReview)
+                        .padding(horizontal = 9.dp, vertical = 7.dp)
+                ) {
+                    BasicText("Review", style = OmahaType.caption.toTextStyle(color = Omaha.colors.brandCyan))
+                }
+                Box(
+                    Modifier.size(36.dp).clip(RoundedCornerShape(OmahaRadius.pill))
+                        .background(Omaha.colors.bgSurfaceSubtle)
+                        .clickable { onBookmark(stock.ticker) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    BasicText(if (isBookmarked) "⭐" else "☆", style = OmahaType.title2.toTextStyle(
+                        color = Omaha.colors.brandGold
+                    ))
+                }
+            }
+        }
+        if (showPrice) {
+        Box(Modifier.height(16.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 BasicText(
                     fmtPrice(stock.price, stock.currency),
-                    style = OmahaType.title2.toTextStyle(color = Omaha.colors.textPrimary)
-                        .copy(fontFamily = Omaha.fonts.mono)
+                    style = OmahaType.title1.toTextStyle(color = Omaha.colors.textPrimary)
+                        .copy(fontFamily = Omaha.fonts.mono, fontSize = 28.sp, fontWeight = FontWeight.Bold)
                 )
-                BasicText(
-                    fmtPercent(stock.changePct, 2, signed = true),
-                    style = OmahaType.bodySm.toTextStyle(
-                        color = if ((stock.changePct ?: 0.0) >= 0)
-                            Omaha.colors.healthGood else Omaha.colors.healthRisk
-                    ).copy(fontFamily = Omaha.fonts.mono)
-                )
+                BasicText(stock.currency, style = OmahaType.caption.toTextStyle(
+                    color = Omaha.colors.textTertiary
+                ))
             }
-        }
-
-        // Which filing period the scorecard was built from, and — for a
-        // depositary receipt — that it files in one currency and trades in
-        // another. Left unsaid, a euro balance sheet sits under a dollar price
-        // and nothing on screen admits it.
-        val provenance = buildString {
-            stock.fiscalPeriodEnd?.let { append("Fundamentals as filed to $it") }
-            stock.fx?.takeIf { it.needed }?.let { fx ->
-                if (isNotEmpty()) append(" · ")
-                append("trades in ${fx.from}, reports in ${fx.to}")
-                if (fx.available) append(" (1 ${fx.from} = ${fmtRatio(fx.rate, 4)} ${fx.to})")
-                else append(" — no exchange rate available")
-            }
-        }
-        if (provenance.isNotEmpty()) {
-            Box(Modifier.height(6.dp))
             BasicText(
-                provenance,
-                style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary)
+                fmtPercent(stock.changePct, 2, signed = true),
+                style = OmahaType.bodyMd.toTextStyle(
+                    color = if ((stock.changePct ?: 0.0) >= 0)
+                        Omaha.colors.healthGood else Omaha.colors.healthRisk
+                ).copy(fontFamily = Omaha.fonts.mono)
             )
         }
+    }
     }
 }
 
@@ -316,16 +442,45 @@ private fun SubTabs(selected: DeepDiveTab, onSelect: (DeepDiveTab) -> Unit) {
 
 @Composable
 private fun ScoreCard(stock: StockDetail) {
-    OmahaCard {
+    OmahaCard(contentPadding = 20.dp) {
         Column(
             Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            ExplainableLabel(
+                key = "Fundamental score",
+                text = "Fundamental score",
+                style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary)
+            )
+            Box(Modifier.height(8.dp))
             ScoreRing(
                 score = stock.healthScore,
                 tier = stock.healthTier,
-                label = stock.healthLabel
+                label = fundamentalGrade(stock.healthTier, stock.healthScore),
+                diameter = 160.dp
             )
+
+            Box(Modifier.height(6.dp))
+            BasicText(
+                "${stock.sector} · ${stock.industry}",
+                style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary),
+                maxLines = 2
+            )
+            val provenance = buildString {
+                stock.fiscalPeriodEnd?.let { append("Fundamentals as filed to $it") }
+                stock.fx?.takeIf { it.needed }?.let { fx ->
+                    if (isNotEmpty()) append(" · ")
+                    append("trades in ${fx.from}, reports in ${fx.to}")
+                    if (fx.available) append(" (1 ${fx.from} = ${fmtRatio(fx.rate, 4)} ${fx.to})")
+                    else append(" — no exchange rate available")
+                }
+            }
+            if (provenance.isNotEmpty()) {
+                Box(Modifier.height(6.dp))
+                BasicText(provenance, style = OmahaType.caption.toTextStyle(
+                    color = Omaha.colors.textTertiary
+                ))
+            }
 
             // How much of the scorecard the filings actually supported. Below
             // the engine's threshold there is no composite at all, and saying
@@ -339,22 +494,117 @@ private fun ScoreCard(stock: StockDetail) {
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun PillarsCard(stock: StockDetail) {
-    OmahaCard {
-        BasicText(
-            "Five pillars",
-            style = OmahaType.title2.toTextStyle(color = Omaha.colors.textPrimary)
-        )
-        Box(Modifier.height(12.dp))
+        Box(Modifier.height(16.dp))
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             for (p in stock.pillars) {
                 PillarMeter(p.name, p.score, p.max, p.pct, p.measured, p.of)
             }
         }
+    }
+}
+
+@Composable
+private fun OverviewTeaser(onReview: () -> Unit) {
+    OmahaCard {
+        BasicText(
+            "Revisit your reasons",
+            style = OmahaType.title2.toTextStyle(color = Omaha.colors.brandViolet)
+        )
+        Box(Modifier.height(8.dp))
+        BasicText(
+            "Your view of this company",
+            style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary)
+        )
+        Box(Modifier.height(8.dp))
+        BasicText(
+            "Put the financial picture beside your own reasons. Record what still holds, what needs watching, or what changed.",
+            style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary)
+        )
+        Box(Modifier.height(12.dp))
+        Box(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(OmahaRadius.sm))
+                .background(Omaha.colors.brandBlue)
+                .clickable(onClick = onReview)
+                .padding(10.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            BasicText("My reasons & reviews", style = OmahaType.bodySm.toTextStyle(
+                color = Color.White
+            ))
+        }
+    }
+}
+
+@Composable
+private fun InsightCard(title: String, insights: List<StockInsight>, tint: Color) {
+    OmahaCard {
+        BasicText(title, style = OmahaType.title2.toTextStyle(color = tint))
+        Box(Modifier.height(12.dp))
+        if (insights.isEmpty()) {
+            BasicText("No flags from the available filings.", style = OmahaType.bodySm.toTextStyle(
+                color = Omaha.colors.textSecondary
+            ))
+        }
+        insights.forEach { insight ->
+            Row(
+                Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                    .clip(RoundedCornerShape(OmahaRadius.sm))
+                    .background(Omaha.colors.bgSurfaceSubtle)
+                    .padding(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                BasicText(insight.icon, style = OmahaType.title2.toTextStyle())
+                Column(Modifier.weight(1f)) {
+                    BasicText(insight.title, style = OmahaType.bodySm.toTextStyle(color = tint)
+                        .copy(fontWeight = FontWeight.Bold))
+                    BasicText(insight.text, style = OmahaType.caption.toTextStyle(
+                        color = Omaha.colors.textSecondary
+                    ))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun KeyMetricsCard(stock: StockDetail) {
+    OmahaCard {
+        BasicText("📊 Key Fundamental Ratios", style = OmahaType.title2.toTextStyle())
+        Box(Modifier.height(12.dp))
+        stock.keyMetrics.chunked(2).forEach { row ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { metric ->
+                    Column(
+                        Modifier.weight(1f).padding(bottom = 8.dp)
+                            .clip(RoundedCornerShape(OmahaRadius.sm))
+                            .background(Omaha.colors.bgSurfaceSubtle)
+                            .padding(10.dp)
+                    ) {
+                        ExplainableLabel(
+                            key = metric.label,
+                            text = metric.label,
+                            style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary)
+                        )
+                        BasicText(formatMetric(metric, stock.currency), style = OmahaType.bodyMd.toTextStyle(
+                            color = Omaha.colors.textPrimary
+                        ).copy(fontFamily = Omaha.fonts.mono))
+                    }
+                }
+                if (row.size == 1) Box(Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+private fun formatMetric(metric: StockMetric, currency: String): String {
+    val value = metric.value ?: return EM_DASH
+    return when (metric.format) {
+        "percent" -> fmtPercent(value * 100.0)
+        "percent-point" -> fmtPercent(value)
+        "multiple" -> fmtRatio(value, 1, "x")
+        "score9" -> "${value.toInt()}/9"
+        "billions" -> "${if (currency == "USD") "$" else "$currency "}${fmtRatio(value, 1)}B"
+        else -> fmtRatio(value, 2)
     }
 }
 
@@ -513,4 +763,3 @@ private fun Slice(title: String, detail: String) {
         BasicText(detail, style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary))
     }
 }
-

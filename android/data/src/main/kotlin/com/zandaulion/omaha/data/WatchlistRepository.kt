@@ -15,6 +15,7 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlin.math.roundToInt
 
 /**
  * One scored holding, as the watchlist needs it.
@@ -46,10 +47,40 @@ data class Holding(
     val topRisk: String?,
     val sector: String? = null,
     val industry: String? = null,
+    val marketCap: Double? = null,
+    val pillarScores: List<Double?> = emptyList(),
+    val checklistTotals: ChecklistTotals = ChecklistTotals(),
+    val piotroskiScore: Int? = null,
+    val netCashBillions: Double? = null,
+    val freeCashFlow: Double? = null,
+    val debtToEquity: Double? = null,
+    val reportingCurrency: String? = null,
+    val fcfConversionPct: Double? = null,
+    val roicSpread: Double? = null,
+    val grossMargin: Double? = null,
+    val operatingMargin: Double? = null,
+    val currentRatio: Double? = null,
+    val peVsMedianPct: Double? = null,
+    val revenueCagr: Double? = null,
     /** Set when this ticker could not be loaded at all; everything else is null. */
     val error: String? = null,
     /** Queued, not yet scored. Distinct from failed, and from scored-as-null. */
     val loading: Boolean = false
+)
+
+data class ChecklistTotals(
+    val pass: Int = 0,
+    val watch: Int = 0,
+    val fail: Int = 0,
+    val notReported: Int = 0
+)
+
+data class StockSearchResult(
+    val ticker: String,
+    val name: String,
+    val sector: String?,
+    val exchange: String?,
+    val healthScore: Int?
 )
 
 /** What the hero banner states about the list as a whole. */
@@ -58,7 +89,10 @@ data class PortfolioHealth(
     val holdingCount: Int,
     val compositeScore: Int?,
     val tier: String,
-    val scoredCount: Int
+    val scoredCount: Int,
+    val pillarScores: List<Double?> = emptyList(),
+    val checklistTotals: ChecklistTotals = ChecklistTotals(),
+    val weighting: String = "equal"
 )
 
 data class WatchlistView(
@@ -79,9 +113,68 @@ data class WatchlistView(
  */
 class WatchlistRepository(
     private val dao: PersonalDataDao,
-    private val engine: StockEngine
+    private val engine: StockEngine,
+    private val stockCache: StockCacheDao? = null
 ) {
     private val json = Json { ignoreUnknownKeys = true }
+
+    /** The same scored, previously seen universe as the PWA's filter. */
+    suspend fun filterUniverse(): List<Holding> = withContext(Dispatchers.IO) {
+        stockCache?.allScoredRecords().orEmpty().mapNotNull { row ->
+            runCatching {
+                val record = json.parseToJsonElement(row.recordJson).jsonObject
+                fun embedded(key: String): JsonObject? = record[key]?.jsonPrimitive?.contentOrNull
+                    ?.let { json.parseToJsonElement(it).jsonObject }
+                val summary = embedded("summary_json")
+                val financials = embedded("financials_json")
+                val metrics = summary?.get("metrics")?.jsonObject
+                Holding(
+                    ticker = row.ticker, name = row.name,
+                    price = record.num("price"), currency = record.str("currency") ?: "USD",
+                    changePct = record.num("change_pct"), healthScore = row.healthScore,
+                    healthTier = summary?.str("healthTier") ?: "good",
+                    roicPct = record.num("roic_pct"), altmanZ = record.num("altman_z"),
+                    roe = metrics?.num("roe"),
+                    peRatio = summary?.get("ratios")?.jsonObject?.num("pe"),
+                    isFinancial = financials?.get("isFinancial")?.jsonPrimitive?.booleanOrNull() ?: false,
+                    topCatalyst = null, topRisk = null,
+                    sector = row.sector, industry = record.str("industry"),
+                    marketCap = record.num("market_cap"),
+                    piotroskiScore = record["piotroski_score"]?.jsonPrimitive?.intOrNull,
+                    netCashBillions = record.num("net_cash_b"),
+                    freeCashFlow = financials?.num("freeCashFlow"),
+                    debtToEquity = metrics?.num("debtToEquity"),
+                    reportingCurrency = financials?.str("reportingCurrency"),
+                    fcfConversionPct = record.num("fcf_conversion_pct"),
+                    roicSpread = metrics?.num("roicSpread"),
+                    grossMargin = metrics?.num("grossMargin"),
+                    operatingMargin = metrics?.num("operatingMargin"),
+                    currentRatio = metrics?.num("currentRatio"),
+                    peVsMedianPct = summary?.get("peHistory")?.jsonObject?.num("vsMedianPct"),
+                    revenueCagr = metrics?.num("revenueCAGR")
+                )
+            }.getOrNull()
+        }
+    }
+
+    /** The same cached-plus-live search used by the PWA's add-stock modal. */
+    suspend fun search(query: String): List<StockSearchResult> {
+        val root = json.parseToJsonElement(engine.search(query)).jsonObject
+        if (root["ok"]?.jsonPrimitive?.booleanOrNull() != true) {
+            error(root["error"]?.jsonObject?.str("message") ?: "Search is unavailable right now.")
+        }
+        return (root["results"] as? JsonArray).orEmpty().mapNotNull { item ->
+            val result = item.jsonObject
+            val ticker = result.str("ticker") ?: return@mapNotNull null
+            StockSearchResult(
+                ticker = ticker,
+                name = result.str("name") ?: ticker,
+                sector = result.str("sector"),
+                exchange = result.str("exchange"),
+                healthScore = result["health_score"]?.jsonPrimitive?.intOrNull
+            )
+        }
+    }
 
     /**
      * The starter lists the PWA seeds in `server/db.js`.
@@ -162,13 +255,15 @@ class WatchlistRepository(
         }
     }.flowOn(Dispatchers.IO)
 
-    private fun view(list: WatchlistRow, done: List<Holding>, pending: List<String>) =
-        WatchlistView(
+    private fun view(list: WatchlistRow, done: List<Holding>, pending: List<String>): WatchlistView {
+        val holdings = done + pending.map { pendingHolding(it) }
+        return WatchlistView(
             id = list.id,
-            health = composite(list.name, done),
-            holdings = done + pending.map { pendingHolding(it) },
+            health = aggregatePortfolioHealth(list.name, holdings),
+            holdings = holdings,
             pending = pending.size
         )
+    }
 
     /** A row that is queued but not yet scored. */
     private fun pendingHolding(ticker: String) = Holding(
@@ -229,6 +324,22 @@ class WatchlistRepository(
         )
     }
 
+    suspend fun deleteWatchlist(id: String): DeleteResult = withContext(Dispatchers.IO) {
+        val lists = watchlists()
+        val target = lists.firstOrNull { it.id == id } ?: return@withContext DeleteResult.NotFound
+        if (lists.size <= 1) return@withContext DeleteResult.LastList
+
+        dao.deleteWatchlist(id)
+        val remaining = lists.filterNot { it.id == id }
+        val fallback = remaining.firstOrNull { it.isDefault } ?: remaining.first()
+        if (target.isDefault || remaining.none { it.isDefault }) {
+            dao.upsertWatchlists(
+                listOf(fallback.copy(isDefault = true, updatedAt = isoNow()))
+            )
+        }
+        DeleteResult.Deleted(target.name, fallback.id)
+    }
+
     /**
      * A new, empty list.
      *
@@ -258,6 +369,12 @@ class WatchlistRepository(
         data class Added(val ticker: String, val name: String) : AddResult
         data class Duplicate(val ticker: String) : AddResult
         data class Invalid(val message: String) : AddResult
+    }
+
+    sealed interface DeleteResult {
+        data class Deleted(val name: String, val fallbackId: String) : DeleteResult
+        data object LastList : DeleteResult
+        data object NotFound : DeleteResult
     }
 
     /**
@@ -321,42 +438,70 @@ class WatchlistRepository(
             topCatalyst = firstTitle("catalysts"),
             topRisk = firstTitle("risks"),
             sector = data.str("sector"),
-            industry = data.str("industry")
+            industry = data.str("industry"),
+            marketCap = data.num("market_cap"),
+            pillarScores = (data["pillars"] as? JsonArray).orEmpty().map { it.jsonObject.num("score") },
+            checklistTotals = summary?.get("checklistSummary")?.jsonObject?.let {
+                ChecklistTotals(
+                    pass = it["passCount"]?.jsonPrimitive?.intOrNull ?: 0,
+                    watch = it["watchCount"]?.jsonPrimitive?.intOrNull ?: 0,
+                    fail = it["failCount"]?.jsonPrimitive?.intOrNull ?: 0,
+                    notReported = it["naCount"]?.jsonPrimitive?.intOrNull ?: 0
+                )
+            } ?: ChecklistTotals(),
+            piotroskiScore = data["piotroski_score"]?.jsonPrimitive?.intOrNull,
+            netCashBillions = data.num("net_cash_b"),
+            freeCashFlow = data["financials"]?.jsonObject?.num("freeCashFlow"),
+            debtToEquity = metrics?.num("debtToEquity"),
+            reportingCurrency = data["financials"]?.jsonObject?.str("reportingCurrency"),
+            fcfConversionPct = data.num("fcf_conversion_pct"),
+            roicSpread = metrics?.num("roicSpread"),
+            grossMargin = metrics?.num("grossMargin"),
+            operatingMargin = metrics?.num("operatingMargin"),
+            currentRatio = metrics?.num("currentRatio"),
+            peVsMedianPct = summary?.get("peHistory")?.jsonObject?.num("vsMedianPct"),
+            revenueCagr = metrics?.num("revenueCAGR")
         )
     }
 
-    /**
-     * The composite, over the holdings that could be scored.
-     *
-     * Unscored holdings are excluded rather than counted as zero — the engine
-     * reports `null` when too few line items were filed, and averaging a zero
-     * in would turn "we could not measure this" into "this company is bad".
-     * The count of what was actually scored travels with the number so the
-     * banner can say what it is an average of.
-     */
-    private fun composite(name: String, holdings: List<Holding>): PortfolioHealth {
-        val (average, scoredCount) = meanScore(holdings.map { it.healthScore })
+}
 
-        return PortfolioHealth(
-            watchlistName = name,
-            holdingCount = holdings.size,
-            compositeScore = average,
-            tier = tierFor(average),
-            scoredCount = scoredCount
+/** The PWA's weighted watchlist score, pillars and checklist rollup. */
+internal fun aggregatePortfolioHealth(name: String, holdings: List<Holding>): PortfolioHealth {
+    val scored = holdings.filter { it.healthScore != null }
+    val haveWeights = scored.isNotEmpty() && scored.all { (it.marketCap ?: 0.0) > 0.0 }
+    val totalWeight = if (haveWeights) scored.sumOf { it.marketCap ?: 0.0 } else scored.size.toDouble()
+    fun weighted(pick: (Holding) -> Double?): Double? {
+        if (scored.isEmpty()) return null
+        return scored.sumOf { (pick(it) ?: 0.0) * (if (haveWeights) it.marketCap ?: 0.0 else 1.0) } / totalWeight
+    }
+    val average = weighted { it.healthScore?.toDouble() }?.roundToInt()
+    val totals = holdings.fold(ChecklistTotals()) { acc, holding ->
+        ChecklistTotals(
+            pass = acc.pass + holding.checklistTotals.pass,
+            watch = acc.watch + holding.checklistTotals.watch,
+            fail = acc.fail + holding.checklistTotals.fail,
+            notReported = acc.notReported + holding.checklistTotals.notReported
         )
     }
+
+    return PortfolioHealth(
+        watchlistName = name,
+        holdingCount = holdings.size,
+        compositeScore = average,
+        tier = tierFor(average),
+        scoredCount = scored.size,
+        pillarScores = (0 until 5).map { index -> weighted { it.pillarScores.getOrNull(index) } },
+        checklistTotals = totals,
+        weighting = if (haveWeights) "market-cap" else "equal"
+    )
 }
 
 /**
  * The plain mean over whatever could be scored, and how many that was.
  *
- * Extracted from [WatchlistRepository.composite] so [WidgetRepository] can
- * compute the same mean over a baseline reading — `SnapshotRow.baselineScore`
- * rather than `Holding.healthScore` — without a second definition. Both must
- * stay this exact function: `core/alerts/sweep.js`'s digest computes a
- * *different*, capitalisation-weighted composite for its own purposes, and
- * mixing the two would make a single screen's current score and its own
- * delta disagree about what "the composite" means.
+ * Retained for call sites that explicitly need an equal-weight mean. The
+ * watchlist and widget composite use [aggregatePortfolioHealth] instead.
  */
 internal fun meanScore(scores: List<Int?>): Pair<Int?, Int> {
     val measured = scores.mapNotNull { it }

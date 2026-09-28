@@ -67,7 +67,8 @@ class BackupRoundTripTest {
 
         val reExported = engine().build(store.read(), now)
 
-        val original = Json.parseToJsonElement(file).jsonObject
+        // v1 fixtures gain neutral defaults when read by the v2 backup schema.
+        val original = Json.parseToJsonElement(engine().build(file, now)).jsonObject
         val round = Json.parseToJsonElement(reExported).jsonObject
 
         assertEquals(

@@ -37,12 +37,12 @@ val keystoreProperties = Properties().apply { load(FileInputStream(keystorePrope
  */
 android {
     namespace = "com.zandaulion.omaha.app"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.zandaulion.omaha"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 4
         versionName = "0.4"
     }
@@ -104,7 +104,7 @@ dependencies {
     // directly too, so this module needs the same coordinate declared again.
     implementation("androidx.glance:glance-appwidget:1.2.0")
 
-    implementation(platform("androidx.compose:compose-bom:2025.09.00"))
+    implementation(platform("androidx.compose:compose-bom:2026.09.00"))
     implementation("androidx.compose.foundation:foundation")
     // Material3 for exactly one component: the DCF sandbox's Slider. See
     // DcfSandbox.AssumptionSlider for why that exception is worth making —

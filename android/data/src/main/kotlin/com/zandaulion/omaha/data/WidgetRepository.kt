@@ -33,8 +33,8 @@ data class WidgetSnapshot(
 /**
  * One call: a watchlist id in, a widget's worth of state out.
  *
- * The composite score reuses [WatchlistRepository.load] and [meanScore] —
- * the exact function the Watchlist tab's own hero banner uses — so a
+ * The composite score reuses [WatchlistRepository.load] and
+ * [aggregatePortfolioHealth] — the exact function the Watchlist tab's own hero banner uses — so a
  * widget can never show a different number for the same list than opening
  * the app would. Movers go through [AlertEngine.movers], the same
  * `core/alerts/sweep.js` logic the Sunday digest embeds as prose, for the
@@ -53,7 +53,12 @@ class WidgetRepository(
         val view = watchlists.load(watchlistId).last()
         val snapshots = alertsDao.snapshots(view.holdings.map { it.ticker }).associateBy { it.ticker }
 
-        val (previousComposite, _) = meanScore(view.holdings.map { snapshots[it.ticker]?.baselineScore })
+        val previousComposite = aggregatePortfolioHealth(
+            view.health.watchlistName,
+            view.holdings.map { holding ->
+                holding.copy(healthScore = snapshots[holding.ticker]?.baselineScore)
+            }
+        ).compositeScore
 
         val holdingsPayload = buildJsonArray {
             for (h in view.holdings) {

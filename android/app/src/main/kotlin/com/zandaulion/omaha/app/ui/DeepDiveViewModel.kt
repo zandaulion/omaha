@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 sealed interface DeepDiveUiState {
     data object Empty : DeepDiveUiState
@@ -34,11 +36,26 @@ class DeepDiveViewModel(app: Application) : AndroidViewModel(app) {
     private val _thesis = MutableStateFlow<Thesis?>(null)
     val thesis: StateFlow<Thesis?> = _thesis.asStateFlow()
 
+    private val thesisWrites = Mutex()
+    private var thesisEditVersion = 0L
+    private val _reviewSave = MutableStateFlow<String?>(null)
+    val reviewSave = _reviewSave.asStateFlow()
+    private val _reviewSaving = MutableStateFlow(false)
+    val reviewSaving = _reviewSaving.asStateFlow()
+    private val _thesisSave = MutableStateFlow<String?>(null)
+    val thesisSave = _thesisSave.asStateFlow()
+
     private var current: String? = null
 
     fun open(ticker: String) {
         if (ticker == current && _state.value is DeepDiveUiState.Ready) return
         current = ticker
+        _thesis.value = null
+        _reviewSave.value = null
+        _thesisSave.value = null
+        viewModelScope.launch {
+            OmahaEngine.get(getApplication()).settings.setLastViewedTicker(ticker)
+        }
         load(ticker)
     }
 
@@ -55,28 +72,84 @@ class DeepDiveViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun updateThesis(updated: Thesis) {
         _thesis.value = updated
+        val editVersion = ++thesisEditVersion
+        _thesisSave.value = "Saving your reasons…"
         viewModelScope.launch {
-            _thesis.value = OmahaEngine.get(getApplication()).theses.save(updated)
+            thesisWrites.withLock {
+                try {
+                    val persisted = OmahaEngine.get(getApplication()).theses.save(updated)
+                    if (current == updated.ticker && editVersion == thesisEditVersion) {
+                        _thesis.value = persisted
+                        _thesisSave.value = "Reasons saved on this device"
+                    }
+                } catch (err: Throwable) {
+                    if (current == updated.ticker) _thesisSave.value = "Could not save your reasons. Try editing again."
+                }
+            }
         }
     }
 
     fun addJournalEntry(note: String) {
         val ticker = current ?: return
         viewModelScope.launch {
-            _thesis.value = OmahaEngine.get(getApplication()).theses.addJournalEntry(ticker, note)
+            thesisWrites.withLock {
+                try {
+                    val updated = OmahaEngine.get(getApplication()).theses.addJournalEntry(ticker, note)
+                    mergeJournal(ticker, updated)
+                } catch (err: Throwable) {
+                    _thesisSave.value = "Could not save the note. Try again."
+                }
+            }
+        }
+    }
+
+    fun recordReview(assessment: String, note: String) {
+        val ticker = current ?: return
+        if (_reviewSaving.value) return
+        _reviewSaving.value = true
+        _reviewSave.value = null
+        viewModelScope.launch {
+            thesisWrites.withLock {
+                try {
+                    val updated = OmahaEngine.get(getApplication()).theses.recordReview(ticker, assessment, note)
+                    if (current == ticker) {
+                        mergeJournal(ticker, updated)
+                        _reviewSave.value = "Review saved"
+                    }
+                } catch (err: Throwable) {
+                    if (current == ticker) _reviewSave.value = "Could not save this review. Please try again."
+                } finally {
+                    _reviewSaving.value = false
+                }
+            }
+        }
+    }
+
+    private fun mergeJournal(ticker: String, persisted: Thesis) {
+        val displayed = _thesis.value ?: return
+        if (current == ticker && displayed.ticker == ticker) {
+            _thesis.value = displayed.copy(
+                journalEntries = persisted.journalEntries,
+                updatedAt = persisted.updatedAt
+            )
         }
     }
 
     private fun load(ticker: String) {
         _state.value = DeepDiveUiState.Loading(ticker)
-        viewModelScope.launch {
+        if (_thesis.value?.ticker != ticker) viewModelScope.launch {
             // Loaded alongside the scorecard rather than on tab switch: it is a
             // local read, and a thesis that appears a beat after the tab does
             // reads as though it were fetched.
-            _thesis.value = OmahaEngine.get(getApplication()).theses.load(ticker)
+            try {
+                val loaded = OmahaEngine.get(getApplication()).theses.load(ticker)
+                if (current == ticker) _thesis.value = loaded
+            } catch (err: Throwable) {
+                if (current == ticker) _thesisSave.value = "Could not load your saved reasons. Try opening the company again."
+            }
         }
         viewModelScope.launch {
-            _state.value = try {
+            val result = try {
                 DeepDiveUiState.Ready(OmahaEngine.get(getApplication()).details.detail(ticker))
             } catch (err: StockUnavailable) {
                 // The engine's own vocabulary, translated once. `kind` is what
@@ -94,6 +167,7 @@ class DeepDiveViewModel(app: Application) : AndroidViewModel(app) {
             } catch (err: Throwable) {
                 DeepDiveUiState.Failed(ticker, err.message?.take(160) ?: err.javaClass.simpleName)
             }
+            if (current == ticker) _state.value = result
         }
     }
 }

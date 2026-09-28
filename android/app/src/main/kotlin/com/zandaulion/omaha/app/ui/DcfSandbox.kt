@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.zandaulion.omaha.data.Dcf
 import com.zandaulion.omaha.data.StockDetail
+import com.zandaulion.omaha.design.ExplainableLabel
 import com.zandaulion.omaha.design.Omaha
 import com.zandaulion.omaha.design.OmahaRadius
 import com.zandaulion.omaha.design.OmahaType
@@ -64,8 +65,9 @@ fun DcfSandbox(stock: StockDetail) {
         // value for companies that were burning cash — a confident answer to a
         // question the filings do not answer.
         Column {
-            BasicText(
-                "Fair value not modelled",
+            ExplainableLabel(
+                key = "Estimated Fair Value",
+                text = "Fair value not modelled",
                 style = OmahaType.title2.toTextStyle(color = Omaha.colors.textTertiary)
             )
             Box(Modifier.height(8.dp))
@@ -99,8 +101,9 @@ fun DcfSandbox(stock: StockDetail) {
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Column {
-                BasicText(
-                    "Estimated fair value",
+                ExplainableLabel(
+                    key = "Estimated Fair Value",
+                    text = "Estimated fair value",
                     style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary)
                 )
                 BasicText(
@@ -110,8 +113,9 @@ fun DcfSandbox(stock: StockDetail) {
                 )
             }
             Column(horizontalAlignment = Alignment.End) {
-                BasicText(
-                    "Traded price",
+                ExplainableLabel(
+                    key = "Current Price",
+                    text = "Traded price",
                     style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary)
                 )
                 BasicText(
@@ -138,6 +142,7 @@ fun DcfSandbox(stock: StockDetail) {
         // model still reflects a case it does not.
         AssumptionSlider(
             label = "5-year FCF growth",
+            explainKey = "dcf-growth",
             display = "${assumptions.growthPct}%",
             value = assumptions.growthPct.toFloat(),
             range = Dcf.GROWTH_PCT.min.toFloat()..Dcf.GROWTH_PCT.max.toFloat(),
@@ -148,6 +153,7 @@ fun DcfSandbox(stock: StockDetail) {
 
         AssumptionSlider(
             label = "Terminal exit multiple",
+            explainKey = "dcf-terminal-multiple",
             display = "${fmtRatio(assumptions.multiple, 1)}x",
             value = assumptions.multiple.toFloat(),
             range = Dcf.MULTIPLE.min.toFloat()..Dcf.MULTIPLE.max.toFloat(),
@@ -158,6 +164,7 @@ fun DcfSandbox(stock: StockDetail) {
 
         AssumptionSlider(
             label = "Discount rate (hurdle)",
+            explainKey = "dcf-discount-rate",
             display = "${fmtRatio(assumptions.discountPct, 1)}%",
             value = assumptions.discountPct.toFloat(),
             range = Dcf.DISCOUNT_PCT.min.toFloat()..Dcf.DISCOUNT_PCT.max.toFloat(),
@@ -257,6 +264,7 @@ private fun PresetChip(label: String, active: Boolean, onClick: () -> Unit) {
 @Composable
 private fun AssumptionSlider(
     label: String,
+    explainKey: String,
     display: String,
     value: Float,
     range: ClosedFloatingPointRange<Float>,
@@ -265,7 +273,11 @@ private fun AssumptionSlider(
 ) {
     Column {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            BasicText(label, style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary))
+            ExplainableLabel(
+                key = explainKey,
+                text = label,
+                style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary)
+            )
             BasicText(
                 display,
                 style = OmahaType.bodySm

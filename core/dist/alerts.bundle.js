@@ -874,7 +874,7 @@ function scorePillars(m) {
       )
     });
   }
-  pillars.push({ name: "Profitability & Moat Quality", items: p2 });
+  pillars.push({ name: "Profitability & Cash Quality", items: p2 });
   const p3 = [];
   p3.push({
     name: "Forward P/E vs. own history",
@@ -1424,20 +1424,20 @@ function computeComprehensiveHealth(model = {}) {
     healthGrade = "INSUFFICIENT";
     healthTier = "insufficient";
   } else if (healthScore >= 85) {
-    healthLabel = "Pristine financial health";
-    healthGrade = "PRISTINE";
+    healthLabel = "Strong across the measured fundamental checks";
+    healthGrade = "STRONG";
     healthTier = "pristine";
   } else if (healthScore >= 70) {
-    healthLabel = "Solid moat and financials";
+    healthLabel = "Mostly favourable fundamental checks";
     healthGrade = "GOOD";
     healthTier = "good";
   } else if (healthScore >= 50) {
     healthLabel = "Mixed \u2014 watch the flagged items";
-    healthGrade = "MODERATE";
+    healthGrade = "MIXED";
     healthTier = "moderate";
   } else {
-    healthLabel = "High leverage or distress risk";
-    healthGrade = "RISK";
+    healthLabel = "Several fundamental checks need attention";
+    healthGrade = "WEAK";
     healthTier = "risk";
   }
   const checklist = buildChecklist(metrics, fmt);
@@ -2852,7 +2852,7 @@ function evaluateTriggers(stock2, prev, settings) {
       const worsened = flips.filter((f) => f.worse);
       const parts = [];
       if (delta !== null && Math.abs(delta) >= SCORE_SHIFT_THRESHOLD) {
-        parts.push(`Health ${up ? "up" : "down"} ${Math.abs(delta)} points to ${stock2.health_score}/100.`);
+        parts.push(`Fundamental score ${up ? "up" : "down"} ${Math.abs(delta)} points to ${stock2.health_score}/100.`);
       }
       for (const f of flips.slice(0, 2)) {
         parts.push(`${CHECK_NAMES[f.id] || `Check ${f.id}`}: ${f.from} \u2192 ${f.to}.`);
@@ -2860,10 +2860,10 @@ function evaluateTriggers(stock2, prev, settings) {
       alerts.push({
         type: "EARNINGS_HEALTH_SHIFT",
         ticker: t,
-        title: `${t} ${up && !worsened.length ? "health upgrade" : "health change"}${stock2.health_score !== null ? ` (${stock2.health_score}/100)` : ""}`,
+        title: `${t}: fundamental changes to review${stock2.health_score !== null ? ` (${stock2.health_score}/100)` : ""}`,
         body: parts.join(" "),
         severity: worsened.length ? "warning" : "positive",
-        url: `/?tab=deepdive&ticker=${t}`
+        url: `/?tab=review&ticker=${t}`
       });
     }
   }
@@ -2891,7 +2891,7 @@ function evaluateTriggers(stock2, prev, settings) {
         title: `\u26A0\uFE0F ${t}: ${breaches.length > 1 ? `${breaches.length} warning signs` : "warning sign"}`,
         body: breaches.join(" "),
         severity: "critical",
-        url: `/?tab=deepdive&ticker=${t}&subtab=checklist`
+        url: `/?tab=review&ticker=${t}`
       });
     }
   }
@@ -2906,10 +2906,10 @@ function evaluateTriggers(stock2, prev, settings) {
       alerts.push({
         type: "MARGIN_OF_SAFETY",
         ticker: t,
-        title: `\u{1F3AF} ${t} entry point (${stock2.health_score}/100)`,
-        body: `Health is strong and the price has come in. ${reason}`,
+        title: `${t}: valuation change to review`,
+        body: `Fundamental score: ${stock2.health_score}/100. ${reason}`,
         severity: "info",
-        url: `/?tab=deepdive&ticker=${t}`
+        url: `/?tab=review&ticker=${t}`
       });
     }
   }
@@ -2921,11 +2921,86 @@ function evaluateTriggers(stock2, prev, settings) {
         title: `\u{1F4C8} ${t} stepped up buybacks`,
         body: `Diluted share count is down ${fixed(Math.abs(m.shareChangeYoY * 100), 1)}% year on year.`,
         severity: "positive",
-        url: `/?tab=deepdive&ticker=${t}`
+        url: `/?tab=review&ticker=${t}`
       });
     }
   }
   return alerts;
+}
+
+// core/review.js
+var REVIEW_INTERVAL_DAYS = 90;
+var ASSESSMENTS = /* @__PURE__ */ new Set(["intact", "watch", "changed"]);
+var ORDER = { changed: 0, due: 1, setup: 2, unreviewed: 3, reviewed: 4 };
+function validDate(value, now) {
+  if (typeof value !== "string") return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?)?(?:[Zz]|([+-])(\d{2}):?(\d{2}))?$/.exec(value.trim());
+  if (!match) return null;
+  const [, year, month, day, hour = "0", minute = "0", second = "0", , zoneHour = "0", zoneMinute = "0"] = match;
+  if (+month < 1 || +month > 12 || +day < 1 || +day > new Date(Date.UTC(+year, +month, 0)).getUTCDate() || +hour > 23 || +minute > 59 || +second > 59 || +zoneHour > 23 || +zoneMinute > 59) return null;
+  const at = parseTimestamp(value);
+  return at !== null && at <= now ? at : null;
+}
+function buildReviewQueue({ companies = [], theses = [], alerts = [], now }) {
+  const nowMs = parseTimestamp(now);
+  if (nowMs === null) throw new Error("A valid current timestamp is required.");
+  const thesisByTicker = new Map(theses.map((t) => [String(t.ticker).toUpperCase(), t]));
+  const seen = /* @__PURE__ */ new Set();
+  return companies.filter((company) => {
+    const ticker = String(company.ticker || "").trim().toUpperCase();
+    if (!ticker || seen.has(ticker)) return false;
+    seen.add(ticker);
+    return true;
+  }).map((company) => {
+    const ticker = company.ticker.trim().toUpperCase();
+    const thesis = thesisByTicker.get(ticker) || {};
+    const rules = Array.isArray(thesis.sellTriggers) ? thesis.sellTriggers : [];
+    const hasThesis = Boolean(String(thesis.coreRationale || "").trim() || String(thesis.mustRemainTrue || "").trim() || rules.some((rule) => String(rule.text || "").trim()));
+    const reviews = (Array.isArray(thesis.journalEntries) ? thesis.journalEntries : []).filter((entry) => entry.kind === "review" && ASSESSMENTS.has(entry.assessment)).map((entry) => ({ entry, at: validDate(entry.date, nowMs) })).filter((review) => review.at !== null).sort((a, b) => b.at - a.at);
+    const latest = reviews[0];
+    const changes = alerts.filter((alert) => String(alert.ticker || "").toUpperCase() === ticker).map((alert) => ({ alert, at: validDate(alert.at, nowMs) })).filter((change) => change.at !== null && (!latest || change.at > latest.at)).sort((a, b) => b.at - a.at).map(({ alert, at }) => ({
+      title: String(alert.title || "Recorded change"),
+      body: String(alert.body || ""),
+      severity: String(alert.severity || "info"),
+      at: new Date(at).toISOString()
+    }));
+    let status, label, reason;
+    if (changes.length) {
+      status = "changed";
+      label = "Recorded changes";
+      reason = `${changes.length} recorded ${changes.length === 1 ? "change" : "changes"} to review against your reasons.`;
+    } else if (latest && nowMs - latest.at >= REVIEW_INTERVAL_DAYS * 864e5) {
+      status = "due";
+      label = "Review due";
+      reason = "It has been at least 90 days since your last review.";
+    } else if (!hasThesis) {
+      status = "setup";
+      label = "Add your reasons";
+      reason = "Record why you follow this company and what must remain true.";
+    } else if (!latest) {
+      status = "unreviewed";
+      label = "First review";
+      reason = "Your reasons are saved. Record your first assessment.";
+    } else {
+      status = "reviewed";
+      label = "Reviewed";
+      reason = "No newer recorded alerts. This is not a judgment of the business.";
+    }
+    const flagged = rules.filter((rule) => rule.triggered === true && String(rule.text || "").trim()).length;
+    if (flagged) reason += ` You manually flagged ${flagged} ${flagged === 1 ? "condition" : "conditions"}.`;
+    return {
+      ticker,
+      name: company.name || ticker,
+      status,
+      label,
+      reason,
+      lastReviewedAt: latest ? new Date(latest.at).toISOString() : null,
+      assessment: ASSESSMENTS.has(latest?.entry.assessment) ? latest.entry.assessment : null,
+      changeCount: changes.length,
+      hasThesis,
+      changes
+    };
+  }).sort((a, b) => ORDER[a.status] - ORDER[b.status] || a.ticker.localeCompare(b.ticker));
 }
 
 // core/alerts/sweep.js
@@ -3024,14 +3099,16 @@ function buildDigest({ listName, holdings } = {}) {
   const totalCap = rows.reduce((s, r) => s + (r.marketCap || 0), 0);
   const composite = totalCap ? Math.round(rows.reduce((s, r) => s + r.healthScore * (r.marketCap || 0), 0) / totalCap) : Math.round(rows.reduce((s, r) => s + r.healthScore, 0) / rows.length);
   const rowMovers = movers(rows);
-  const moverText = rowMovers.length ? ` Movers: ${rowMovers.slice(0, 3).map((mv) => `${mv.ticker} ${mv.delta > 0 ? "+" : ""}${mv.delta}`).join(", ")}.` : " No material health changes this week.";
+  const compared = rows.filter((row) => typeof row.previousScore === "number").length;
+  const moverText = rowMovers.length ? ` Movers: ${rowMovers.slice(0, 3).map((mv) => `${mv.ticker} ${mv.delta > 0 ? "+" : ""}${mv.delta}`).join(", ")}.` : compared ? " No score moves of 2+ points in the available comparisons." : " No earlier scores available for comparison.";
+  const coverageText = compared && compared < rows.length ? ` Earlier scores available for ${compared} of ${rows.length} companies.` : "";
   return {
     type: "WEEKLY_DIGEST",
     ticker: "",
-    title: `\u{1F3A9} ${listName}: ${composite}/100`,
-    body: `${rows.length} holdings scored.${moverText}`,
+    title: `${listName}: fundamental score ${composite}/100`,
+    body: `${rows.length} companies scored; company-size weighted.${moverText}${coverageText} Revisit your reasons in Review.`,
     severity: "info",
-    url: "/?tab=watchlist"
+    url: "/?tab=review"
   };
 }
 
@@ -3116,6 +3193,7 @@ export {
   digestSlot,
   intervalMs,
   movers2 as movers,
+  buildReviewQueue as reviewQueue,
   spacingMs,
   sweepTicker
 };

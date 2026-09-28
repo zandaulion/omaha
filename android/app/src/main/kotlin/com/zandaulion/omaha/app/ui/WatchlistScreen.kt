@@ -3,6 +3,7 @@ package com.zandaulion.omaha.app.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,17 +14,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
@@ -31,10 +33,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import com.zandaulion.omaha.data.Holding
 import com.zandaulion.omaha.data.PortfolioHealth
+import com.zandaulion.omaha.data.WatchlistRow
+import com.zandaulion.omaha.design.ExplainableLabel
 import com.zandaulion.omaha.design.Omaha
 import com.zandaulion.omaha.design.OmahaCard
 import com.zandaulion.omaha.design.OmahaColors
@@ -54,16 +67,22 @@ import com.zandaulion.omaha.design.toTextStyle
 @Composable
 fun WatchlistScreen(
     state: WatchlistUiState,
-    lists: List<com.zandaulion.omaha.data.WatchlistRow> = emptyList(),
+    lists: List<WatchlistRow> = emptyList(),
     activeId: String? = null,
     notice: String? = null,
     onRetry: () -> Unit,
     onSelect: (String) -> Unit,
     onSelectList: (String) -> Unit = {},
-    onAddTicker: (String) -> Unit = {},
+    onOpenSearch: () -> Unit = {},
     onRemoveTicker: (String) -> Unit = {},
-    onCreateList: (String) -> Unit = {}
+    onCreateList: (String) -> Unit = {},
+    onDeleteList: (String) -> Unit = {},
+    onFilter: () -> Unit = {},
+    onCompare: () -> Unit = {}
 ) {
+    var sortBy by rememberSaveable { mutableStateOf("health") }
+    var controlSheet by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingTickerRemoval by rememberSaveable { mutableStateOf<String?>(null) }
     when (state) {
         is WatchlistUiState.Loading -> CentredMessage(
             "Scoring…",
@@ -83,10 +102,20 @@ fun WatchlistScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             item {
-                ListSwitcher(lists, activeId, onSelectList, onCreateList)
+                PortfolioHero(
+                    health = state.view.health,
+                    pending = state.view.pending,
+                    onChooseList = { controlSheet = "list" }
+                )
             }
-            item { PortfolioHero(state.view.health, state.view.pending) }
-            item { AddTickerRow(onAddTicker) }
+            item {
+                WatchlistToolbar(
+                    sortBy = sortBy,
+                    onOpenSearch = onOpenSearch,
+                    onOpenSort = { controlSheet = "sort" },
+                    onOpenTools = { controlSheet = "tools" }
+                )
+            }
             if (notice != null) {
                 item {
                     BasicText(
@@ -95,15 +124,96 @@ fun WatchlistScreen(
                     )
                 }
             }
-            items(state.view.holdings, key = { it.ticker }) { holding ->
+            items(sortedHoldings(state.view.holdings, sortBy), key = { it.ticker }) { holding ->
                 HoldingCard(
                     holding,
                     onClick = { if (!holding.loading) onSelect(holding.ticker) },
-                    onRemove = { onRemoveTicker(holding.ticker) }
+                    onRemove = { pendingTickerRemoval = holding.ticker }
                 )
             }
         }
     }
+
+    when (controlSheet) {
+        "list" -> WatchlistPickerDialog(
+            lists = lists,
+            selectedId = activeId,
+            onDismiss = { controlSheet = null },
+            onChoose = { id ->
+                onSelectList(id)
+                controlSheet = null
+            },
+            onCreate = { controlSheet = "create" },
+            onDelete = { id -> controlSheet = "delete-list:$id" }
+        )
+        "sort" -> ChoiceDialog(
+            title = "Sort companies",
+            options = watchlistSortOptions,
+            selectedId = sortBy,
+            onDismiss = { controlSheet = null }
+        ) {
+            sortBy = it
+            controlSheet = null
+        }
+        "tools" -> ChoiceDialog(
+            title = "Watchlist tools",
+            options = listOf("filter" to "Filter companies", "compare" to "Compare companies"),
+            onDismiss = { controlSheet = null }
+        ) {
+            controlSheet = null
+            if (it == "filter") onFilter() else onCompare()
+        }
+        "create" -> EntryDialog(
+            title = "New watchlist",
+            placeholder = "Watchlist name",
+            submitLabel = "Create",
+            uppercase = false,
+            onDismiss = { controlSheet = null }
+        ) {
+            onCreateList(it)
+            controlSheet = null
+        }
+        else -> if (controlSheet?.startsWith("delete-list:") == true) {
+            val id = controlSheet!!.substringAfter("delete-list:")
+            val name = lists.firstOrNull { it.id == id }?.name ?: "this watchlist"
+            ConfirmationDialog(
+                title = "Delete “$name”?",
+                message = "This removes the watchlist. Your saved company data and research remain.",
+                confirmLabel = "Delete",
+                onDismiss = { controlSheet = "list" }
+            ) {
+                onDeleteList(id)
+                controlSheet = null
+            }
+        }
+    }
+
+    pendingTickerRemoval?.let { ticker ->
+        val listName = lists.firstOrNull { it.id == activeId }?.name ?: "this watchlist"
+        ConfirmationDialog(
+            title = "Remove $ticker?",
+            message = "Remove $ticker from $listName? Your saved company data and research remain.",
+            confirmLabel = "Remove",
+            onDismiss = { pendingTickerRemoval = null }
+        ) {
+            onRemoveTicker(ticker)
+            pendingTickerRemoval = null
+        }
+    }
+}
+
+private val watchlistSortOptions = listOf(
+    "health" to "Fundamental score",
+    "change" to "Price change",
+    "roic" to "ROIC",
+    "pe" to "P/E ratio"
+)
+
+private fun sortedHoldings(holdings: List<Holding>, sortBy: String): List<Holding> = when (sortBy) {
+    "change" -> holdings.sortedWith(compareByDescending<Holding> { it.changePct ?: Double.NEGATIVE_INFINITY })
+    "roic" -> holdings.sortedWith(compareByDescending<Holding> { it.roicPct ?: Double.NEGATIVE_INFINITY })
+    "pe" -> holdings.sortedWith(compareBy<Holding> { it.peRatio ?: Double.POSITIVE_INFINITY })
+    else -> holdings.sortedWith(compareByDescending<Holding> { it.healthScore ?: Int.MIN_VALUE })
 }
 
 /**
@@ -116,11 +226,19 @@ fun WatchlistScreen(
  * same glow, positioned to bleed off the same corner.
  */
 @Composable
-private fun PortfolioHero(health: PortfolioHealth, pending: Int = 0) {
-    // contentPadding = 0 so the glow (below) can bleed to the card's clipped
-    // edge the way the CSS pseudo-element does; the text content restores the
-    // usual 16dp inset itself, one level in.
-    OmahaCard(elevated = true, contentPadding = 0.dp) {
+private fun PortfolioHero(
+    health: PortfolioHealth,
+    pending: Int = 0,
+    onChooseList: () -> Unit
+) {
+    val shape = RoundedCornerShape(OmahaRadius.lg)
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(Omaha.colors.bgSurfaceElevated)
+            .border(1.dp, Omaha.colors.borderProminent, shape)
+    ) {
         Box(Modifier.fillMaxWidth()) {
             Box(
                 Modifier
@@ -134,25 +252,80 @@ private fun PortfolioHero(health: PortfolioHealth, pending: Int = 0) {
                     )
             )
 
-            Column(Modifier.padding(16.dp)) {
+            Column(Modifier.padding(20.dp)) {
+                BasicText(
+                    "Current watchlist",
+                    style = OmahaType.caption.toTextStyle(color = Omaha.colors.brandCyan)
+                        .copy(fontWeight = FontWeight.Bold)
+                )
+                Box(Modifier.height(5.dp))
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(OmahaRadius.sm))
+                        .background(Omaha.colors.bgSurfaceSubtle)
+                        .border(1.dp, Omaha.colors.borderProminent, RoundedCornerShape(OmahaRadius.sm))
+                        .semantics {
+                            contentDescription = "Change watchlist. Current watchlist: ${health.watchlistName}"
+                            role = Role.Button
+                        }
+                        .clickable(onClick = onChooseList)
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    BasicText(
+                        health.watchlistName,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = OmahaType.title2.toTextStyle(color = Omaha.colors.textPrimary)
+                            .copy(fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                    )
+                    Box(Modifier.width(8.dp))
+                    BasicText(
+                        "Change  ⌄",
+                        style = OmahaType.caption.toTextStyle(color = Omaha.colors.brandCyan)
+                            .copy(fontWeight = FontWeight.Bold)
+                    )
+                }
+                Box(Modifier.height(6.dp))
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(Modifier.weight(1f)) {
-                        BasicText(
-                            health.watchlistName,
-                            style = OmahaType.title1.toTextStyle(color = Omaha.colors.textPrimary)
-                        )
-                        Box(Modifier.height(2.dp))
-                        BasicText(
-                            "${health.holdingCount} companies in portfolio",
-                            style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary)
-                        )
-                    }
-                    ScoreBadge(health.compositeScore, health.tier)
+                    BasicText(
+                        "${health.holdingCount} companies" +
+                            if (pending == 0 && health.scoredCount < health.holdingCount)
+                                " · ${health.holdingCount - health.scoredCount} not scored" else "",
+                        style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary)
+                    )
+                    HeroGradeBadge(health)
                 }
+
+                Box(Modifier.height(16.dp))
+                val names = listOf("Solvency", "Profitability", "Valuation", "Growth", "Capital Return")
+                names.forEachIndexed { index, name ->
+                    PillarMeter(name, health.pillarScores.getOrNull(index))
+                    if (index != names.lastIndex) Box(Modifier.height(10.dp))
+                }
+
+                Box(Modifier.height(16.dp))
+                Box(Modifier.fillMaxWidth().height(1.dp).background(Omaha.colors.borderSubtle))
+                Box(Modifier.height(10.dp))
+                val totals = health.checklistTotals
+                BasicText(
+                    "🟢 ${totals.pass} pass · 🟡 ${totals.watch} watch · 🔴 ${totals.fail} fail" +
+                        if (totals.notReported > 0) " · ${totals.notReported} not reported" else "",
+                    style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary)
+                )
+                Box(Modifier.height(4.dp))
+                BasicText(
+                    if (health.weighting == "market-cap")
+                        "Company-size weighted average of fundamental scores. This does not use your position sizes."
+                    else "Average of available fundamental scores. Company sizes were unavailable; this does not use your position sizes.",
+                    style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary)
+                )
 
                 // States what the average is an average of. A composite over three
                 // of five holdings is a different claim from one over all five, and
@@ -180,6 +353,72 @@ private fun PortfolioHero(health: PortfolioHealth, pending: Int = 0) {
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun HeroGradeBadge(health: PortfolioHealth) {
+    val (fg, bg, border) = tierColors(health.tier, Omaha.colors)
+    val grade = when (health.tier) {
+        "pristine" -> "STRONG"
+        "good" -> "GOOD"
+        "moderate" -> "MIXED"
+        else -> if (health.compositeScore == null) "NOT SCORED" else "WEAK"
+    }
+    Box(
+        Modifier
+            .padding(start = 8.dp)
+            .width(112.dp)
+            .clip(RoundedCornerShape(OmahaRadius.pill))
+            .background(bg)
+            .border(1.dp, border, RoundedCornerShape(OmahaRadius.pill))
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+    ) {
+        BasicText(
+            if (health.compositeScore == null) grade else "$grade\n(${health.compositeScore}/100)",
+            style = OmahaType.bodySm.toTextStyle(color = fg).copy(textAlign = TextAlign.Center),
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Composable
+private fun PillarMeter(name: String, score: Double?) {
+    val pct = ((score ?: 0.0) / 20.0).coerceIn(0.0, 1.0).toFloat()
+    val barColor = when {
+        score == null -> Omaha.colors.borderSubtle
+        pct >= 0.85f -> Color(0xFF10B981)
+        pct >= 0.70f -> Color(0xFF34D399)
+        pct >= 0.50f -> Color(0xFFFBBF24)
+        else -> Color(0xFFF87171)
+    }
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(OmahaRadius.sm))
+            .background(Omaha.colors.bgSurfaceSubtle)
+            .padding(horizontal = 10.dp, vertical = 8.dp)
+    ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            ExplainableLabel(
+                key = name,
+                text = name,
+                style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary)
+            )
+            BasicText(
+                if (score == null) EM_DASH else "${fmtRatio(score, 1)}/20",
+                style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary)
+                    .copy(fontFamily = Omaha.fonts.mono)
+            )
+        }
+        Box(Modifier.height(5.dp))
+        Box(
+            Modifier.fillMaxWidth().height(5.dp)
+                .clip(RoundedCornerShape(OmahaRadius.pill))
+                .background(Omaha.colors.borderSubtle)
+        ) {
+            Box(Modifier.fillMaxWidth(pct).height(5.dp).background(barColor))
         }
     }
 }
@@ -291,11 +530,18 @@ private fun HoldingCard(holding: Holding, onClick: () -> Unit, onRemove: () -> U
             }
 
             Column(horizontalAlignment = Alignment.End) {
-                BasicText(
-                    fmtPrice(holding.price, holding.currency),
-                    style = OmahaType.bodyMd.toTextStyle(color = Omaha.colors.textPrimary)
-                        .copy(fontFamily = Omaha.fonts.mono)
-                )
+                Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    BasicText(
+                        fmtPrice(holding.price, holding.currency),
+                        style = OmahaType.bodyMd.toTextStyle(color = Omaha.colors.textPrimary)
+                            .copy(fontFamily = Omaha.fonts.mono)
+                    )
+                    BasicText(
+                        "×",
+                        modifier = Modifier.clickable(onClick = onRemove).padding(horizontal = 2.dp),
+                        style = OmahaType.bodyMd.toTextStyle(color = Omaha.colors.textTertiary)
+                    )
+                }
                 BasicText(
                     fmtPercent(holding.changePct, 2, signed = true),
                     style = OmahaType.caption
@@ -405,68 +651,118 @@ internal fun CentredMessage(
     }
 }
 
-/**
- * Which list is shown, and a way to start a new one.
- *
- * The PWA uses a `<select>` plus a "+ New Watchlist" button. A row of chips is
- * the phone equivalent: the lists are few and short-named, and a dropdown would
- * hide the fact that there is more than one — which is exactly what was missing
- * when the first build shipped with no way to switch at all.
- */
 @Composable
-private fun ListSwitcher(
-    lists: List<com.zandaulion.omaha.data.WatchlistRow>,
-    activeId: String?,
-    onSelect: (String) -> Unit,
-    onCreate: (String) -> Unit
+private fun WatchlistToolbar(
+    sortBy: String,
+    onOpenSearch: () -> Unit,
+    onOpenSort: () -> Unit,
+    onOpenTools: () -> Unit
 ) {
-    var creating by remember { mutableStateOf(false) }
-    var name by remember { mutableStateOf("") }
+    val compactSortLabel = when (sortBy) {
+        "change" -> "Change"
+        "roic" -> "ROIC"
+        "pe" -> "P/E"
+        else -> "Score"
+    }
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        ControlButton("+ Add stock", primary = true, onClick = onOpenSearch)
+        SelectControl("↕ $compactSortLabel", onClick = onOpenSort)
+        ControlButton("•••", onClick = onOpenTools)
+    }
+}
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            for (list in lists) {
-                val active = list.id == activeId
-                Box(
-                    Modifier
-                        .clip(RoundedCornerShape(OmahaRadius.pill))
-                        .background(if (active) Omaha.colors.brandCyan else Omaha.colors.bgSurfaceSubtle)
-                        .clickable { onSelect(list.id) }
-                        .padding(horizontal = 12.dp, vertical = 7.dp)
-                ) {
-                    BasicText(
-                        list.name,
-                        style = OmahaType.caption.toTextStyle(
-                            color = if (active) Omaha.colors.bgCanvas else Omaha.colors.textSecondary
-                        )
-                    )
-                }
-            }
-            Box(
-                Modifier
-                    .clip(RoundedCornerShape(OmahaRadius.pill))
-                    .background(Omaha.colors.bgSurfaceSubtle)
-                    .clickable { creating = !creating }
-                    .padding(horizontal = 12.dp, vertical = 7.dp)
-            ) {
-                BasicText(
-                    "+ New",
-                    style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary)
+@Composable
+private fun SelectControl(label: String, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .clip(RoundedCornerShape(OmahaRadius.sm))
+            .background(Omaha.colors.bgSurfaceSubtle)
+            .border(1.dp, Omaha.colors.borderSubtle, RoundedCornerShape(OmahaRadius.sm))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 9.dp)
+    ) {
+        BasicText(
+            "$label  ⌄",
+            style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textPrimary)
+        )
+    }
+}
+
+@Composable
+private fun ControlButton(label: String, primary: Boolean = false, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .clip(RoundedCornerShape(OmahaRadius.sm))
+            .background(if (primary) Omaha.colors.brandBlue else Omaha.colors.bgSurfaceSubtle)
+            .border(1.dp, if (primary) Omaha.colors.brandBlue else Omaha.colors.borderSubtle,
+                RoundedCornerShape(OmahaRadius.sm))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+    ) {
+        BasicText(
+            label,
+            style = OmahaType.bodySm.toTextStyle(
+                color = if (primary) Color.White else Omaha.colors.textPrimary
+            )
+        )
+    }
+}
+
+@Composable
+private fun ChoiceDialog(
+    title: String,
+    options: List<Pair<String, String>>,
+    selectedId: String? = null,
+    onDismiss: () -> Unit,
+    onChoose: (String) -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnClickOutside = true
+        )
+    ) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onDismiss
                 )
-            }
-        }
-
-        if (creating) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.weight(1f)) {
-                    InlineField(name, "Watchlist name") { name = it }
-                }
-                Box(Modifier.padding(start = 8.dp)) {
-                    Pill2("Create", name.isNotBlank()) {
-                        onCreate(name.trim()); name = ""; creating = false
+                .padding(horizontal = 12.dp, vertical = 16.dp),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            OmahaCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 520.dp)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {}
+                    ),
+                contentPadding = 20.dp
+            ) {
+                BasicText(title, style = OmahaType.title2.toTextStyle())
+                Box(Modifier.height(12.dp))
+                options.forEach { (id, label) ->
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(OmahaRadius.sm))
+                            .clickable { onChoose(id) }
+                            .padding(horizontal = 4.dp, vertical = 13.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        BasicText(label, style = OmahaType.bodyMd.toTextStyle())
+                        if (id == selectedId) {
+                            BasicText("✓", style = OmahaType.bodyMd.toTextStyle(color = Omaha.colors.brandCyan))
+                        }
                     }
                 }
             }
@@ -474,16 +770,149 @@ private fun ListSwitcher(
     }
 }
 
-/** `+ Add Stock`. Validated against the engine before it is stored. */
 @Composable
-private fun AddTickerRow(onAdd: (String) -> Unit) {
-    var text by remember { mutableStateOf("") }
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.weight(1f)) {
-            InlineField(text, "Add a ticker, e.g. TSLA") { text = it.uppercase() }
+private fun WatchlistPickerDialog(
+    lists: List<WatchlistRow>,
+    selectedId: String?,
+    onDismiss: () -> Unit,
+    onChoose: (String) -> Unit,
+    onCreate: () -> Unit,
+    onDelete: (String) -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = true)
+    ) {
+        Box(
+            Modifier.fillMaxSize().clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onDismiss
+            ).padding(horizontal = 12.dp, vertical = 16.dp),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            OmahaCard(
+                modifier = Modifier.fillMaxWidth().widthIn(max = 520.dp).clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = {}
+                ),
+                contentPadding = 20.dp
+            ) {
+                BasicText("Choose watchlist", style = OmahaType.title2.toTextStyle())
+                Box(Modifier.height(12.dp))
+                lists.forEach { list ->
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(OmahaRadius.sm)),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            Modifier.weight(1f).clickable { onChoose(list.id) }
+                                .padding(horizontal = 4.dp, vertical = 13.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            BasicText(list.name, style = OmahaType.bodyMd.toTextStyle())
+                            if (list.id == selectedId) {
+                                BasicText("✓", style = OmahaType.bodyMd.toTextStyle(color = Omaha.colors.brandCyan))
+                            }
+                        }
+                        if (lists.size > 1) {
+                            Box(
+                                Modifier.clip(RoundedCornerShape(OmahaRadius.sm))
+                                    .clickable { onDelete(list.id) }
+                                    .padding(horizontal = 12.dp, vertical = 13.dp)
+                            ) {
+                                BasicText("Delete", style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.healthRisk))
+                            }
+                        }
+                    }
+                }
+                Box(Modifier.height(4.dp))
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(OmahaRadius.sm))
+                        .clickable(onClick = onCreate)
+                        .padding(horizontal = 4.dp, vertical = 13.dp)
+                ) {
+                    BasicText("+ Create new watchlist", style = OmahaType.bodyMd.toTextStyle())
+                }
+            }
         }
-        Box(Modifier.padding(start = 8.dp)) {
-            Pill2("Add", text.isNotBlank()) { onAdd(text.trim()); text = "" }
+    }
+}
+
+@Composable
+private fun ConfirmationDialog(
+    title: String,
+    message: String,
+    confirmLabel: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = true)
+    ) {
+        Box(
+            Modifier.fillMaxSize().clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onDismiss
+            ).padding(horizontal = 12.dp, vertical = 16.dp),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            OmahaCard(
+                modifier = Modifier.fillMaxWidth().widthIn(max = 520.dp).clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = {}
+                ),
+                contentPadding = 20.dp
+            ) {
+                BasicText(title, style = OmahaType.title2.toTextStyle())
+                Box(Modifier.height(8.dp))
+                BasicText(message, style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary))
+                Box(Modifier.height(20.dp))
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+                ) {
+                    ControlButton("Cancel", onClick = onDismiss)
+                    Box(
+                        Modifier.clip(RoundedCornerShape(OmahaRadius.sm))
+                            .background(Omaha.colors.healthRiskBg)
+                            .border(1.dp, Omaha.colors.healthRiskBorder, RoundedCornerShape(OmahaRadius.sm))
+                            .clickable(onClick = onConfirm)
+                            .padding(horizontal = 14.dp, vertical = 8.dp)
+                    ) {
+                        BasicText(confirmLabel, style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.healthRisk))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EntryDialog(
+    title: String,
+    placeholder: String,
+    submitLabel: String,
+    uppercase: Boolean,
+    onDismiss: () -> Unit,
+    onSubmit: (String) -> Unit
+) {
+    var text by remember { mutableStateOf("") }
+    Dialog(onDismissRequest = onDismiss) {
+        OmahaCard(modifier = Modifier.widthIn(max = 380.dp), contentPadding = 20.dp) {
+            BasicText(title, style = OmahaType.title2.toTextStyle())
+            Box(Modifier.height(16.dp))
+            InlineField(text, placeholder) { text = if (uppercase) it.uppercase() else it }
+            Box(Modifier.height(16.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ControlButton("Cancel", onClick = onDismiss)
+                Pill2(submitLabel, text.isNotBlank()) { onSubmit(text.trim()) }
+            }
         }
     }
 }

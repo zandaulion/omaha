@@ -79,6 +79,11 @@ class AppSettings(private val dao: AppSettingsDao) {
     suspend fun setCompareTickers(tickers: List<String>) =
         dao.put(AppSettingRow(KEY_COMPARE_TICKERS, tickers.joinToString(",")))
 
+    suspend fun lastViewedTicker(): String? = dao.get(KEY_CURRENT_TICKER)?.value
+
+    suspend fun setLastViewedTicker(ticker: String) =
+        dao.put(AppSettingRow(KEY_CURRENT_TICKER, ticker))
+
     private suspend fun readFlag(key: String): Boolean =
         dao.get(key)?.value?.let { it == "1" || it.toIntOrNull()?.let { n -> n != 0 } == true } ?: false
 
@@ -89,5 +94,6 @@ class AppSettings(private val dao: AppSettingsDao) {
         const val KEY_AI_INCLUDE_NOTES = "ai_include_notes"
         const val KEY_THEME = "omaha_theme"
         const val KEY_COMPARE_TICKERS = "omaha_compare_tickers"
+        const val KEY_CURRENT_TICKER = "omaha_current_ticker"
     }
 }

@@ -32,6 +32,8 @@ const STATIC_ASSETS = [
   '/icons/favicon.svg',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
+  '/icons/icon-maskable-192.png',
+  '/icons/icon-maskable-512.png',
   // Precached: a push can arrive while offline, and a badge that 404s leaves
   // Android drawing the Chrome logo instead.
   '/icons/badge-96.png'
@@ -126,7 +128,7 @@ self.addEventListener('push', (event) => {
     vibrate: d.severity === 'critical' ? [140, 70, 140] : [100, 50, 100],
     data: d.url ? d : { url: '/' },
     actions: [
-      { action: 'open', title: 'View Scorecard' },
+      { action: 'open', title: 'Review company' },
       { action: 'dismiss', title: 'Dismiss' }
     ]
   };

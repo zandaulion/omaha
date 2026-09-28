@@ -137,15 +137,15 @@ class AlertNotifier(private val context: Context) {
         ),
         HealthShift(
             "omaha.health_shift",
-            "Health changes",
-            "A health score moves 3 points, or a check changes state.",
+            "Fundamental changes",
+            "A fundamental score moves 3 points, or a check changes state.",
             NotificationManager.IMPORTANCE_DEFAULT,
             NotificationCompat.PRIORITY_DEFAULT
         ),
         MarginOfSafety(
             "omaha.margin_of_safety",
-            "Entry points",
-            "A strong company reaches an attractive price.",
+            "Valuation changes",
+            "Valuation thresholds change.",
             NotificationManager.IMPORTANCE_DEFAULT,
             NotificationCompat.PRIORITY_DEFAULT
         ),

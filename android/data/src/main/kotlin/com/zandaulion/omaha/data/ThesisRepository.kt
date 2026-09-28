@@ -2,31 +2,28 @@ package com.zandaulion.omaha.data
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.*
+import java.util.UUID
 
 /**
  * What a person wrote about a company.
  *
- * Doc 15 §3.1 checked the pre-committed sell triggers against all ten platforms
- * in the market survey and found nothing comparable: every competitor optimises
- * the buy decision, and none addresses the exit. This is the differentiator, so
- * the storage is deliberately conservative — nothing here is derived, cached or
- * re-fetchable, and losing it loses the only copy.
+ * Personal reasoning, manual conditions and review history are not re-fetchable.
+ * Preserve them independently of the scored stock cache.
  */
-@Serializable
 data class SellTrigger(
     val id: String,
     val text: String,
     val triggered: Boolean = false
 )
 
-@Serializable
 data class JournalEntry(
     val id: String,
     /** ISO-8601. Compared through core/time.js semantics, never Date.parse. */
     val date: String,
-    val note: String
+    val note: String,
+    val kind: String = "note",
+    val assessment: String? = null
 )
 
 data class Thesis(
@@ -37,7 +34,8 @@ data class Thesis(
     val moatTags: List<String>,
     val sellTriggers: List<SellTrigger>,
     val journalEntries: List<JournalEntry>,
-    val updatedAt: String
+    val updatedAt: String,
+    val mustRemainTrue: String = ""
 )
 
 /**
@@ -54,20 +52,6 @@ class ThesisRepository(private val dao: PersonalDataDao) {
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
-    /**
-     * The three triggers the PWA seeds an empty thesis with.
-     *
-     * Prompts rather than defaults: the point of a pre-committed exit rule is
-     * that it is written while calm, and a blank box asks a question most
-     * people answer with nothing. These are examples to edit, and they are
-     * identical to the web client's so the two do not disagree on first open.
-     */
-    private fun starterTriggers() = listOf(
-        SellTrigger("1", "Gross margin drops below 55% for 2 quarters"),
-        SellTrigger("2", "Total debt exceeds 2.5x annual EBITDA"),
-        SellTrigger("3", "Share dilution exceeds 3% from SBC")
-    )
-
     suspend fun load(ticker: String): Thesis = withContext(Dispatchers.IO) {
         val row = dao.theses().firstOrNull { it.ticker.equals(ticker, ignoreCase = true) }
             ?: return@withContext Thesis(
@@ -76,7 +60,7 @@ class ThesisRepository(private val dao: PersonalDataDao) {
                 targetBuyPrice = null,
                 coreRationale = "",
                 moatTags = emptyList(),
-                sellTriggers = starterTriggers(),
+                sellTriggers = emptyList(),
                 journalEntries = emptyList(),
                 updatedAt = isoNow()
             )
@@ -86,8 +70,9 @@ class ThesisRepository(private val dao: PersonalDataDao) {
             conviction = row.conviction,
             targetBuyPrice = row.targetBuyPrice,
             coreRationale = row.coreRationale,
+            mustRemainTrue = row.mustRemainTrue,
             moatTags = decode(row.moatTagsJson),
-            sellTriggers = decodeTriggers(row.sellTriggersJson).ifEmpty { starterTriggers() },
+            sellTriggers = decodeTriggers(row.sellTriggersJson),
             journalEntries = decodeEntries(row.journalEntriesJson),
             updatedAt = row.updatedAt
         )
@@ -103,21 +88,20 @@ class ThesisRepository(private val dao: PersonalDataDao) {
      */
     suspend fun save(thesis: Thesis): Thesis = withContext(Dispatchers.IO) {
         val stamped = thesis.copy(updatedAt = isoNow())
-        dao.upsertTheses(
-            listOf(
+        dao.saveThesisPreservingJournal(
                 ThesisRow(
                     ticker = stamped.ticker.uppercase(),
                     conviction = stamped.conviction,
                     targetBuyPrice = stamped.targetBuyPrice,
                     coreRationale = stamped.coreRationale,
+                    mustRemainTrue = stamped.mustRemainTrue,
                     moatTagsJson = json.encodeToString(stamped.moatTags),
-                    sellTriggersJson = json.encodeToString(stamped.sellTriggers),
-                    journalEntriesJson = json.encodeToString(stamped.journalEntries),
+                    sellTriggersJson = JsonArray(stamped.sellTriggers.map { it.toJson() }).toString(),
+                    journalEntriesJson = JsonArray(stamped.journalEntries.map { it.toJson() }).toString(),
                     updatedAt = stamped.updatedAt
                 )
-            )
         )
-        stamped
+        load(stamped.ticker)
     }
 
     /**
@@ -128,24 +112,57 @@ class ThesisRepository(private val dao: PersonalDataDao) {
      * the merge would have to choose, which is how somebody's note goes missing.
      */
     suspend fun addJournalEntry(ticker: String, note: String): Thesis {
-        val thesis = load(ticker)
         val entry = JournalEntry(
-            // Matches the PWA's scheme, which is Date.now(). Unique on one
-            // device and not across two — core/backup.js handles the collision
-            // by keeping both and disambiguating, rather than dropping one.
-            id = System.currentTimeMillis().toString(),
+            id = UUID.randomUUID().toString(),
             date = isoNow(),
             note = note.trim()
         )
-        return save(thesis.copy(journalEntries = thesis.journalEntries + entry))
+        withContext(Dispatchers.IO) {
+            dao.appendThesisEntry(ticker.uppercase(), entry.toJson().toString(), entry.date)
+        }
+        return load(ticker)
+    }
+
+    suspend fun recordReview(ticker: String, assessment: String, note: String): Thesis {
+        require(assessment in setOf("intact", "watch", "changed")) { "Invalid review assessment" }
+        val entry = JournalEntry(UUID.randomUUID().toString(), isoNow(), note.trim(), "review", assessment)
+        withContext(Dispatchers.IO) {
+            dao.appendThesisEntry(ticker.uppercase(), entry.toJson().toString(), entry.date)
+        }
+        return load(ticker)
     }
 
     private fun decode(raw: String): List<String> =
         runCatching { json.decodeFromString<List<String>>(raw) }.getOrDefault(emptyList())
 
     private fun decodeTriggers(raw: String): List<SellTrigger> =
-        runCatching { json.decodeFromString<List<SellTrigger>>(raw) }.getOrDefault(emptyList())
+        Json.parseToJsonElement(raw).jsonArray.map { element ->
+            val obj = element.jsonObject
+            SellTrigger(obj.string("id"), obj.string("text"), obj["triggered"]?.jsonPrimitive?.booleanOrNull ?: false)
+        }
 
     private fun decodeEntries(raw: String): List<JournalEntry> =
-        runCatching { json.decodeFromString<List<JournalEntry>>(raw) }.getOrDefault(emptyList())
+        parseJournalEntries(raw)
 }
+
+// The data module intentionally uses JsonElement and has no serialization
+// compiler plugin. Explicit mapping also stops a missing serializer from
+// silently turning a person's saved journal into an empty list.
+internal fun parseJournalEntries(raw: String): List<JournalEntry> =
+    Json.parseToJsonElement(raw).jsonArray.map { element ->
+        val obj = element.jsonObject
+        JournalEntry(obj.string("id"), obj.string("date"), obj.string("note"),
+            obj["kind"]?.jsonPrimitive?.contentOrNull ?: "note",
+            obj["assessment"]?.jsonPrimitive?.contentOrNull)
+    }
+
+internal fun JournalEntry.toJson(): JsonObject = buildJsonObject {
+    put("id", id); put("date", date); put("note", note); put("kind", kind)
+    put("assessment", assessment?.let(::JsonPrimitive) ?: JsonNull)
+}
+
+private fun SellTrigger.toJson(): JsonObject = buildJsonObject {
+    put("id", id); put("text", text); put("triggered", triggered)
+}
+
+private fun JsonObject.string(key: String): String = this[key]?.jsonPrimitive?.contentOrNull ?: ""
