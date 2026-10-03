@@ -58,6 +58,21 @@ the original 904×2,316 launcher capture, using crop box `(0, 0, 904, 1808)`
 The phone sequence retains research overview at 03 and places checklist, DCF
 and compare at 05–07.
 
+`screenshots/tablet-7/` contains six upload-ready 800×1,600 opaque RGB PNG
+files captured on 4 October 2026 with Google Cloud Developer Device Platform.
+The source device was the catalog's generic 720×1,600 Android tablet at 270 dpi
+(`androidtablet270dpi-arm-30`), which DDP classifies as a tablet and whose
+pixel density gives a 6.5-inch diagonal. It was the closest available target to
+Google Play's 7-inch tablet category; the physical Galaxy Tab A7 Lite had no
+availability during the run. DDP session `session-ca5f7f65` passed the complete
+six-screen instrumentation flow.
+
+`screenshots/tablet-7-raw/` preserves the returned 720×1,600 artifacts. Because
+their 20:9 aspect ratio exceeds Play's 2:1 limit, each upload-ready copy extends
+the outermost pixel column by 40 px on both sides. The 720×1,600 interface
+remains unchanged in columns 40–759, while the final 800×1,600 image has an
+exact 2:1 ratio.
+
 `screenshots/tablet/` contains six upload-ready 1,600×2,560 opaque RGB PNG files
 captured on a physical Google Pixel Tablet running Android 16 (API 36) in
 Firebase Test Lab. `screenshots/tablet-raw/` preserves the returned artifacts;
@@ -84,6 +99,8 @@ edge; the Fold4 cover-display captures are 904 px wide.
 | Feature graphic | 1 | 1,024×500 | 24-bit RGB PNG |
 | Phone screenshots | 7 | 904×1,808 | 24-bit RGB PNG |
 | Raw phone captures | 7 | 904×2,316 | 24-bit RGB PNG |
+| 7-inch tablet screenshots | 6 | 800×1,600 | 24-bit RGB PNG |
+| Raw 7-inch tablet captures | 6 | 720×1,600 | 24-bit RGB PNG |
 | 10-inch tablet screenshots | 6 | 1,600×2,560 | 24-bit RGB PNG |
 | Raw 10-inch tablet captures | 6 | 1,600×2,560 | 24-bit RGB PNG |
 

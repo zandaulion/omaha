@@ -78,7 +78,7 @@ Run connected tests when changing QuickJS integration, Room migrations, backups,
 
 These require an emulator or USB-connected device. Room migration tests are meaningful because theses, conditions, reviews, and watchlists cannot be regenerated.
 
-### Firebase Test Lab tablet screenshots
+### Cloud tablet screenshots
 
 `PlayStoreScreenshotTest` drives the real Android UI and writes six deterministic
 screenshots to the app-scoped external-files directory. It stages the recorded
@@ -93,6 +93,41 @@ cd android
 ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest
 cd ..
 ```
+
+For Google Cloud Developer Device Platform, enable the required APIs once and
+query the live tablet catalog before choosing a target:
+
+```bash
+gcloud services enable devicerun.googleapis.com devicestreaming.googleapis.com testing.googleapis.com
+gcloud beta device-run devices list \
+  --filter='formFactor=TABLET' \
+  --format='table(ID,NAME,OS_VERSION,HARDWARE_TYPE,CAPACITY,AVAILABILITY,PRODUCTS)'
+```
+
+The generic 720×1,600 tablet at 270 dpi is a 6.5-inch virtual target suitable
+for the Play 7-inch category. Run the deterministic capture and pull its files:
+
+```bash
+gcloud beta device-run sessions submit instrumentation \
+  --device=androidtablet270dpi-arm-30 \
+  --apps=android/app/build/outputs/apk/debug/app-debug.apk \
+  --test=android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk \
+  --test-targets='class com.zandaulion.omaha.app.PlayStoreScreenshotTest' \
+  --locale=en-US \
+  --orientation=portrait \
+  --instrumentation-timeout=15m \
+  --paths-to-pull=/sdcard/Android/data/com.zandaulion.omaha/files/screenshots \
+  --video=on-failure \
+  --labels=purpose=play-store-7-inch-screenshots
+```
+
+The 4 October 2026 run passed as `session-ca5f7f65`. Preserve the returned
+720×1,600 files in `play-store/screenshots/tablet-7-raw/`. Their 20:9 aspect
+ratio exceeds Play's 2:1 limit, so the upload-ready 800×1,600 copies in
+`play-store/screenshots/tablet-7/` extend the outermost pixel column by 40 px on
+each side without scaling or cropping the interface.
+
+The same test remains usable with Firebase Test Lab:
 
 Select the Firebase project without committing its identifier:
 
