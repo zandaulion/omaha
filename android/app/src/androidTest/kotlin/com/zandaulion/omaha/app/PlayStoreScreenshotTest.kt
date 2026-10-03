@@ -49,6 +49,9 @@ class PlayStoreScreenshotTest {
         targetContext.deleteDatabase(OmahaDatabaseFactory.NAME)
         runBlocking { seedScreenshotData() }
         device.setOrientationPortrait()
+        // Keep cloud-device captures free of transient time, battery and
+        // notification state. The flag is restored in [close].
+        device.executeShellCommand("cmd statusbar send-disable-flag clock system-icons notification-icons")
         scenario = ActivityScenario.launch(MainActivity::class.java)
         // Android 16 may warn debuggable APKs when a packaged native library is
         // not 16 KB page aligned. It is system UI, so dismiss it if a future
@@ -63,6 +66,7 @@ class PlayStoreScreenshotTest {
     @After
     fun close() {
         if (::scenario.isInitialized) scenario.close()
+        device.executeShellCommand("cmd statusbar send-disable-flag none")
         device.unfreezeRotation()
     }
 
@@ -81,25 +85,105 @@ class PlayStoreScreenshotTest {
         // Review card while Compose is replacing the screen.
         waitForText("Current watchlist")
         tapText("AAPL")
-        waitForText("Financial strengths")
+        // On compact 7-inch devices the insight cards are below the first
+        // viewport and are not composed yet. The Back action only appears
+        // after the ready research header replaces the loading state.
+        waitForText("← Back")
         capture("03-research-overview")
 
+        scrollUpUntilText("12-Pt Checklist")
         tapText("12-Pt Checklist")
-        waitForText("Altman Z-Score")
+        scrollUpUntilText("Altman Z-Score")
         capture("04-checklist")
 
-        tapText("DCF Sandbox")
-        waitForText("Estimated fair value")
+        revealTabAndTap("DCF Sandbox", anchorText = "12-Pt Checklist")
+        if (!device.wait(Until.hasObject(By.text("Estimated fair value")), 2_500)) {
+            // A swipe that is still settling can consume the first tap on
+            // older cloud images. Re-tapping the selected tab is harmless.
+            revealTabAndTap("DCF Sandbox", anchorText = "12-Pt Checklist")
+        }
+        scrollUpUntilText("Estimated fair value")
         capture("05-dcf")
 
         tapDescription("Compare")
         waitForText("Side-by-Side Peer Comparison", substring = true)
-        // Tablet navigation also has a visible "Compare" label. Pick the
-        // rightmost match so this taps the in-page action instead of the rail.
+        // Tablet navigation also has a visible "Compare" label. Ignore the
+        // bottom navigation area, then pick the rightmost in-page match.
         tapRightmostText("Compare")
-        waitForText("Fundamental score")
+        waitForText("Pillar comparison")
         capture("06-compare")
     }
+
+    private fun scrollUpUntilText(text: String) {
+        repeat(10) {
+            if (findTappableText(text) != null) return
+            check(
+                device.swipe(
+                    device.displayWidth / 2,
+                    device.displayHeight * 4 / 5,
+                    device.displayWidth / 2,
+                    device.displayHeight / 3,
+                    24
+                )
+            ) { "Could not scroll towards '$text'" }
+            device.waitForIdle(1_000)
+        }
+        error("Timed out scrolling to '$text'")
+    }
+
+    private fun revealTabAndTap(text: String, anchorText: String) {
+        // The sub-tab row scrolls horizontally on compact tablets. Bring the
+        // row into the viewport, then swipe it until the requested tab's
+        // centre is on-screen and can be tapped reliably.
+        if (findTappableText(anchorText) == null) {
+            var attempts = 0
+            while (findTappableText(anchorText) == null && attempts < 10) {
+                device.swipe(
+                    device.displayWidth / 2,
+                    device.displayHeight / 3,
+                    device.displayWidth / 2,
+                    device.displayHeight * 4 / 5,
+                    24
+                )
+                device.waitForIdle(1_000)
+                attempts += 1
+            }
+            check(findTappableText(anchorText) != null) {
+                "Could not bring the sub-tab row into view for '$text'"
+            }
+        }
+        repeat(6) {
+            findTappableText(text)?.let { node ->
+                val bounds = node.visibleBounds
+                check(device.click(bounds.centerX(), bounds.centerY())) { "Could not tap '$text'" }
+                device.waitForIdle(1_000)
+                return
+            }
+            val anchor = findTappableText(anchorText)
+                ?: error("Could not find the sub-tab row while revealing '$text'")
+            val y = anchor.visibleBounds.centerY()
+            check(
+                device.swipe(
+                    device.displayWidth * 4 / 5,
+                    y,
+                    device.displayWidth / 5,
+                    y,
+                    24
+                )
+            ) { "Could not scroll the sub-tab row towards '$text'" }
+            device.waitForIdle(1_000)
+            Thread.sleep(500)
+        }
+        error("Timed out revealing tab '$text'")
+    }
+
+    private fun findTappableText(text: String) =
+        device.findObjects(By.text(text)).firstOrNull { node ->
+            val bounds = node.visibleBounds
+            bounds.width() > 0 && bounds.height() > 0 &&
+                bounds.centerX() in 0 until device.displayWidth &&
+                bounds.centerY() in 0 until device.displayHeight
+        }
 
     private fun waitForText(text: String, substring: Boolean = false) {
         val selector = if (substring) By.textContains(text) else By.text(text)
@@ -120,7 +204,9 @@ class PlayStoreScreenshotTest {
         check(device.wait(Until.hasObject(By.text(text)), 30_000)) {
             "Timed out waiting to tap '$text'"
         }
-        val node = device.findObjects(By.text(text)).maxByOrNull { it.visibleBounds.centerX() }
+        val node = device.findObjects(By.text(text))
+            .filter { it.visibleBounds.centerY() < device.displayHeight * 4 / 5 }
+            .maxByOrNull { it.visibleBounds.centerX() }
             ?: error("Could not find '$text'")
         val bounds = node.visibleBounds
         check(device.click(bounds.centerX(), bounds.centerY())) { "Could not tap '$text'" }
@@ -138,6 +224,9 @@ class PlayStoreScreenshotTest {
 
     private fun capture(name: String) {
         device.waitForIdle(1_000)
+        // Compose semantics can update a frame before the pixels are drawn.
+        // Give cloud devices enough time to paint the settled state.
+        Thread.sleep(750)
         val directory = File(targetContext.getExternalFilesDir(null), "screenshots")
         check(directory.exists() || directory.mkdirs()) { "Could not create $directory" }
         check(device.takeScreenshot(File(directory, "$name.png"))) {
