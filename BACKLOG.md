@@ -209,17 +209,15 @@ defect class that contaminated 7 of 20 tickers in the earlier audit.
 phase 1 — see `docs/14_DATA_SOURCING_AND_PLAY_RELEASE.md` §1 for what landed
 where.
 
-**What is left is the Financial features declaration in Play Console**, which is
-a form rather than code, and cannot be done from this repository. The two items
-described below are closed; the text is kept because it is the reasoning the
-declaration itself should follow.
+**The Financial features declaration is done too (2026-10-04).** The two items
+described below are closed; the text is kept for the reasoning behind them.
 
 Context in `docs/14_DATA_SOURCING_AND_PLAY_RELEASE.md` §1.
 
-There is **no credential gate** on investment apps — Google requires licensing
-documentation only for personal-loan apps, and nothing demands broker-dealer or
-adviser registration. The release is not gated on permission. It is gated on
-these two items, plus the declaration.
+> **Correction 2026-10-04:** the "no credential gate" claim below the items was
+> wrong. Financial-service declarations on a personal developer account require
+> an organization account, and the first submission was rejected for it on
+> 2026-10-03. The declaration is now "no financial features"; see doc 14 §1.
 
 1. **"Not investment advice" framing is missing entirely** — grep `web/` and
    there is nothing. Doc 13 §7 already called for it. The app shows 0–100
@@ -232,11 +230,9 @@ these two items, plus the declaration.
    Play requires disclosure in the interface, not only in a policy document.
    Audit every AI-derived surface and label each one.
 
-Then complete the **Financial features declaration** in Play Console, and
-declare generously: portfolio management for the watchlist and aggregator,
-financial advice for the Gemini analysis. Neither attracts a licensing
-requirement, while an inaccurate declaration is a documented and repeated cause
-of rejection.
+~~Then complete the Financial features declaration, and declare generously.~~
+**Done 2026-10-04, accurately rather than generously:** "My app doesn't provide
+any financial features."
 
 ---
 

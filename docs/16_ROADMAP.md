@@ -714,11 +714,12 @@ The only phase requiring infrastructure. Phases 1–5 ship without any.
 
 ### Phase 7 — Release, then the widget
 
-1. **Financial features declaration** in Play Console. Declare generously —
-   portfolio management for the watchlist and aggregator, financial advice for
-   the Gemini analysis. Neither attracts a licensing requirement; an inaccurate
-   declaration is a documented cause of rejection. There is no credential gate on
-   investment apps.
+1. ~~**Financial features declaration** in Play Console.~~ **Done 2026-10-04:
+   "My app doesn't provide any financial features."** The original advice here
+   (declare portfolio management and financial advice; "no credential gate")
+   was wrong. On a personal developer account, financial-service boxes require
+   an organization account, and the first submission was rejected for it on
+   2026-10-03. See doc 14 §1.
 2. **Android home-screen widget** (doc 15 §2.3, backlog). **In scope** per phase
    0. Glance keeps it contained, and a health-score-plus-delta widget would have
    no direct equivalent — every widget in that market shows prices.

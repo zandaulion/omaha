@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy – Pocket Omaha</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+  body { margin: 0; background: var(--bg-canvas); color: var(--text-primary); font: 16px/1.6 system-ui, sans-serif; }
+  main { max-width: 720px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 1.8rem; margin-bottom: 4px; }
+  h2 { font-size: 1.2rem; margin-top: 2.2em; border-top: 1px solid var(--border-subtle); padding-top: 1.2em; }
+  p, li { color: var(--text-secondary); }
+  strong { color: var(--text-primary); }
+  a { color: var(--text-accent); }
+  table { border-collapse: collapse; width: 100%; font-size: .92rem; }
+  th, td { text-align: left; vertical-align: top; padding: 8px; border-bottom: 1px solid var(--border-subtle); color: var(--text-secondary); }
+  th { color: var(--text-primary); }
+  .meta { color: var(--text-tertiary); }
+</style>
+</head>
+<body>
+<main>
+<h1>Privacy Policy</h1>
+<p class="meta">Pocket Omaha (Android app and web app) · Effective 3 October 2026</p>
+
+<p>Pocket Omaha helps long-term stock owners record why they follow a company and review whether those reasons still hold. This policy explains what data the app handles, where it goes, and the choices you have. In short: <strong>your watchlists and investment notes stay on your device</strong>, we do not sell data, and we do not show ads or use advertising IDs.</p>
+
+<p>"We" means the developer of Pocket Omaha, zandaulion. Contact details are at the end.</p>
+
+<h2>1. What stays on your device</h2>
+<p>On Android, the following is stored only in the app's private storage on your phone:</p>
+<ul>
+  <li>Watchlists and the tickers you follow</li>
+  <li>Your theses, reasons, reconsideration conditions, journal entries, and review history</li>
+  <li>Cached market data and scores, alert settings and alert history, and app settings</li>
+</ul>
+<p>We do not collect position sizes or portfolio holdings because the app does not ask for them. Android alerts are generated on your device; no notification server is involved. Uninstalling the app or clearing its data deletes this information, except for any backup file you chose to export (see section 6).</p>
+
+<h2>2. Data that leaves your device</h2>
+<table>
+<tr><th>Why</th><th>What is sent</th><th>To whom</th></tr>
+<tr><td>Market data and filings</td><td>The ticker or search text you request, plus the normal technical data any request carries (IP address, user agent, timing)</td><td>SEC EDGAR and Yahoo Finance</td></tr>
+<tr><td>AI summaries (optional)</td><td>The scored company data for the stock. <strong>Your notes are included only if you turn on "Include my notes in AI analysis"</strong>, which is off by default. If on, this can include conviction, target price, rationale, tags, conditions and journal content.</td><td>Our Firebase Cloud Functions and Google Gemini</td></tr>
+<tr><td>Google sign-in (needed for AI credits)</td><td>Your Google account identifier, display name and email, through Google sign-in and Firebase Authentication. The app never opens the account picker on its own.</td><td>Google / Firebase</td></tr>
+<tr><td>Credit purchases</td><td>A Google Play purchase token and order ID, which our server verifies with the Google Play Developer API and credits once per order. We never see your payment card details.</td><td>Google Play</td></tr>
+</table>
+<p>We store your Firebase user ID, email, and credit balance, and records of credit redemptions, so that credits can be granted and not double-spent. We also cache AI output: notes-free output is cached by ticker and can be read without sign-in; output generated with your notes is cached under your account only and is not publicly readable.</p>
+
+<h2>3. The web app (PWA)</h2>
+<p>The web app at omaha.zandaulion.com stores your watchlists, notes, settings and alert data in a database on the server that hosts it, because the web app has no on-device database. Access is by invite code; the server sets a cookie and stores a device token to recognise your registered device. If you enable web push, your browser's push subscription (endpoint and public keys) is stored so alerts can be delivered through your browser's push service. The same optional AI rules apply: your notes go to Gemini only if you opt in. The web app also keeps a last-good copy of stock data in your browser for offline display. Clearing site data removes it.</p>
+
+<h2>4. Permissions</h2>
+<p>The Android app requests only <strong>Internet</strong> and <strong>network state</strong> (to fetch data and decide when to sync) and <strong>notifications</strong> (to show alerts, where Android asks you first). It does not access your contacts, location, camera, microphone, photos or files, SMS, or advertising ID.</p>
+
+<h2>5. What we do not do</h2>
+<ul>
+  <li>No advertising, ad networks, or cross-app tracking</li>
+  <li>No sale or rental of personal data</li>
+  <li>No third-party analytics SDK in the app</li>
+</ul>
+<p>We use your data only to provide the features above. Third parties listed in section 2 process data under their own terms, including <a href="https://policies.google.com/privacy">Google's Privacy Policy</a>, and we do not control their retention.</p>
+
+<h2>6. Backups and your choices</h2>
+<ul>
+  <li><strong>Export:</strong> you can export your theses and watchlists to a JSON file at a location you choose. This file is <strong>not encrypted</strong>; store it carefully.</li>
+  <li><strong>AI notes:</strong> leave "Include my notes in AI analysis" off to keep your writing out of AI requests.</li>
+  <li><strong>Sign-in:</strong> you can use the research and review features without signing in; sign-in is only for AI credits.</li>
+  <li><strong>Deletion:</strong> uninstall the app or clear its storage to remove on-device data. To have your account data (user ID, email, credit and redemption records, and any account-scoped AI cache) or web-app data deleted from our servers, contact us. We will act on verified requests within 30 days.</li>
+</ul>
+
+<h2>7. Retention</h2>
+<p>On-device data remains until you delete it. Account records are kept while your account is active and for as long as needed to prevent credit fraud and meet legal obligations, then removed. Server-side web-app data remains until you or the operator delete it. Invite codes are cleared after use.</p>
+
+<h2>8. Security</h2>
+<p>Data in transit uses HTTPS. Our Firebase database rules deny all direct client access; data is reached only through server functions, and credit changes are made transactionally on the server. On-device data relies on your phone's own protections (screen lock, device encryption). The app has no separate app lock.</p>
+
+<h2>9. Children</h2>
+<p>Pocket Omaha is not directed to children under 13 (or the minimum age in your country), and we do not knowingly collect their data.</p>
+
+<h2>10. Not investment advice</h2>
+<p>Scores and AI-generated text are produced from public filings and may be stale, incomplete or wrong. They are not financial advice.</p>
+
+<h2>11. Changes</h2>
+<p>If we change this policy we will update the date above and, for material changes, tell you in the app.</p>
+
+<h2>12. Contact</h2>
+<p>Questions or deletion requests: <a href="mailto:zandaulion@gmail.com">zandaulion@gmail.com</a></p>
+</main>
+</body>
+</html>

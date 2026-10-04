@@ -7,39 +7,65 @@
 This doc exists because two questions turned out to have the same answer.
 "May an individual developer publish this to Google Play?" and "what do we do
 about the market data?" both resolve to: *the release is not gated on
-permission, it is gated on where the statements come from.*
+permission, it is gated on where the statements come from.* That holds only
+while the app offers no financial services. §1 (corrected 2026-10-04) explains
+the organization-account rule that applies otherwise.
 
 ---
 
 ## 1. Play Store eligibility
 
-**There is no credential gate on investment apps.** This was the open worry,
-and it is settled.
+> **Corrected 2026-10-04.** The original version of this section said there was
+> no credential gate on investment apps and advised declaring generously. That
+> was wrong, and following it got the first submission rejected on 2026-10-03.
+> The corrected reasoning follows; the old text is not kept.
 
-Google's Financial features declaration sorts apps into five categories —
-banking and loans, payments and transfers, purchase agreements, trading and
-funds, and support services. Of these, **only personal-loan apps must upload
-licensing documentation.** Nothing in the Financial Services policy requires
-broker-dealer registration, investment-adviser status, or an organization
-account for an app that analyses securities. The one flat prohibition that
-touches this space is binary options trading, which is not a feature here and
-should not become one.
+**The gate is the developer account type, not a licence.** Since 31 August
+2024, Google's *Play Console Requirements* policy says new developer accounts
+must be registered as an **organization** to distribute apps that provide
+financial products and services — banking, loans, stock trading, investment
+funds, crypto wallets and exchanges. A personal account that ticks any of those
+boxes in the Financial features declaration is rejected under that policy, not
+under Financial Services. Licensing documentation (personal-loan apps only) is
+a separate, additional requirement.
 
-This is worth stating explicitly because the health policies work differently
-and the contrast is misleading. Google's health declaration routes anything
-resembling disease management into a *Medical apps* category that expects the
-developer to be a healthcare provider or to hold regulatory clearance — a bar
-an individual cannot clear. **Finance has no equivalent.** Reasoning by analogy
-from a health-app rejection to this app gives the wrong answer.
+**What happened.** The declaration was submitted with *Stock trading and
+portfolio management* ticked, per the "declare generously" advice that used to
+be here. Google rejected the release on 2026-10-03 for *Violation of Play
+Console Requirements*, area *Developer Account*. On 2026-10-04 the declaration
+was changed to **My app doesn't provide any financial features**.
+
+**Why that is the accurate answer, not a workaround.** Pocket Omaha executes no
+trades, connects to no brokerage, moves no money and stores no holdings or
+position sizes — the store listing already says it "is not a brokerage
+portfolio tracker". A watchlist of tickers with the user's own notes is not
+portfolio management. AI credits are digital content bought through Play
+Billing, which is not a financial feature (the Data safety form does declare
+*Purchase history*, for the stored Play order IDs). *Financial advice* stays
+unticked: scores are the same arithmetic for every user, and the DCF panel, AI
+analysis, Settings and onboarding all carry not-advice framing (below).
+*Other* was avoided because it is not known whether Google treats it as a
+financial service for the account rule.
+
+**The remaining risk** is a reviewer judging the scores, fair values or AI
+summaries to be investment advice regardless of the declaration. If that
+happens, the path is an organization account (legal entity, D-U-N-S number,
+Google verification, app transfer). Appealing is unlikely to help. The same
+applies if the app ever gains trade execution, holdings, or personalised
+recommendations. Any of those features means converting to an organization
+account first.
+
+The one flat prohibition in this space is still binary options trading, which
+is not a feature here and should not become one.
 
 ### What the release does require
 
 | Requirement | State | Where |
 | --- | --- | --- |
-| Financial features declaration completed | not started | Play Console |
+| Financial features declaration completed | **done 2026-10-04**: no financial features | Play Console |
 | Visible in-app AI-generated content labelling | **done 2026-08-24** | `web/app.js` |
 | Explicit "not investment advice" framing | **done 2026-08-24** | `web/index.html`, `web/app.js` |
-| Privacy policy covering data handling | check before submit | Play Console |
+| Privacy policy covering data handling | drafted 2026-10-03 | `docs/PRIVACY_POLICY.md`, Play Console |
 
 > **Both in-app items closed 2026-08-24**, as `docs/16_ROADMAP.md` phase 1.
 >
@@ -59,14 +85,15 @@ from a health-app rejection to this app gives the wrong answer.
 > `Generated by Gemini` caption this section describes was the teaser's; the
 > dashboard had nothing above its meta bar.
 >
-> What remains is the Play Console declaration, which is a form, not code.
+> The Play Console declaration is done as well; see the correction at the top
+> of this section.
 
-**Declare generously.** The app has no trade execution, but the watchlist and
-portfolio aggregator are portfolio management, and the Gemini analysis is
-adjacent to financial advice. Both belong in the declaration. Declaring a
-capability costs nothing here — no license attaches to either — while
-under-declaring is a documented and repeated cause of rejection. The failure
-mode to avoid is an inaccurate declaration, not an expansive one.
+**Declare accurately, not generously.** Over-declaring is not free: on a
+personal account, any financial-service box triggers the organization-account
+requirement. Under-declaring is also a rejection cause. The declaration has to
+match what the app does, and the store listing and in-app framing have to say
+the same thing. If a feature changes that answer, revisit the declaration and
+the account type before shipping it.
 
 **The advice disclaimer is a real gap.** Doc 13 §7 already calls for explicit
 "not investment advice" framing and it has not landed. The app presents 0–100
