@@ -2,6 +2,7 @@ package com.zandaulion.omaha.app.ui
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -33,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -57,10 +59,10 @@ import com.zandaulion.omaha.design.toTextStyle
  */
 enum class DeepDiveTab(val label: String) {
     Overview("Overview"),
-    Thesis("My reasons & reviews"),
-    Checklist("12-Pt Checklist"),
-    Trends("5Y Trends"),
-    Dcf("DCF Sandbox"),
+    Thesis("My reasons"),
+    Checklist("12-point checklist"),
+    Trends("5-year trends"),
+    Dcf("DCF sandbox"),
     Ai("AI analysis")
 }
 
@@ -202,6 +204,7 @@ private fun Loaded(
     var tab by rememberSaveable(stock.ticker) { mutableStateOf(requestedTab) }
     LaunchedEffect(stock.ticker, navigationRequest) { tab = requestedTab }
     val selectTab: (DeepDiveTab) -> Unit = { tab = it; onSubtabChange(it) }
+    val isTablet = LocalConfiguration.current.smallestScreenWidthDp >= 600
 
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -209,8 +212,11 @@ private fun Loaded(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item { Header(stock, onBack, { selectTab(DeepDiveTab.Thesis) }, onBookmark, isBookmarked, tab != DeepDiveTab.Thesis) }
-        if (tab != DeepDiveTab.Thesis) item { ScoreCard(stock) }
-        item { SubTabs(tab, selectTab) }
+        item {
+            if (isTablet) SubTabs(tab, selectTab)
+            else ResearchSectionSelector(tab, selectTab)
+        }
+        if (tab == DeepDiveTab.Overview) item { ScoreCard(stock) }
 
         when (tab) {
             DeepDiveTab.Overview -> {
@@ -440,9 +446,49 @@ private fun SubTabs(selected: DeepDiveTab, onSelect: (DeepDiveTab) -> Unit) {
     }
 }
 
+/** A discoverable mobile section switcher: all destinations fit on screen. */
+@Composable
+private fun ResearchSectionSelector(selected: DeepDiveTab, onSelect: (DeepDiveTab) -> Unit) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    Column(
+        Modifier.fillMaxWidth()
+            .clip(RoundedCornerShape(OmahaRadius.sm))
+            .background(Omaha.colors.bgSurfaceSubtle)
+            .border(1.dp, Omaha.colors.borderSubtle, RoundedCornerShape(OmahaRadius.sm))
+    ) {
+        Row(
+            Modifier.fillMaxWidth().clickable { expanded = !expanded }
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                BasicText("Research section", style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary))
+                BasicText(selected.label, style = OmahaType.bodyMd.toTextStyle(color = Omaha.colors.textPrimary).copy(fontWeight = FontWeight.Bold))
+            }
+            BasicText(if (expanded) "⌃" else "⌄", style = OmahaType.bodyMd.toTextStyle(color = Omaha.colors.brandCyan))
+        }
+        if (expanded) {
+            DeepDiveTab.entries.forEach { section ->
+                val active = section == selected
+                BasicText(
+                    (if (active) "✓  " else "   ") + section.label,
+                    modifier = Modifier.fillMaxWidth()
+                        .background(if (active) Omaha.colors.brandGlow else Color.Transparent)
+                        .clickable { onSelect(section); expanded = false }
+                        .padding(horizontal = 14.dp, vertical = 11.dp),
+                    style = OmahaType.bodySm.toTextStyle(
+                        color = if (active) Omaha.colors.brandCyan else Omaha.colors.textSecondary
+                    )
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun ScoreCard(stock: StockDetail) {
-    OmahaCard(contentPadding = 20.dp) {
+    OmahaCard(contentPadding = 16.dp) {
         Column(
             Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -457,7 +503,7 @@ private fun ScoreCard(stock: StockDetail) {
                 score = stock.healthScore,
                 tier = stock.healthTier,
                 label = fundamentalGrade(stock.healthTier, stock.healthScore),
-                diameter = 160.dp
+                diameter = 116.dp
             )
 
             Box(Modifier.height(6.dp))

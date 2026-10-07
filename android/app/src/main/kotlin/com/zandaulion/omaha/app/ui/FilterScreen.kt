@@ -3,17 +3,16 @@ package com.zandaulion.omaha.app.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.size
@@ -31,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -55,14 +55,23 @@ fun FilterScreen(holdings: List<Holding>, onSelect: (String) -> Unit) {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    BasicText("🔍 Filter Your Watchlist", style = OmahaType.title2.toTextStyle(color = Omaha.colors.textPrimary).copy(fontWeight = FontWeight.Bold))
-                    BasicText(
-                        "${matches.size} of ${holdings.size}",
-                        modifier = Modifier.background(Color(0xFFECFDF5), RoundedCornerShape(9.dp))
-                            .border(1.dp, Color(0xFFA7E8D4), RoundedCornerShape(9.dp))
-                            .padding(horizontal = 8.dp, vertical = 5.dp),
-                        style = OmahaType.caption.toTextStyle(color = Color(0xFF059669)).copy(fontWeight = FontWeight.Bold)
-                    )
+                    BasicText("Filter watchlist", style = OmahaType.title2.toTextStyle(color = Omaha.colors.textPrimary).copy(fontWeight = FontWeight.Bold))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        BasicText(
+                            "${matches.size} of ${holdings.size}",
+                            modifier = Modifier.background(Color(0xFFECFDF5), RoundedCornerShape(9.dp))
+                                .border(1.dp, Color(0xFFA7E8D4), RoundedCornerShape(9.dp))
+                                .padding(horizontal = 8.dp, vertical = 5.dp),
+                            style = OmahaType.caption.toTextStyle(color = Color(0xFF059669)).copy(fontWeight = FontWeight.Bold)
+                        )
+                        BasicText(
+                            "Reset",
+                            modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                                .clickable { filters = Filters() }
+                                .padding(horizontal = 8.dp, vertical = 6.dp),
+                            style = OmahaType.caption.toTextStyle(color = Omaha.colors.brandCyan)
+                        )
+                    }
                 }
                 BasicText(
                     "Narrows the companies you already follow. This does not search the wider market — nothing appears here that you have not looked up before.",
@@ -71,20 +80,26 @@ fun FilterScreen(holdings: List<Holding>, onSelect: (String) -> Unit) {
             }
         }
         item {
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf(
-                    "All" to Filters(0, 0, 0, 5f),
-                    "Strong fundamentals (Score ≥ 85)" to Filters(85, 7, 15, 5f, fcfPositive = true),
-                    "🚀 ROIC ≥ 20%" to Filters(70, 6, 20, 5f),
-                    "💎 Net Cash Only" to Filters(0, 0, 0, 5f, netCashOnly = true)
-                ).forEach { (label, value) ->
-                    BasicText(
-                        label,
-                        modifier = Modifier.background(Omaha.colors.bgSurfaceSubtle, RoundedCornerShape(8.dp))
-                            .border(1.dp, Omaha.colors.borderSubtle, RoundedCornerShape(8.dp))
-                            .clickable { filters = value }.padding(horizontal = 11.dp, vertical = 9.dp),
-                        style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textPrimary)
-                    )
+            val presets = listOf(
+                "All companies" to Filters(),
+                "Strong fundamentals" to Filters(85, 7, 15, 5f, fcfPositive = true),
+                "High ROIC (20%+)" to Filters(70, 6, 20, 5f),
+                "Net cash only" to Filters(netCashOnly = true)
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                presets.chunked(2).forEach { row ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        row.forEach { (label, value) ->
+                            BasicText(
+                                label,
+                                modifier = Modifier.weight(1f)
+                                    .background(Omaha.colors.bgSurfaceSubtle, RoundedCornerShape(8.dp))
+                                    .border(1.dp, Omaha.colors.borderSubtle, RoundedCornerShape(8.dp))
+                                    .clickable { filters = value }.padding(horizontal = 10.dp, vertical = 10.dp),
+                                style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textPrimary)
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -141,10 +156,10 @@ fun FilterScreen(holdings: List<Holding>, onSelect: (String) -> Unit) {
     }
 }
 
-private data class Filters(
-    val minHealth: Int = 70,
-    val minPiotroski: Int = 6,
-    val minRoic: Int = 12,
+internal data class Filters(
+    val minHealth: Int = 0,
+    val minPiotroski: Int = 0,
+    val minRoic: Int = 0,
     val maxDebtToEquity: Float = 5f,
     val netCashOnly: Boolean = false,
     val fcfPositive: Boolean = false,
@@ -168,18 +183,23 @@ private data class Filters(
 private fun FilterSlider(label: String, display: String, value: Float,
     range: ClosedFloatingPointRange<Float>, steps: Int, onChange: (Float) -> Unit
 ) {
-    Column {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            BasicText("$label:", style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary))
-            BasicText(display, style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.brandCyan))
+    Column(Modifier.padding(bottom = 8.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            BasicText(label, style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary))
+            BasicText(display, style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.brandCyan).copy(fontWeight = FontWeight.Bold))
         }
-        Slider(value = value, onValueChange = onChange, valueRange = range, steps = 0,
+        Slider(value = value, onValueChange = onChange, valueRange = range, steps = steps,
             thumb = { androidx.compose.foundation.layout.Box(
                 Modifier.size(20.dp).background(Omaha.colors.brandCyan, CircleShape)
             ) },
             colors = SliderDefaults.colors(thumbColor = Omaha.colors.brandCyan,
-                activeTrackColor = Color.Transparent, inactiveTrackColor = Color.Transparent,
+                activeTrackColor = Omaha.colors.brandCyan,
+                inactiveTrackColor = Omaha.colors.borderProminent,
                 activeTickColor = Color.Transparent, inactiveTickColor = Color.Transparent))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            BasicText(range.start.toInt().toString(), style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary))
+            BasicText(range.endInclusive.toInt().toString(), style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary))
+        }
     }
 }
 
@@ -194,33 +214,32 @@ private fun FilterCheck(label: String, checked: Boolean, onChange: (Boolean) -> 
 
 @Composable
 private fun FilterTable(matches: List<Holding>, onSelect: (String) -> Unit) {
-    val widths = listOf(140.dp, 100.dp, 80.dp, 100.dp, 90.dp, 110.dp)
-    val headings = listOf("TICKER", "PRICE", "HEALTH", "PIOTROSKI", "ROIC", "NET CASH")
-    Column(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
-        .border(1.dp, Omaha.colors.borderSubtle, RoundedCornerShape(12.dp))) {
-        Row(Modifier.background(Omaha.colors.bgSurfaceSubtle).padding(vertical = 12.dp)) {
-            headings.forEachIndexed { i, heading ->
-                BasicText(heading, modifier = Modifier.width(widths[i]).padding(horizontal = 12.dp),
-                    style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary).copy(fontWeight = FontWeight.Bold))
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        BasicText("Results", style = OmahaType.title2.toTextStyle(color = Omaha.colors.textPrimary))
+        if (matches.isEmpty()) {
+            OmahaCard {
+                BasicText("No companies match these filters.", style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary))
             }
         }
         matches.forEach { h ->
-            Row(Modifier.background(Omaha.colors.bgCanvas).clickable { onSelect(h.ticker) }
-                .border(0.5.dp, Omaha.colors.borderSubtle).padding(vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.width(widths[0]).padding(horizontal = 12.dp)) {
-                    BasicText(h.ticker, style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textPrimary).copy(fontWeight = FontWeight.Bold))
-                    BasicText(h.name, style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary))
-                    h.sector?.let { BasicText(it, style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary)) }
-                }
-                listOf(fmtPrice(h.price, h.currency), h.healthScore?.let { "$it/100" } ?: EM_DASH,
-                    h.piotroskiScore?.let { "$it/9" } ?: EM_DASH, fmtPercent(h.roicPct),
-                    fmtBillions(h.netCashBillions, h.reportingCurrency ?: h.currency))
-                    .forEachIndexed { i, value ->
-                        BasicText(value, modifier = Modifier.width(widths[i + 1]).padding(horizontal = 12.dp),
-                            style = OmahaType.bodySm.toTextStyle(color = if (i == 3) Color(0xFF059669) else Omaha.colors.textPrimary)
-                                .copy(fontFamily = Omaha.fonts.mono))
+            OmahaCard(onClick = { onSelect(h.ticker) }, contentPadding = 14.dp) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Column(Modifier.weight(1f)) {
+                        BasicText(h.ticker, style = OmahaType.bodyMd.toTextStyle(color = Omaha.colors.textPrimary).copy(fontWeight = FontWeight.Bold, fontFamily = Omaha.fonts.mono))
+                        BasicText(h.name, style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary), maxLines = 1)
+                        h.sector?.let { BasicText(it, style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary), maxLines = 1) }
                     }
+                    Column(horizontalAlignment = Alignment.End) {
+                        BasicText(h.healthScore?.let { "$it/100" } ?: EM_DASH,
+                            style = OmahaType.bodyMd.toTextStyle(color = Omaha.colors.brandCyan).copy(fontWeight = FontWeight.Bold, fontFamily = Omaha.fonts.mono))
+                        BasicText(fmtPrice(h.price, h.currency), style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary).copy(fontFamily = Omaha.fonts.mono))
+                    }
+                }
+                Box(Modifier.height(10.dp))
+                BasicText(
+                    "Piotroski ${h.piotroskiScore?.let { "$it/9" } ?: EM_DASH}  ·  ROIC ${fmtPercent(h.roicPct)}  ·  Net cash ${fmtBillions(h.netCashBillions, h.reportingCurrency ?: h.currency)}",
+                    style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary).copy(fontFamily = Omaha.fonts.mono)
+                )
             }
         }
     }

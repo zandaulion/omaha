@@ -34,7 +34,7 @@ import com.zandaulion.omaha.design.ThemeChoice
 import com.zandaulion.omaha.design.toTextStyle
 
 /**
- * Settings, matching the PWA's modal.
+ * Settings, presented as a full screen on Android.
  *
  * Carries the two things doc 14 §1 requires in the interface — the notes
  * opt-in and the canonical "what this app is" statement — plus backup, which
@@ -64,6 +64,11 @@ fun SettingsScreen(
     ) {
         if (showTitle) BasicText("Settings", style = OmahaType.title1.toTextStyle(color = Omaha.colors.textPrimary))
 
+        if (alerts != null) {
+            AlertPreferencesCard(alerts, onAlertsChange, onRequestPermission, onTestNotification)
+            AlertHistoryCard(alerts.history)
+        }
+
         SettingsCard("🔒 AI analysis & your notes") {
             BasicText(
                 "Gemini always receives the company's filed financials, computed ratios " +
@@ -83,11 +88,6 @@ fun SettingsScreen(
                     "of ignoring it. Off by default.",
                 style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary)
             )
-        }
-
-        if (alerts != null) {
-            AlertPreferencesCard(alerts, onAlertsChange, onRequestPermission, onTestNotification)
-            AlertHistoryCard(alerts.history)
         }
 
         SettingsCard("🎨 Appearance") {

@@ -2,7 +2,6 @@ package com.zandaulion.omaha.app.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -43,10 +42,8 @@ import com.zandaulion.omaha.design.toTextStyle
  * keeps Material3 to the one DCF slider), a filter field, then one section
  * per candidate group.
  *
- * Each group is a single horizontally-scrolling row rather than the PWA's
- * wrapping `flex-wrap` grid — matching the ticker-chip row `CompareScreen`
- * already scrolls horizontally, rather than introducing Compose's
- * (still-experimental) `FlowRow` for this one screen.
+ * Candidate sources are deduplicated into one searchable vertical list. This
+ * avoids repeated companies and clipped horizontal chip rows on phones.
  *
  * No freeform "not in your lists, press Enter" fallback: that PWA
  * affordance exists because its filter field doubles as free-text entry.
@@ -60,6 +57,7 @@ fun ComparePicker(
     picked: List<String>,
     maxPicked: Int,
     onPick: (String) -> Unit,
+    onDrop: (String) -> Unit,
     onClose: () -> Unit
 ) {
     var filter by remember { mutableStateOf("") }
@@ -114,6 +112,23 @@ fun ComparePicker(
                 "${picked.size} of $maxPicked picked",
                 style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary)
             )
+            if (picked.isNotEmpty()) {
+                Box(Modifier.height(8.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    picked.forEach { ticker ->
+                        Row(
+                            Modifier.fillMaxWidth().clip(RoundedCornerShape(OmahaRadius.sm))
+                                .background(Omaha.colors.brandGlow)
+                                .clickable { onDrop(ticker) }
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            BasicText(ticker, style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.brandCyan).copy(fontFamily = Omaha.fonts.mono))
+                            BasicText("Remove ×", style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary))
+                        }
+                    }
+                }
+            }
             Box(Modifier.height(14.dp))
 
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
@@ -127,34 +142,28 @@ fun ComparePicker(
                         fun matches(c: CandidateRow) =
                             needle.isEmpty() || c.ticker.contains(needle) ||
                                 (c.name?.uppercase()?.contains(needle) == true)
-
-                        var shownAny = false
-                        if (candidates.peers.isNotEmpty()) {
-                            val shown = candidates.peers.filter(::matches)
-                            if (shown.isNotEmpty()) {
-                                shownAny = true
-                                PickerSection("Peers of ${seedTicker.orEmpty()}", shown, picked, maxPicked, onPick)
-                            }
-                        }
-                        for (group in candidates.watchlists) {
-                            val shown = group.rows.filter(::matches)
-                            if (shown.isNotEmpty()) {
-                                shownAny = true
-                                PickerSection(group.label, shown, picked, maxPicked, onPick)
-                            }
-                        }
-                        if (candidates.seen.isNotEmpty()) {
-                            val shown = candidates.seen.filter(::matches)
-                            if (shown.isNotEmpty()) {
-                                shownAny = true
-                                PickerSection("Looked up before", shown, picked, maxPicked, onPick)
-                            }
-                        }
-                        if (!shownAny) {
+                        val all = mutableListOf<CandidateRow>().apply {
+                            addAll(candidates.peers)
+                            candidates.watchlists.forEach { addAll(it.rows) }
+                            addAll(candidates.seen)
+                        }.distinctBy { it.ticker }.filter(::matches)
+                        if (all.isEmpty()) {
                             BasicText(
                                 "Nothing matches.",
                                 style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textTertiary)
                             )
+                        } else {
+                            BasicText(
+                                if (seedTicker.isNullOrBlank()) "Available companies" else "Peers and companies you follow",
+                                style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary)
+                            )
+                            Box(Modifier.height(6.dp))
+                            all.forEach { row ->
+                                val on = row.ticker in picked
+                                val full = picked.size >= maxPicked && !on
+                                CandidateRowItem(row, on, full) { if (on) onDrop(row.ticker) else onPick(row.ticker) }
+                                Box(Modifier.height(6.dp))
+                            }
                         }
                     }
                 }
@@ -164,61 +173,28 @@ fun ComparePicker(
 }
 
 @Composable
-private fun PickerSection(
-    label: String,
-    rows: List<CandidateRow>,
-    picked: List<String>,
-    maxPicked: Int,
-    onPick: (String) -> Unit
-) {
-    Column(Modifier.padding(bottom = 16.dp)) {
-        BasicText(label, style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary))
-        Box(Modifier.height(8.dp))
-        Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            for (row in rows) {
-                val on = row.ticker in picked
-                val full = picked.size >= maxPicked && !on
-                CandidateChip(row, on, full) { onPick(row.ticker) }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CandidateChip(row: CandidateRow, on: Boolean, full: Boolean, onClick: () -> Unit) {
+private fun CandidateRowItem(row: CandidateRow, on: Boolean, full: Boolean, onClick: () -> Unit) {
     Row(
         Modifier
-            .clip(RoundedCornerShape(OmahaRadius.pill))
-            .background(if (on) Omaha.colors.brandCyan else Omaha.colors.bgSurfaceSubtle)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(OmahaRadius.sm))
+            .background(if (on) Omaha.colors.brandGlow else Omaha.colors.bgSurfaceSubtle)
             .clickable(enabled = !full, onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 7.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        BasicText(
-            row.ticker,
-            style = OmahaType.caption
-                .toTextStyle(
-                    color = when {
-                        on -> Omaha.colors.bgCanvas
-                        full -> Omaha.colors.textTertiary
-                        else -> Omaha.colors.textSecondary
-                    }
-                )
-                .copy(fontFamily = Omaha.fonts.mono)
-        )
-        row.healthScore?.let { score ->
-            val colors = Omaha.colors
-            Box(Modifier.padding(start = 6.dp)) {
-                BasicText(
-                    "$score",
-                    style = OmahaType.caption
-                        .toTextStyle(color = if (on) colors.bgCanvas else scoreColor(colors, score))
-                        .copy(fontFamily = Omaha.fonts.mono)
-                )
+        Column(Modifier.weight(1f)) {
+            BasicText(row.ticker, style = OmahaType.bodySm.toTextStyle(color = if (full) Omaha.colors.textTertiary else Omaha.colors.textPrimary).copy(fontFamily = Omaha.fonts.mono))
+            row.name?.let {
+                BasicText(it, style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary), maxLines = 1)
             }
+        }
+        row.healthScore?.let { score ->
+            BasicText("$score", style = OmahaType.caption.toTextStyle(color = scoreColor(Omaha.colors, score)).copy(fontFamily = Omaha.fonts.mono))
+        }
+        Box(Modifier.padding(start = 12.dp)) {
+            BasicText(if (on) "✓" else "+", style = OmahaType.bodyMd.toTextStyle(color = if (full) Omaha.colors.textTertiary else Omaha.colors.brandCyan))
         }
     }
 }

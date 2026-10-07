@@ -32,7 +32,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -46,6 +45,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.ColorFilter
@@ -59,9 +61,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.Dispatchers
@@ -81,15 +84,15 @@ import com.zandaulion.omaha.app.R
 import com.zandaulion.omaha.data.StockSearchResult
 import kotlinx.coroutines.delay
 
-/** Stable route names retain saved navigation; the four bottom-bar destinations are primary. */
+/** Stable route names retain saved navigation; three destinations are primary. */
 enum class OmahaTab(val label: String, val route: String, val icon: ImageVector) {
-    Review("Review", "review", IconScorecard),
+    Review("Review", "review", IconReview),
     Watchlist("Watchlist", "watchlist", IconWatchlist),
     Scorecard("Research", "deepdive", IconScorecard),
     Filter("Filter", "filter", IconFilter),
     Compare("Compare", "compare", IconCompare),
 
-    /** Kept for saved tab state from earlier builds; new navigation opens a modal. */
+    /** Settings is a full-screen secondary route, not a bottom-bar destination. */
     Settings("Settings", "settings", IconSettings)
 }
 
@@ -131,7 +134,6 @@ fun OmahaApp(
     var requestedSubtab by rememberSaveable { mutableStateOf(DeepDiveTab.Overview) }
     var navigationRequest by rememberSaveable { mutableStateOf(0) }
     var searchOpen by remember { mutableStateOf(false) }
-    var settingsOpen by remember { mutableStateOf(false) }
     // Not rememberSaveable: a glossary key is not navigation state, and
     // surviving a rotation with the sheet re-opened would be surprising.
     var explainKey by remember { mutableStateOf<String?>(null) }
@@ -187,9 +189,6 @@ fun OmahaApp(
         ai.open(ticker)
         navigateTo(OmahaTab.Scorecard)
     }
-    val settings: SettingsViewModel = viewModel()
-    val theme by settings.theme.collectAsState()
-    val systemDark = isSystemInDarkTheme()
     val appContext = LocalContext.current
     val appScope = rememberCoroutineScope()
     val isTablet = LocalConfiguration.current.smallestScreenWidthDp >= 600
@@ -225,9 +224,11 @@ fun OmahaApp(
         navigateBack()
     }
 
-    val selectedPrimaryTab = if (
-        tab == OmahaTab.Scorecard && requestedSubtab == DeepDiveTab.Thesis
-    ) OmahaTab.Review else tab
+    val selectedPrimaryTab = when (tab) {
+        OmahaTab.Review -> OmahaTab.Review
+        OmahaTab.Scorecard -> OmahaTab.Scorecard
+        else -> OmahaTab.Watchlist
+    }
     fun selectPrimaryTab(selected: OmahaTab) {
         if (selected == OmahaTab.Scorecard) {
             requestedSubtab = DeepDiveTab.Overview
@@ -253,18 +254,14 @@ fun OmahaApp(
         OmahaHeader(
             onHome = { navigateTo(OmahaTab.Watchlist) },
             onSearch = { searchOpen = true },
-            onTheme = {
-                val dark = theme == ThemeChoice.Dark || (theme == ThemeChoice.System && systemDark)
-                settings.setTheme(if (dark) ThemeChoice.Light else ThemeChoice.Dark)
-            },
-            onSettings = { settingsOpen = true }
+            onSettings = { navigateTo(OmahaTab.Settings) }
         )
         Row(
             Modifier
                 .weight(1f)
                 .fillMaxWidth()
         ) {
-            if (isTablet) {
+            if (isTablet && tab != OmahaTab.Settings) {
                 TabletNavigationRail(
                     selected = selectedPrimaryTab,
                     onSelect = ::selectPrimaryTab
@@ -392,13 +389,13 @@ fun OmahaApp(
                     )
                 }
 
-                    OmahaTab.Settings -> SettingsTab()
+                    OmahaTab.Settings -> SettingsPage(onBack = { navigateBack() })
                 }
             }
         }
         }
 
-        if (!isTablet) BottomNav(selectedPrimaryTab, ::selectPrimaryTab)
+        if (!isTablet && tab != OmahaTab.Settings) BottomNav(selectedPrimaryTab, ::selectPrimaryTab)
     }
 
     OmahaExplainSheet(
@@ -419,31 +416,6 @@ fun OmahaApp(
             }
         )
     }
-    if (settingsOpen) {
-        Dialog(
-            onDismissRequest = { settingsOpen = false },
-            properties = DialogProperties(usePlatformDefaultWidth = false)
-        ) {
-            Column(
-                Modifier
-                    .fillMaxWidth(if (isTablet) 0.82f else 0.94f)
-                    .widthIn(max = 760.dp)
-                    .fillMaxHeight(0.90f)
-                    .clip(RoundedCornerShape(OmahaRadius.lg))
-                    .background(Omaha.colors.bgSurface)
-            ) {
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    BasicText("⚙️ App Settings", style = OmahaType.title2.toTextStyle())
-                    HeaderAction("✕", "Close settings") { settingsOpen = false }
-                }
-                Box(Modifier.weight(1f)) { SettingsTab(showTitle = false) }
-            }
-        }
-    }
     } // Box
     } // CompositionLocalProvider
 }
@@ -452,7 +424,6 @@ fun OmahaApp(
 private fun OmahaHeader(
     onHome: () -> Unit,
     onSearch: () -> Unit,
-    onTheme: () -> Unit,
     onSettings: () -> Unit
 ) {
     Row(
@@ -476,10 +447,28 @@ private fun OmahaHeader(
             BasicText("Pocket Omaha", style = OmahaType.title2.toTextStyle())
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            HeaderAction("🔍", "Search", onSearch)
-            HeaderAction("🌓", "Toggle theme", onTheme)
-            HeaderAction("⚙️", "Settings", onSettings)
+            HeaderIconAction(IconSearch, "Search", onSearch)
+            HeaderIconAction(IconSettings, "Settings", onSettings)
         }
+    }
+}
+
+@Composable
+private fun HeaderIconAction(icon: ImageVector, description: String, onClick: () -> Unit) {
+    Box(
+        Modifier.size(40.dp).clip(RoundedCornerShape(50))
+            .background(Omaha.colors.bgSurfaceSubtle)
+            .border(1.dp, Omaha.colors.borderSubtle, RoundedCornerShape(50))
+            .semantics { contentDescription = description; role = Role.Button }
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Image(
+            painter = rememberVectorPainter(icon),
+            contentDescription = null,
+            colorFilter = ColorFilter.tint(Omaha.colors.textSecondary),
+            modifier = Modifier.size(20.dp)
+        )
     }
 }
 
@@ -489,7 +478,7 @@ private fun HeaderAction(symbol: String, description: String, onClick: () -> Uni
         Modifier.size(36.dp).clip(RoundedCornerShape(50))
             .background(Omaha.colors.bgSurfaceSubtle)
             .border(1.dp, Omaha.colors.borderSubtle, RoundedCornerShape(50))
-            .semantics { contentDescription = description }
+            .semantics { contentDescription = description; role = Role.Button }
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
@@ -513,6 +502,8 @@ private fun SearchTickerDialog(
     var searching by remember { mutableStateOf(false) }
     var searchError by remember { mutableStateOf<String?>(null) }
     var addedTicker by remember { mutableStateOf<String?>(null) }
+    val focusRequester = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
 
     LaunchedEffect(query) {
         results = emptyList()
@@ -531,38 +522,23 @@ private fun SearchTickerDialog(
 
     Dialog(onDismissRequest = onDismiss) {
         OmahaCard(modifier = Modifier.widthIn(max = 380.dp), contentPadding = 20.dp) {
-            BasicText("🔍 Search & Add Stock", style = OmahaType.title2.toTextStyle())
-            Box(Modifier.height(14.dp))
             Row(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(OmahaRadius.sm))
-                    .background(Omaha.colors.bgSurfaceSubtle)
-                    .clickable { choosingList = !choosingList }
-                    .padding(10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                BasicText("Add to Watchlist:", style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary))
-                BasicText(
-                    (lists.firstOrNull { it.id == targetId }?.name ?: "Watchlist") + "  ⌄",
-                    style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textPrimary)
-                )
+                BasicText("Search companies", style = OmahaType.title2.toTextStyle())
+                HeaderAction("✕", "Close search", onDismiss)
             }
-            if (choosingList) {
-                lists.forEach { list ->
-                    Box(Modifier.fillMaxWidth().clickable {
-                        targetId = list.id; choosingList = false
-                    }.padding(10.dp)) {
-                        BasicText(list.name, style = OmahaType.bodySm.toTextStyle())
-                    }
-                }
-            }
-            Box(Modifier.height(12.dp))
+            Box(Modifier.height(14.dp))
             BasicTextField(
                 value = query,
                 onValueChange = { query = it },
                 singleLine = true,
                 textStyle = OmahaType.bodyMd.toTextStyle(),
                 cursorBrush = SolidColor(Omaha.colors.brandCyan),
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(OmahaRadius.sm))
+                modifier = Modifier.fillMaxWidth().focusRequester(focusRequester)
+                    .clip(RoundedCornerShape(OmahaRadius.sm))
                     .background(Omaha.colors.bgSurfaceSubtle)
                     .border(1.dp, Omaha.colors.borderSubtle, RoundedCornerShape(OmahaRadius.sm))
                     .padding(12.dp),
@@ -576,6 +552,33 @@ private fun SearchTickerDialog(
                     }
                 }
             )
+            LaunchedEffect(Unit) {
+                focusRequester.requestFocus()
+                keyboard?.show()
+            }
+            Box(Modifier.height(10.dp))
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(OmahaRadius.sm))
+                    .background(Omaha.colors.bgSurfaceSubtle)
+                    .clickable { choosingList = !choosingList }
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                BasicText("Add to", style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary))
+                BasicText(
+                    (lists.firstOrNull { it.id == targetId }?.name ?: "Watchlist") + "  ⌄",
+                    style = OmahaType.caption.toTextStyle(color = Omaha.colors.textPrimary)
+                )
+            }
+            if (choosingList) {
+                lists.forEach { list ->
+                    Box(Modifier.fillMaxWidth().clickable {
+                        targetId = list.id; choosingList = false
+                    }.padding(10.dp)) {
+                        BasicText(list.name, style = OmahaType.bodySm.toTextStyle())
+                    }
+                }
+            }
             Box(Modifier.height(12.dp))
             if (query.isBlank()) {
                 BasicText("Popular:", style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary))
@@ -623,10 +626,10 @@ private fun SearchTickerDialog(
                                 color = Omaha.colors.textSecondary
                             ))
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                SearchAction(if (inList) "✓ Added" else "+ Add", primary = !inList) {
+                                SearchAction("Research", primary = true) { onOpen(result.ticker) }
+                                SearchAction(if (inList) "✓ Added" else "+ Add") {
                                     if (!inList) watchlist.addTicker(result.ticker, targetId) { addedTicker = it }
                                 }
-                                SearchAction("Research") { onOpen(result.ticker) }
                             }
                         }
                     }
@@ -652,6 +655,7 @@ private fun SearchTickerDialog(
 private fun SearchAction(label: String, primary: Boolean = false, onClick: () -> Unit) {
     Box(Modifier.padding(top = 8.dp).clip(RoundedCornerShape(OmahaRadius.sm))
         .background(if (primary) Omaha.colors.brandBlue else Omaha.colors.bgSurfaceSubtle)
+        .semantics { role = Role.Button }
         .clickable(onClick = onClick).padding(horizontal = 10.dp, vertical = 7.dp)) {
         BasicText(label, style = OmahaType.caption.toTextStyle(
             color = if (primary) Color.White else Omaha.colors.textPrimary
@@ -673,10 +677,10 @@ private fun TabletNavigationRail(selected: OmahaTab, onSelect: (OmahaTab) -> Uni
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        for (tab in listOf(OmahaTab.Review, OmahaTab.Watchlist, OmahaTab.Scorecard, OmahaTab.Compare)) {
+        for (tab in listOf(OmahaTab.Watchlist, OmahaTab.Review, OmahaTab.Scorecard)) {
             TabletNavTab(
                 tab = tab,
-                active = tab == selected || (tab == OmahaTab.Scorecard && selected == OmahaTab.Filter),
+                active = tab == selected,
                 onClick = { onSelect(tab) }
             )
         }
@@ -747,10 +751,10 @@ private fun BottomNav(selected: OmahaTab, onSelect: (OmahaTab) -> Unit) {
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            for (t in listOf(OmahaTab.Review, OmahaTab.Watchlist, OmahaTab.Scorecard, OmahaTab.Compare)) {
+            for (t in listOf(OmahaTab.Watchlist, OmahaTab.Review, OmahaTab.Scorecard)) {
                 NavTab(
                     tab = t,
-                    active = t == selected || (t == OmahaTab.Scorecard && selected == OmahaTab.Filter),
+                    active = t == selected,
                     onClick = { onSelect(t) },
                     modifier = Modifier.weight(1f)
                 )
@@ -783,6 +787,7 @@ private fun NavTab(
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
+                role = Role.Tab,
                 onClick = onClick
             )
             .padding(vertical = 8.dp),
@@ -844,6 +849,21 @@ private fun PlaceholderScreen(title: String, detail: String) {
  * reason is ownership: this is the only copy of what someone wrote, and it
  * should land somewhere they chose and can find again.
  */
+@Composable
+private fun SettingsPage(onBack: () -> Unit) {
+    Column(Modifier.fillMaxSize()) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            ReviewAction("← Back", onClick = onBack)
+            BasicText("App settings", style = OmahaType.title2.toTextStyle())
+        }
+        Box(Modifier.weight(1f)) { SettingsTab(showTitle = false) }
+    }
+}
+
 @Composable
 private fun SettingsTab(showTitle: Boolean = true) {
     val vm: SettingsViewModel = viewModel()

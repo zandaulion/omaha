@@ -26,6 +26,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.zandaulion.omaha.data.CompanyReview
 import com.zandaulion.omaha.data.ReviewOverview
@@ -174,7 +178,7 @@ private fun ReviewOverviewCard(
                 style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary)
             )
             BasicText(
-                "Some companies or periods may be missing. No recorded alerts does not mean nothing changed. Your written conditions are checked by you.",
+                "Automated checks can miss filings; revisit your own conditions too.",
                 style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary)
             )
             ReviewAction(
@@ -209,29 +213,32 @@ private fun CompanyReviewCard(company: CompanyReview, onReview: () -> Unit, onRe
         "reviewed" -> Omaha.colors.healthGood
         else -> Omaha.colors.brandCyan
     }
-    OmahaCard {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    OmahaCard(contentPadding = 14.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                BasicText(company.ticker, style = OmahaType.title2.toTextStyle())
-                BasicText(company.label, style = OmahaType.caption.toTextStyle(color = tint))
+                Column(Modifier.weight(1f)) {
+                    BasicText(company.ticker, style = OmahaType.title2.toTextStyle())
+                    BasicText(company.name, style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                BasicText(if (company.hasThesis) company.label else "Needs reasons", style = OmahaType.caption.toTextStyle(color = tint), maxLines = 1)
             }
-            BasicText(company.name, style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary))
-            BasicText(company.reason, style = OmahaType.bodySm.toTextStyle())
-            company.changes.take(3).forEach { change ->
+            BasicText(company.reason, style = OmahaType.bodySm.toTextStyle(), maxLines = 2, overflow = TextOverflow.Ellipsis)
+            company.changes.firstOrNull()?.let { change ->
                 Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(OmahaRadius.sm))
-                    .background(Omaha.colors.bgSurfaceSubtle).padding(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    .background(Omaha.colors.bgSurfaceSubtle).padding(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     BasicText(change.title, style = OmahaType.bodySm.toTextStyle())
-                    BasicText(change.body, style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary))
-                    BasicText(reviewDate(change.at), style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary))
+                    BasicText(change.body, style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary), maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
             }
             company.lastReviewedAt?.let {
                 BasicText("Last review: ${reviewDate(it)}" + company.assessment?.let { value -> " · ${reviewAssessmentLabel(value)}" }.orEmpty(),
                     style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary))
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ReviewAction(if (!company.hasThesis) "Add your reasons" else if (company.lastReviewedAt == null) "First review" else "Review", primary = true, onClick = onReview)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(Modifier.weight(1f)) {
+                    ReviewAction(if (!company.hasThesis) "Add reasons" else if (company.lastReviewedAt == null) "First review" else "Review now", primary = true, onClick = onReview)
+                }
                 ReviewAction("Research", onClick = onResearch)
             }
         }
@@ -255,6 +262,7 @@ internal fun ReviewAction(label: String, primary: Boolean = false, enabled: Bool
     Box(Modifier.clip(RoundedCornerShape(OmahaRadius.sm))
         .background(if (primary && enabled) Omaha.colors.brandBlue else Omaha.colors.bgSurfaceSubtle)
         .border(1.dp, Omaha.colors.borderSubtle, RoundedCornerShape(OmahaRadius.sm))
+        .semantics { role = Role.Button }
         .clickable(enabled = enabled, onClick = onClick).padding(horizontal = 12.dp, vertical = 10.dp)) {
         BasicText(label, style = OmahaType.bodySm.toTextStyle(
             color = if (primary && enabled) Color.White else Omaha.colors.textSecondary))

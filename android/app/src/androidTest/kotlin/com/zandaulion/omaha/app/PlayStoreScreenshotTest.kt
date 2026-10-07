@@ -83,7 +83,7 @@ class PlayStoreScreenshotTest {
         // Apple Inc. is present on both Review and Watchlist. Waiting for the
         // watchlist-only heading prevents a fast device from tapping the old
         // Review card while Compose is replacing the screen.
-        waitForText("Current watchlist")
+        waitForText("STARTER WATCHLIST")
         tapText("AAPL")
         // On compact 7-inch devices the insight cards are below the first
         // viewport and are not composed yet. The Back action only appears
@@ -91,25 +91,25 @@ class PlayStoreScreenshotTest {
         waitForText("← Back")
         capture("03-research-overview")
 
-        scrollUpUntilText("12-Pt Checklist")
-        tapText("12-Pt Checklist")
+        scrollUpUntilText("12-point checklist")
+        tapText("12-point checklist")
         scrollUpUntilText("Altman Z-Score")
         capture("04-checklist")
 
-        revealTabAndTap("DCF Sandbox", anchorText = "12-Pt Checklist")
+        revealTabAndTap("DCF sandbox", anchorText = "12-point checklist")
         if (!device.wait(Until.hasObject(By.text("Estimated fair value")), 2_500)) {
             // A swipe that is still settling can consume the first tap on
             // older cloud images. Re-tapping the selected tab is harmless.
-            revealTabAndTap("DCF Sandbox", anchorText = "12-Pt Checklist")
+            revealTabAndTap("DCF sandbox", anchorText = "12-point checklist")
         }
         scrollUpUntilText("Estimated fair value")
         capture("05-dcf")
 
-        tapDescription("Compare")
+        tapDescription("Watchlist")
+        waitForText("STARTER WATCHLIST")
+        tapText("Compare")
         waitForText("Side-by-Side Peer Comparison", substring = true)
-        // Tablet navigation also has a visible "Compare" label. Ignore the
-        // bottom navigation area, then pick the rightmost in-page match.
-        tapRightmostText("Compare")
+        tapText("Change companies")
         waitForText("Pillar comparison")
         capture("06-compare")
     }

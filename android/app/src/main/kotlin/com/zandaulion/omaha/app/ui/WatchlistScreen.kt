@@ -106,7 +106,8 @@ fun WatchlistScreen(
             onChooseList = { controlSheet = "list" },
             onOpenSearch = onOpenSearch,
             onOpenSort = { controlSheet = "sort" },
-            onOpenTools = { controlSheet = "tools" },
+            onFilter = onFilter,
+            onCompare = onCompare,
             onSelect = onSelect,
             onRemove = { pendingTickerRemoval = it }
         )
@@ -132,14 +133,6 @@ fun WatchlistScreen(
         ) {
             sortBy = it
             controlSheet = null
-        }
-        "tools" -> ChoiceDialog(
-            title = "Watchlist tools",
-            options = listOf("filter" to "Filter companies", "compare" to "Compare companies"),
-            onDismiss = { controlSheet = null }
-        ) {
-            controlSheet = null
-            if (it == "filter") onFilter() else onCompare()
         }
         "create" -> EntryDialog(
             title = "New watchlist",
@@ -188,7 +181,8 @@ private fun WatchlistReadyContent(
     onChooseList: () -> Unit,
     onOpenSearch: () -> Unit,
     onOpenSort: () -> Unit,
-    onOpenTools: () -> Unit,
+    onFilter: () -> Unit,
+    onCompare: () -> Unit,
     onSelect: (String) -> Unit,
     onRemove: (String) -> Unit
 ) {
@@ -215,7 +209,8 @@ private fun WatchlistReadyContent(
                             sortBy = sortBy,
                             onOpenSearch = onOpenSearch,
                             onOpenSort = onOpenSort,
-                            onOpenTools = onOpenTools
+                            onFilter = onFilter,
+                            onCompare = onCompare
                         )
                     }
                     notice?.let { message ->
@@ -268,7 +263,8 @@ private fun WatchlistReadyContent(
                         sortBy = sortBy,
                         onOpenSearch = onOpenSearch,
                         onOpenSort = onOpenSort,
-                        onOpenTools = onOpenTools
+                        onFilter = onFilter,
+                        onCompare = onCompare
                     )
                 }
                 notice?.let { message ->
@@ -321,6 +317,7 @@ private fun PortfolioHero(
     onChooseList: () -> Unit
 ) {
     val shape = RoundedCornerShape(OmahaRadius.lg)
+    var detailsOpen by rememberSaveable(health.watchlistName) { mutableStateOf(false) }
     Box(
         Modifier
             .fillMaxWidth()
@@ -342,11 +339,19 @@ private fun PortfolioHero(
             )
 
             Column(Modifier.padding(20.dp)) {
+                val isStarter = health.watchlistName in setOf("The Compounders", "AI & Semiconductors", "Defensive Aristocrats")
                 BasicText(
-                    "Current watchlist",
+                    if (isStarter) "STARTER WATCHLIST" else "CURRENT WATCHLIST",
                     style = OmahaType.caption.toTextStyle(color = Omaha.colors.brandCyan)
                         .copy(fontWeight = FontWeight.Bold)
                 )
+                if (isStarter) {
+                    Box(Modifier.height(3.dp))
+                    BasicText(
+                        "Example companies are preloaded. Change this list or create your own.",
+                        style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary)
+                    )
+                }
                 Box(Modifier.height(5.dp))
                 Row(
                     Modifier
@@ -392,29 +397,34 @@ private fun PortfolioHero(
                     HeroGradeBadge(health)
                 }
 
-                Box(Modifier.height(16.dp))
-                val names = listOf("Solvency", "Profitability", "Valuation", "Growth", "Capital Return")
-                names.forEachIndexed { index, name ->
-                    PillarMeter(name, health.pillarScores.getOrNull(index))
-                    if (index != names.lastIndex) Box(Modifier.height(10.dp))
-                }
-
-                Box(Modifier.height(16.dp))
-                Box(Modifier.fillMaxWidth().height(1.dp).background(Omaha.colors.borderSubtle))
-                Box(Modifier.height(10.dp))
                 val totals = health.checklistTotals
+                Box(Modifier.height(8.dp))
                 BasicText(
                     "🟢 ${totals.pass} pass · 🟡 ${totals.watch} watch · 🔴 ${totals.fail} fail" +
                         if (totals.notReported > 0) " · ${totals.notReported} not reported" else "",
                     style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary)
                 )
-                Box(Modifier.height(4.dp))
+                Box(Modifier.height(8.dp))
                 BasicText(
-                    if (health.weighting == "market-cap")
-                        "Company-size weighted average of fundamental scores. This does not use your position sizes."
-                    else "Average of available fundamental scores. Company sizes were unavailable; this does not use your position sizes.",
-                    style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary)
+                    if (detailsOpen) "Hide portfolio breakdown  ⌃" else "View portfolio breakdown  ⌄",
+                    modifier = Modifier.fillMaxWidth().clickable { detailsOpen = !detailsOpen }.padding(vertical = 4.dp),
+                    style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.brandCyan).copy(fontWeight = FontWeight.Bold)
                 )
+                if (detailsOpen) {
+                    Box(Modifier.height(12.dp))
+                    val names = listOf("Solvency", "Profitability", "Valuation", "Growth", "Capital Return")
+                    names.forEachIndexed { index, name ->
+                        PillarMeter(name, health.pillarScores.getOrNull(index))
+                        if (index != names.lastIndex) Box(Modifier.height(10.dp))
+                    }
+                    Box(Modifier.height(12.dp))
+                    BasicText(
+                        if (health.weighting == "market-cap")
+                            "Company-size weighted average; this does not use your position sizes."
+                        else "Average of available scores; this does not use your position sizes.",
+                        style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary)
+                    )
+                }
 
                 // States what the average is an average of. A composite over three
                 // of five holdings is a different claim from one over all five, and
@@ -745,7 +755,8 @@ private fun WatchlistToolbar(
     sortBy: String,
     onOpenSearch: () -> Unit,
     onOpenSort: () -> Unit,
-    onOpenTools: () -> Unit
+    onFilter: () -> Unit,
+    onCompare: () -> Unit
 ) {
     val compactSortLabel = when (sortBy) {
         "change" -> "Change"
@@ -753,14 +764,15 @@ private fun WatchlistToolbar(
         "pe" -> "P/E"
         else -> "Score"
     }
-    Row(
-        Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        ControlButton("+ Add stock", primary = true, onClick = onOpenSearch)
-        SelectControl("↕ $compactSortLabel", onClick = onOpenSort)
-        ControlButton("•••", onClick = onOpenTools)
+    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(Modifier.weight(1f)) { ControlButton("+ Add company", primary = true, onClick = onOpenSearch) }
+            SelectControl("↕ $compactSortLabel", onClick = onOpenSort)
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(Modifier.weight(1f)) { ControlButton("Filter", onClick = onFilter) }
+            Box(Modifier.weight(1f)) { ControlButton("Compare", onClick = onCompare) }
+        }
     }
 }
 
@@ -771,6 +783,7 @@ private fun SelectControl(label: String, onClick: () -> Unit) {
             .clip(RoundedCornerShape(OmahaRadius.sm))
             .background(Omaha.colors.bgSurfaceSubtle)
             .border(1.dp, Omaha.colors.borderSubtle, RoundedCornerShape(OmahaRadius.sm))
+            .semantics { role = Role.Button }
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 9.dp)
     ) {
@@ -789,6 +802,7 @@ private fun ControlButton(label: String, primary: Boolean = false, onClick: () -
             .background(if (primary) Omaha.colors.brandBlue else Omaha.colors.bgSurfaceSubtle)
             .border(1.dp, if (primary) Omaha.colors.brandBlue else Omaha.colors.borderSubtle,
                 RoundedCornerShape(OmahaRadius.sm))
+            .semantics { role = Role.Button }
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {

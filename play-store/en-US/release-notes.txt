@@ -1,10 +1,9 @@
-Initial Android release.
+Version 0.6 makes everyday research faster and easier to navigate.
 
-• Custom watchlists with sorting and quick company removal
-• Home-screen widgets with watchlist health and score changes
-• Review queue for recorded changes and reviews that are due
-• Fundamental scorecards, trends, valuation tools and DCF scenarios
-• Saved reasons, notes and dated review history
-• Side-by-side comparison for up to five companies
-• Tap-to-explain financial metrics
-• Local JSON backup and restore
+• Simplified navigation around Watchlist, Review and Research
+• A more compact watchlist with Filter and Compare always visible
+• Clearer filters, useful presets and phone-friendly result cards
+• Faster search with automatic keyboard focus and clearer actions
+• A compact review queue and easier-to-find research sections
+• Deduplicated company comparison with automatic results
+• Full-screen, reorganised settings

@@ -4,7 +4,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,8 +12,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
@@ -27,7 +24,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.zandaulion.omaha.data.CompareCandidates
@@ -63,7 +59,6 @@ fun CompareScreen(
     onClosePicker: () -> Unit
 ) {
     var pickerOpen by remember { mutableStateOf(false) }
-    var compared by remember(tickers) { mutableStateOf(false) }
 
     BackHandler(enabled = pickerOpen) {
         pickerOpen = false
@@ -89,30 +84,22 @@ fun CompareScreen(
                 CompareSlots(tickers = tickers, onDrop = onDrop)
                 Box(Modifier.height(16.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    BasicText("+ Add",
-                        modifier = Modifier.weight(1f)
+                    BasicText(if (tickers.isEmpty()) "+ Add companies" else "Change companies",
+                        modifier = Modifier.fillMaxWidth()
                             .clip(RoundedCornerShape(8.dp))
                             .background(Omaha.colors.bgSurfaceSubtle)
-                            .clickable(enabled = tickers.size < MAX_COMPARED) {
+                            .clickable {
                                 pickerOpen = true
                                 onOpenPicker()
                             }.padding(vertical = 9.dp),
                         style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textPrimary)
                             .copy(textAlign = androidx.compose.ui.text.style.TextAlign.Center, fontWeight = FontWeight.Bold))
-                    BasicText("Compare",
-                        modifier = Modifier.weight(0.5f)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(if (tickers.size >= 2) Omaha.colors.brandCyan else Color(0xFFA5D8F5))
-                            .clickable(enabled = tickers.size >= 2) { compared = true }
-                            .padding(vertical = 9.dp),
-                        style = OmahaType.bodySm.toTextStyle(color = Color.White)
-                            .copy(textAlign = androidx.compose.ui.text.style.TextAlign.Center, fontWeight = FontWeight.Bold))
                 }
             }
 
-            if (tickers.size < 2 || !compared) {
+            if (tickers.size < 2) {
                 BasicText(
-                    if (tickers.size < 2) "Pick at least two to compare." else "Tap Compare to see the results.",
+                    "Pick at least two companies. Results appear automatically.",
                     modifier = Modifier.fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
                         .background(Omaha.colors.bgSurfaceSubtle)
@@ -127,29 +114,27 @@ fun CompareScreen(
                 OmahaCard(contentPadding = 12.dp) {
                     fun values(field: (Holding) -> String) =
                         tickers.map { t -> cell(holdings[t], field) }
-                    CompareRow("", tickers, header = true)
-                    Divider()
-                    CompareRow("Fundamental score", values { h -> h.healthScore?.let { "$it/100" } ?: EM_DASH },
+                    CompareRow("Fundamental score", tickers, values { h -> h.healthScore?.let { "$it/100" } ?: EM_DASH },
                         explainKey = "Health score")
-                    CompareRow("Industry", values(::industryOf), explainKey = "Industry")
-                    CompareRow("Altman Z-Score", values { h -> fmtRatio(h.altmanZ, 2) },
+                    CompareRow("Industry", tickers, values(::industryOf), explainKey = "Industry", fullWidth = true)
+                    CompareRow("Altman Z-Score", tickers, values { h -> fmtRatio(h.altmanZ, 2) },
                         explainKey = "Altman Z-Score")
-                    CompareRow("Piotroski F-Score", values { h -> h.piotroskiScore?.let { "$it/9" } ?: EM_DASH },
+                    CompareRow("Piotroski F-Score", tickers, values { h -> h.piotroskiScore?.let { "$it/9" } ?: EM_DASH },
                         explainKey = "Piotroski F-Score")
-                    CompareRow("ROIC", values { h -> fmtPercent(h.roicPct) }, explainKey = "ROIC")
-                    CompareRow("ROIC − WACC", values { h -> fmtPercent(h.roicSpread, signed = true) })
-                    CompareRow("Cash conversion", values { h -> fmtPercent(h.fcfConversionPct, 0) })
-                    CompareRow("Gross margin", values { h -> fmtPercent(h.grossMargin?.times(100)) })
-                    CompareRow("Operating margin", values { h -> fmtPercent(h.operatingMargin?.times(100)) })
-                    CompareRow("Net cash / (debt)", values { h ->
+                    CompareRow("ROIC", tickers, values { h -> fmtPercent(h.roicPct) }, explainKey = "ROIC")
+                    CompareRow("ROIC − WACC", tickers, values { h -> fmtPercent(h.roicSpread, signed = true) })
+                    CompareRow("Cash conversion", tickers, values { h -> fmtPercent(h.fcfConversionPct, 0) })
+                    CompareRow("Gross margin", tickers, values { h -> fmtPercent(h.grossMargin?.times(100)) })
+                    CompareRow("Operating margin", tickers, values { h -> fmtPercent(h.operatingMargin?.times(100)) })
+                    CompareRow("Net cash / (debt)", tickers, values { h ->
                         fmtBillions(h.netCashBillions, h.reportingCurrency ?: h.currency)
                     })
-                    CompareRow("Current ratio", values { h -> fmtRatio(h.currentRatio, 2) })
-                    CompareRow("Trailing P/E", values { h -> fmtRatio(h.peRatio, 1, "x") },
+                    CompareRow("Current ratio", tickers, values { h -> fmtRatio(h.currentRatio, 2) })
+                    CompareRow("Trailing P/E", tickers, values { h -> fmtRatio(h.peRatio, 1, "x") },
                         explainKey = "Trailing P/E")
-                    CompareRow("P/E vs 5y median", values { h -> fmtPercent(h.peVsMedianPct, 0, signed = true) })
-                    CompareRow("Revenue CAGR", values { h -> fmtPercent(h.revenueCagr?.times(100), signed = true) })
-                    CompareRow("Checklist passed", values { h ->
+                    CompareRow("P/E vs 5y median", tickers, values { h -> fmtPercent(h.peVsMedianPct, 0, signed = true) })
+                    CompareRow("Revenue CAGR", tickers, values { h -> fmtPercent(h.revenueCagr?.times(100), signed = true) })
+                    CompareRow("Checklist passed", tickers, values { h ->
                         val c = h.checklistTotals
                         val scored = c.pass + c.watch + c.fail
                         if (scored > 0) "${c.pass}/$scored" else EM_DASH
@@ -166,6 +151,7 @@ fun CompareScreen(
                 picked = tickers,
                 maxPicked = MAX_COMPARED,
                 onPick = onPick,
+                onDrop = onDrop,
                 onClose = {
                     pickerOpen = false
                     onClosePicker()
@@ -190,32 +176,29 @@ private fun industryOf(h: Holding): String {
     }
 }
 
-/** Five fixed slots, wrapping three then two as on the PWA's narrow layout. */
+/** Only selected companies take space; tapping one removes it. */
 @Composable
 private fun CompareSlots(tickers: List<String>, onDrop: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        for (row in 0..1) {
+        for (row in tickers.chunked(2)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                repeat(if (row == 0) 3 else 2) { col ->
-                    val ticker = tickers.getOrNull(row * 3 + col)
+                row.forEach { ticker ->
                     Row(
                         Modifier.weight(1f).height(40.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(if (ticker != null) Omaha.colors.bgSurfaceSubtle else Omaha.colors.bgSurface)
-                            .border(1.dp, if (ticker != null) Omaha.colors.brandCyan else Omaha.colors.borderSubtle,
+                            .background(Omaha.colors.bgSurfaceSubtle)
+                            .border(1.dp, Omaha.colors.brandCyan,
                                 RoundedCornerShape(12.dp))
-                            .then(if (ticker != null) Modifier.clickable { onDrop(ticker) } else Modifier),
+                            .clickable { onDrop(ticker) },
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        if (ticker != null) {
-                            BasicText(ticker, style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textPrimary)
-                                .copy(fontFamily = Omaha.fonts.mono, fontWeight = FontWeight.Bold))
-                            BasicText(" ×", style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textTertiary))
-                        }
+                        BasicText(ticker, style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textPrimary)
+                            .copy(fontFamily = Omaha.fonts.mono, fontWeight = FontWeight.Bold))
+                        BasicText(" ×", style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textTertiary))
                     }
-                    if (row == 1 && col == 1) Box(Modifier.weight(1f))
                 }
+                if (row.size == 1) Box(Modifier.weight(1f))
             }
         }
     }
@@ -230,16 +213,14 @@ private fun CompareSlots(tickers: List<String>, onDrop: (String) -> Unit) {
 @Composable
 private fun CompareRow(
     label: String,
+    tickers: List<String>,
     values: List<String>,
-    header: Boolean = false,
     explainKey: String? = null,
-    valueExplainKeys: List<String>? = null
+    valueExplainKeys: List<String>? = null,
+    fullWidth: Boolean = false
 ) {
-    Row(
-        Modifier.fillMaxWidth().padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(Modifier.width(96.dp)) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+        Box(Modifier.fillMaxWidth()) {
             val labelStyle = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary)
             if (explainKey != null) {
                 ExplainableLabel(key = explainKey, text = label, style = labelStyle)
@@ -247,22 +228,23 @@ private fun CompareRow(
                 BasicText(label, style = labelStyle)
             }
         }
-        for ((i, v) in values.withIndex()) {
-            Box(Modifier.weight(1f)) {
-                val valueStyle = (if (header) OmahaType.bodySm else OmahaType.caption)
-                    .toTextStyle(
-                        color = if (header) Omaha.colors.textPrimary
-                        else Omaha.colors.textSecondary
-                    )
-                    .copy(fontFamily = Omaha.fonts.mono)
-                val valueKey = valueExplainKeys?.getOrNull(i)
-                if (valueKey != null) {
-                    ExplainableLabel(key = valueKey, text = v, style = valueStyle)
-                } else {
-                    BasicText(v, style = valueStyle)
+        Box(Modifier.height(6.dp))
+        values.withIndex().chunked(if (fullWidth) 1 else 2).forEach { pair ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                pair.forEach { (i, v) ->
+                    Row(Modifier.weight(1f).background(Omaha.colors.bgSurfaceSubtle, RoundedCornerShape(6.dp)).padding(7.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                        BasicText(tickers.getOrElse(i) { "" }, style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary).copy(fontFamily = Omaha.fonts.mono))
+                        val valueStyle = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary).copy(fontFamily = Omaha.fonts.mono)
+                        val valueKey = valueExplainKeys?.getOrNull(i)
+                        if (valueKey != null) ExplainableLabel(key = valueKey, text = v, style = valueStyle)
+                        else BasicText(v, style = valueStyle)
+                    }
                 }
+                if (pair.size == 1 && !fullWidth) Box(Modifier.weight(1f))
             }
+            Box(Modifier.height(6.dp))
         }
+        Divider()
     }
 }
 

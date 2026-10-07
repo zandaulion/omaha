@@ -83,3 +83,17 @@ val IconSettings: ImageVector = featherIcon(
     "M4.2 19.8 L6.3 17.7",
     "M17.7 6.3 L19.8 4.2"
 )
+
+/** Magnifying glass. */
+val IconSearch: ImageVector = featherIcon(
+    "search",
+    "M21 21 L16.65 16.65",
+    "M18 11 A7 7 0 1 1 4 11 A7 7 0 1 1 18 11 Z"
+)
+
+/** Review queue: a circled check. */
+val IconReview: ImageVector = featherIcon(
+    "review",
+    "M22 12 A10 10 0 1 1 2 12 A10 10 0 1 1 22 12 Z",
+    "M8 12 L11 15 L16 9"
+)
