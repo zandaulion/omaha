@@ -78,7 +78,7 @@ fun WatchlistScreen(
     onSelectList: (String) -> Unit = {},
     onOpenSearch: () -> Unit = {},
     onRemoveTicker: (String) -> Unit = {},
-    onCreateList: (String) -> Unit = {},
+    onCreateList: (String, (String?) -> Unit) -> Unit = { _, done -> done(null) },
     onDeleteList: (String) -> Unit = {},
     onFilter: () -> Unit = {},
     onCompare: () -> Unit = {}
@@ -140,9 +140,11 @@ fun WatchlistScreen(
             submitLabel = "Create",
             uppercase = false,
             onDismiss = { controlSheet = null }
-        ) {
-            onCreateList(it)
-            controlSheet = null
+        ) { name, onResult ->
+            onCreateList(name) { error ->
+                onResult(error)
+                if (error == null) controlSheet = null
+            }
         }
         else -> if (controlSheet?.startsWith("delete-list:") == true) {
             val id = controlSheet!!.substringAfter("delete-list:")
@@ -1003,18 +1005,33 @@ private fun EntryDialog(
     submitLabel: String,
     uppercase: Boolean,
     onDismiss: () -> Unit,
-    onSubmit: (String) -> Unit
+    onSubmit: (String, (String?) -> Unit) -> Unit
 ) {
     var text by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    var submitting by remember { mutableStateOf(false) }
     Dialog(onDismissRequest = onDismiss) {
         OmahaCard(modifier = Modifier.widthIn(max = 380.dp), contentPadding = 20.dp) {
             BasicText(title, style = OmahaType.title2.toTextStyle())
             Box(Modifier.height(16.dp))
-            InlineField(text, placeholder) { text = if (uppercase) it.uppercase() else it }
+            InlineField(text, placeholder) {
+                text = if (uppercase) it.uppercase() else it
+                error = null
+            }
+            error?.let {
+                Box(Modifier.height(8.dp))
+                BasicText(it, style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.healthRisk))
+            }
             Box(Modifier.height(16.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ControlButton("Cancel", onClick = onDismiss)
-                Pill2(submitLabel, text.isNotBlank()) { onSubmit(text.trim()) }
+                Pill2(if (submitting) "Creating…" else submitLabel, text.isNotBlank() && !submitting) {
+                    submitting = true
+                    onSubmit(text.trim()) {
+                        submitting = false
+                        error = it
+                    }
+                }
             }
         }
     }

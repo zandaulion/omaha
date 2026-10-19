@@ -1,6 +1,8 @@
 package com.zandaulion.omaha.data
 
 import com.zandaulion.omaha.engine.BackupEngine
+import com.zandaulion.omaha.engine.JsBridgeException
+import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -51,4 +53,16 @@ class BackupIo(
     }.getOrDefault(0)
 
     data class ImportResult(val theses: Int, val watchlists: Int)
+}
+
+/** Translate restore failures without exposing engine names or parser internals. */
+fun backupRestoreMessage(error: Throwable): String = when {
+    error is IOException || error is SecurityException ->
+        "Could not read that file. Choose an accessible Pocket Omaha backup and try again."
+    error is JsBridgeException &&
+        error.message?.startsWith("mergeBackup: This backup is version ") == true ->
+        "This backup was created by a newer version of Pocket Omaha. Update the app before restoring it."
+    error is JsBridgeException ->
+        "Could not restore this file. Choose a valid Pocket Omaha JSON backup exported from Settings."
+    else -> "Could not restore the backup. Please try again."
 }

@@ -3,6 +3,8 @@ package com.zandaulion.omaha.app.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.zandaulion.omaha.data.DuplicateWatchlistNameException
+import kotlinx.coroutines.CancellationException
 import com.zandaulion.omaha.data.WatchlistRepository
 import com.zandaulion.omaha.data.WatchlistRow
 import com.zandaulion.omaha.data.WatchlistView
@@ -43,14 +45,19 @@ class WatchlistViewModel(app: Application) : AndroidViewModel(app) {
     val filterUniverse: StateFlow<List<Holding>> = _filterUniverse.asStateFlow()
 
     fun refreshFilterUniverse() {
-        viewModelScope.launch {
-            _filterUniverse.value = repository.filterUniverse()
+        val id = currentId ?: return
+        filterJob?.cancel()
+        _filterUniverse.value = emptyList()
+        filterJob = viewModelScope.launch {
+            val holdings = repository.filterUniverse(id)
+            if (currentId == id) _filterUniverse.value = holdings
         }
     }
 
     private val _notice = MutableStateFlow<String?>(null)
     val notice: StateFlow<String?> = _notice.asStateFlow()
 
+    private var filterJob: kotlinx.coroutines.Job? = null
     private var currentId: String? = null
     val activeId: String? get() = currentId
 
@@ -63,6 +70,8 @@ class WatchlistViewModel(app: Application) : AndroidViewModel(app) {
         // immediately, even while financial data for the list is still loading.
         if (watchlistId != null) currentId = watchlistId
         _state.value = WatchlistUiState.Loading
+        filterJob?.cancel()
+        _filterUniverse.value = emptyList()
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
             try {
@@ -119,11 +128,20 @@ class WatchlistViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun createWatchlist(name: String) {
+    fun createWatchlist(name: String, onResult: (String?) -> Unit) {
         viewModelScope.launch {
-            val id = repository.createWatchlist(name)
-            _notice.value = "Created \"$name\"."
-            load(id)
+            try {
+                val id = repository.createWatchlist(name)
+                _notice.value = "Created \"$name\"."
+                onResult(null)
+                load(id)
+            } catch (err: CancellationException) {
+                throw err
+            } catch (err: DuplicateWatchlistNameException) {
+                onResult(err.message)
+            } catch (err: Exception) {
+                onResult("Could not create the watchlist. Please try again.")
+            }
         }
     }
 

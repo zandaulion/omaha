@@ -101,7 +101,7 @@ fun AiStatusSection(
                     )
                 }
                 else -> PillButton(
-                    if (state.summary == null) "Generate analysis" else "Regenerate (1 credit)",
+                    if (state.summary == null) "Generate analysis (1 credit)" else "Regenerate (1 credit)",
                     enabled = state.busy == null,
                     onClick = onGenerate
                 )

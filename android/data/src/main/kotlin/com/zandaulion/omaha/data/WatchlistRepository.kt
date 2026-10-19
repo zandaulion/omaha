@@ -118,9 +118,10 @@ class WatchlistRepository(
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
-    /** The same scored, previously seen universe as the PWA's filter. */
-    suspend fun filterUniverse(): List<Holding> = withContext(Dispatchers.IO) {
-        stockCache?.allScoredRecords().orEmpty().mapNotNull { row ->
+    /** Cached scores for members of the selected watchlist only. */
+    suspend fun filterUniverse(watchlistId: String): List<Holding> = withContext(Dispatchers.IO) {
+        val members = watchedTickers(dao.watchlists(), watchlistId).toSet()
+        stockCache?.allScoredRecords().orEmpty().filter { it.ticker in members }.mapNotNull { row ->
             runCatching {
                 val record = json.parseToJsonElement(row.recordJson).jsonObject
                 fun embedded(key: String): JsonObject? = record[key]?.jsonPrimitive?.contentOrNull
@@ -350,7 +351,11 @@ class WatchlistRepository(
     suspend fun createWatchlist(name: String): String = withContext(Dispatchers.IO) {
         val clean = name.trim().ifEmpty { "New watchlist" }
         val base = clean.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-').ifEmpty { "list" }
-        val taken = watchlists().map { it.id }.toSet()
+        val lists = watchlists()
+        if (lists.any { it.name.trim().equals(clean, ignoreCase = true) }) {
+            throw DuplicateWatchlistNameException()
+        }
+        val taken = lists.map { it.id }.toSet()
         val id = generateSequence(0) { it + 1 }
             .map { if (it == 0) base else "$base-$it" }
             .first { it !in taken }
@@ -528,3 +533,5 @@ private fun JsonObject.num(key: String): Double? =
 
 internal fun isoNow(): String =
     java.time.format.DateTimeFormatter.ISO_INSTANT.format(java.time.Instant.now())
+
+class DuplicateWatchlistNameException : IllegalArgumentException("A watchlist with this name already exists.")

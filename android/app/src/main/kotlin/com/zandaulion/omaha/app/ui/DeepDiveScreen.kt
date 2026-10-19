@@ -61,7 +61,7 @@ enum class DeepDiveTab(val label: String) {
     Overview("Overview"),
     Thesis("My reasons"),
     Checklist("12-point checklist"),
-    Trends("5-year trends"),
+    Trends("Historical trends"),
     Dcf("DCF sandbox"),
     Ai("AI analysis")
 }
@@ -241,7 +241,9 @@ private fun Loaded(
                         "Revenue vs. free cash flow",
                         summary = revenueSummary(stock)
                     ) {
-                        RevenueFcfChart(h.years, h.revenue, h.freeCashFlow, bs.reportingCurrency)
+                        HistoryViewport(h.years.size) {
+                            RevenueFcfChart(h.years, h.revenue, h.freeCashFlow, bs.reportingCurrency)
+                        }
                     }
                 }
                 item {
@@ -251,12 +253,16 @@ private fun Loaded(
                 }
                 item {
                     ChartCard("Margin trajectory", summary = marginSummary(bs)) {
-                        MarginTrendChart(h.years, h.grossMarginPct, h.operatingMarginPct)
+                        HistoryViewport(h.years.size) {
+                            MarginTrendChart(h.years, h.grossMarginPct, h.operatingMarginPct)
+                        }
                     }
                 }
                 item {
                     ChartCard("Shares outstanding") {
-                        SharesChart(h.years, h.sharesOutstanding, h.shareChangeYoY)
+                        HistoryViewport(h.years.size) {
+                            SharesChart(h.years, h.sharesOutstanding, h.shareChangeYoY)
+                        }
                     }
                 }
             }

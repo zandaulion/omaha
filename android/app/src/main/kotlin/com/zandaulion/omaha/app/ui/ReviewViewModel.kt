@@ -27,6 +27,7 @@ class ReviewViewModel(app: Application) : AndroidViewModel(app) {
     private var loadJob: kotlinx.coroutines.Job? = null
 
     fun load(watchlistId: String? = selectedId) {
+        if (selectedId != watchlistId) _notice.value = null
         selectedId = watchlistId
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
@@ -37,12 +38,13 @@ class ReviewViewModel(app: Application) : AndroidViewModel(app) {
 
     fun checkNow() {
         if (_checking.value) return
+        val checkedId = selectedId ?: return
         viewModelScope.launch {
             _checking.value = true
             _notice.value = null
             try {
-                val result = handles.alerts.sweep()
-                _notice.value = when {
+                val result = handles.alerts.sweep(watchlistId = checkedId)
+                if (selectedId == checkedId) _notice.value = when {
                     result.abandonedAt != null -> "Check stopped early. ${result.evaluated} of ${result.swept} companies checked. Try again later."
                     result.evaluated < result.swept -> "Checked ${result.evaluated} of ${result.swept} companies. Some data was unavailable or unchanged in cache."
                     else -> "Checked ${result.evaluated} companies. Recorded changes are shown below."
@@ -51,7 +53,9 @@ class ReviewViewModel(app: Application) : AndroidViewModel(app) {
             } catch (err: CancellationException) {
                 throw err
             } catch (err: Throwable) {
-                _notice.value = "Could not complete the check. ${err.message?.take(120).orEmpty()}"
+                if (selectedId == checkedId) {
+                    _notice.value = "Could not complete the check. ${err.message?.take(120).orEmpty()}"
+                }
             } finally {
                 _checking.value = false
             }
@@ -60,11 +64,14 @@ class ReviewViewModel(app: Application) : AndroidViewModel(app) {
 
     private suspend fun read(id: String?) {
         try {
-            _state.value = ReviewUiState.Ready(handles.reviews.summaries(id))
+            val overview = handles.reviews.summaries(id)
+            if (selectedId == id) _state.value = ReviewUiState.Ready(overview)
         } catch (err: CancellationException) {
             throw err
         } catch (err: Throwable) {
-            _state.value = ReviewUiState.Failed(err.message?.take(160) ?: "Could not load your review history.")
+            if (selectedId == id) {
+                _state.value = ReviewUiState.Failed(err.message?.take(160) ?: "Could not load your review history.")
+            }
         }
     }
 }

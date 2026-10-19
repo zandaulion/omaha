@@ -11,6 +11,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import com.zandaulion.omaha.design.OmahaCard
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -144,6 +154,7 @@ fun DcfSandbox(stock: StockDetail) {
             label = "5-year FCF growth",
             explainKey = "dcf-growth",
             display = "${assumptions.growthPct}%",
+            unit = "%",
             value = assumptions.growthPct.toFloat(),
             range = Dcf.GROWTH_PCT.min.toFloat()..Dcf.GROWTH_PCT.max.toFloat(),
             steps = (Dcf.GROWTH_PCT.max - Dcf.GROWTH_PCT.min).toInt() - 1
@@ -155,6 +166,7 @@ fun DcfSandbox(stock: StockDetail) {
             label = "Terminal exit multiple",
             explainKey = "dcf-terminal-multiple",
             display = "${fmtRatio(assumptions.multiple, 1)}x",
+            unit = "x",
             value = assumptions.multiple.toFloat(),
             range = Dcf.MULTIPLE.min.toFloat()..Dcf.MULTIPLE.max.toFloat(),
             steps = (Dcf.MULTIPLE.max - Dcf.MULTIPLE.min).toInt() - 1
@@ -166,6 +178,7 @@ fun DcfSandbox(stock: StockDetail) {
             label = "Discount rate (hurdle)",
             explainKey = "dcf-discount-rate",
             display = "${fmtRatio(assumptions.discountPct, 1)}%",
+            unit = "%",
             value = assumptions.discountPct.toFloat(),
             range = Dcf.DISCOUNT_PCT.min.toFloat()..Dcf.DISCOUNT_PCT.max.toFloat(),
             steps = ((Dcf.DISCOUNT_PCT.max - Dcf.DISCOUNT_PCT.min) * 2).toInt() - 1
@@ -266,24 +279,75 @@ private fun AssumptionSlider(
     label: String,
     explainKey: String,
     display: String,
+    unit: String,
     value: Float,
     range: ClosedFloatingPointRange<Float>,
     steps: Int,
     onChange: (Float) -> Unit
 ) {
+    var editing by remember { mutableStateOf(false) }
+    var input by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    val increment = (range.endInclusive - range.start) / (steps + 1)
+    fun number(v: Float) = if (v % 1f == 0f) v.toInt().toString() else v.toString()
+    val limits = "${number(range.start)}$unit to ${number(range.endInclusive)}$unit"
+    fun applyInput() {
+        val parsed = input.trim().replace(',', '.').toFloatOrNull()
+        val ticks = parsed?.let { (it - range.start) / increment }
+        error = when {
+            parsed == null || !parsed.isFinite() -> "Enter a number."
+            parsed !in range -> "Enter a value from $limits."
+            ticks != null && abs(ticks - ticks.roundToInt()) > 0.001f ->
+                "Use increments of ${number(increment)}$unit."
+            else -> null
+        }
+        if (error == null && parsed != null) {
+            onChange(parsed)
+            editing = false
+        }
+    }
+    if (editing) Dialog(onDismissRequest = { editing = false }) {
+        OmahaCard(contentPadding = 20.dp) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                BasicText(label, style = OmahaType.title2.toTextStyle())
+                BasicText("$limits · increments of ${number(increment)}$unit",
+                    style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary))
+                BasicTextField(
+                    value = input,
+                    onValueChange = { input = it; error = null },
+                    singleLine = true,
+                    textStyle = OmahaType.bodyMd.toTextStyle(),
+                    cursorBrush = SolidColor(Omaha.colors.brandCyan),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { applyInput() }),
+                    modifier = Modifier.fillMaxWidth()
+                        .semantics { contentDescription = "$label ($unit)" }
+                        .border(1.dp, Omaha.colors.borderSubtle, RoundedCornerShape(OmahaRadius.sm))
+                        .padding(12.dp)
+                )
+                if (range.start < 0) ReviewAction("Change sign (+/−)") {
+                    input = if (input.startsWith("-")) input.removePrefix("-") else "-${input.removePrefix("+")}"
+                    error = null
+                }
+                error?.let { BasicText(it, style = OmahaType.caption.toTextStyle(color = Omaha.colors.healthRisk)) }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ReviewAction("Cancel") { editing = false }
+                    ReviewAction("Apply", primary = true) { applyInput() }
+                }
+            }
+        }
+    }
     Column {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            ExplainableLabel(
-                key = explainKey,
-                text = label,
-                style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary)
-            )
-            BasicText(
-                display,
-                style = OmahaType.bodySm
-                    .toTextStyle(color = Omaha.colors.brandCyan)
-                    .copy(fontFamily = Omaha.fonts.mono)
-            )
+        ExplainableLabel(
+            key = explainKey,
+            text = label,
+            style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textSecondary)
+        )
+        Box(Modifier.height(4.dp))
+        ReviewAction("$display · Edit value") {
+            input = number(value)
+            error = null
+            editing = true
         }
         Slider(
             value = value.coerceIn(range.start, range.endInclusive),
@@ -298,6 +362,10 @@ private fun AssumptionSlider(
                 inactiveTickColor = Color.Transparent
             )
         )
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            BasicText("Min ${number(range.start)}$unit", style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary))
+            BasicText("Max ${number(range.endInclusive)}$unit", style = OmahaType.caption.toTextStyle(color = Omaha.colors.textTertiary))
+        }
     }
 }
 

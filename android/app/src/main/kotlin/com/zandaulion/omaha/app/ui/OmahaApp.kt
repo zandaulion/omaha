@@ -303,7 +303,7 @@ fun OmahaApp(
                         onSelectList = { vm.select(it) },
                         onOpenSearch = { searchOpen = true },
                         onRemoveTicker = { vm.removeTicker(it) },
-                        onCreateList = { vm.createWatchlist(it) },
+                        onCreateList = { name, onResult -> vm.createWatchlist(name, onResult) },
                         onDeleteList = { vm.deleteWatchlist(it) },
                         onFilter = { navigateTo(OmahaTab.Filter) },
                         onCompare = { navigateTo(OmahaTab.Compare) }
@@ -356,7 +356,7 @@ fun OmahaApp(
                 }
                 OmahaTab.Filter -> {
                     val vm: WatchlistViewModel = viewModel()
-                    androidx.compose.runtime.LaunchedEffect(Unit) { vm.refreshFilterUniverse() }
+                    androidx.compose.runtime.LaunchedEffect(activeListId, watchlistState) { vm.refreshFilterUniverse() }
                     val universe by vm.filterUniverse.collectAsState()
                     FilterScreen(
                         holdings = universe,

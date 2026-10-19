@@ -1,5 +1,9 @@
 package com.zandaulion.omaha.app.ui
 
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -113,6 +117,8 @@ fun RevenueFcfChart(
                     Box(Modifier.height(4.dp))
                     BasicText(
                         year?.toString() ?: EM_DASH,
+                        maxLines = 1,
+                        softWrap = false,
                         style = OmahaType.caption
                             .toTextStyle(color = Omaha.colors.textTertiary)
                             .copy(fontFamily = Omaha.fonts.mono)
@@ -309,6 +315,8 @@ fun MarginTrendChart(
             years.forEach { y ->
                 BasicText(
                     y?.toString() ?: EM_DASH,
+                    maxLines = 1,
+                    softWrap = false,
                     style = OmahaType.caption
                         .toTextStyle(color = Omaha.colors.textTertiary)
                         .copy(fontFamily = Omaha.fonts.mono)
@@ -372,6 +380,8 @@ fun SharesChart(years: List<Int?>, shares: List<Double?>, changeYoY: Double?) {
                     Box(Modifier.height(4.dp))
                     BasicText(
                         year?.toString() ?: EM_DASH,
+                        maxLines = 1,
+                        softWrap = false,
                         style = OmahaType.caption
                             .toTextStyle(color = Omaha.colors.textTertiary)
                             .copy(fontFamily = Omaha.fonts.mono)
@@ -428,5 +438,27 @@ internal fun EmptyChart(message: String) {
         contentAlignment = Alignment.Center
     ) {
         BasicText(message, style = OmahaType.bodySm.toTextStyle(color = Omaha.colors.textTertiary))
+    }
+}
+
+/** Preserve all filed years without squeezing labels into narrow columns. */
+@Composable
+internal fun HistoryViewport(yearCount: Int, content: @Composable () -> Unit) {
+    val fontScale = LocalDensity.current.fontScale.coerceAtLeast(1f)
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val viewportWidth = maxWidth
+        val chartWidth = maxOf(viewportWidth, (yearCount * 64 * fontScale).dp)
+        Column {
+            if (chartWidth > viewportWidth) {
+                BasicText(
+                    "Swipe horizontally to see all years",
+                    style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary)
+                )
+                Box(Modifier.height(8.dp))
+            }
+            Box(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
+                Box(Modifier.width(chartWidth)) { content() }
+            }
+        }
     }
 }

@@ -191,10 +191,11 @@ class AlertRepository(
      */
     suspend fun sweep(
         deliver: suspend (Alert) -> Unit = {},
-        log: (String) -> Unit = {}
+        log: (String) -> Unit = {},
+        watchlistId: String? = null
     ): SweepResult = withContext(Dispatchers.IO) {
         val settings = settings().toJson()
-        val tickers = watchedTickers()
+        val tickers = watchedTickers(personalData.watchlists(), watchlistId)
         val spacing = runCatching { engine.spacingMs().trim().toLong() }.getOrDefault(1200L)
 
         val delivered = mutableListOf<Alert>()
@@ -337,10 +338,6 @@ class AlertRepository(
         runCatching { deliver(alert) }
         alert
     }
-
-    /** Every ticker on any list — the set the user has asked to be told about. */
-    private suspend fun watchedTickers(): List<String> =
-        personalData.watchlists().flatMap(::tickersOf).distinct()
 
     private fun tickersOf(list: WatchlistRow): List<String> = runCatching {
         json.parseToJsonElement(list.tickersJson).jsonArray.mapNotNull { it.jsonPrimitive.contentOrNull }

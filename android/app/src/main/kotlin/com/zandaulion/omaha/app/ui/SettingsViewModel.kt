@@ -1,5 +1,7 @@
 package com.zandaulion.omaha.app.ui
 
+import com.zandaulion.omaha.data.backupRestoreMessage
+import kotlinx.coroutines.CancellationException
 import android.app.Application
 import android.net.Uri
 import com.zandaulion.omaha.app.alerts.AlertNotifier
@@ -168,11 +170,10 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
 
                 val result = OmahaEngine.get(getApplication()).backup.import(text)
                 "Restored. ${result.theses} theses and ${result.watchlists} watchlists on this device."
-            } catch (err: Throwable) {
-                // The engine's message, not a generic one. core/backup.js
-                // refuses a newer schema outright and says why, and that
-                // sentence is more useful than "import failed".
-                "Could not restore: ${err.message?.take(140) ?: err.javaClass.simpleName}"
+            } catch (err: CancellationException) {
+                throw err
+            } catch (err: Exception) {
+                backupRestoreMessage(err)
             }
         }
     }
