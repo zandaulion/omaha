@@ -1,9 +1,7 @@
-Version 0.6 makes everyday research faster and easier to navigate.
+Version 0.7 fixes credit purchases and adds a few research conveniences.
 
-• Simplified navigation around Watchlist, Review and Research
-• A more compact watchlist with Filter and Compare always visible
-• Clearer filters, useful presets and phone-friendly result cards
-• Faster search with automatic keyboard focus and clearer actions
-• A compact review queue and easier-to-find research sections
-• Deduplicated company comparison with automatic results
-• Full-screen, reorganised settings
+• Fixed: a credit pack that was paid for but not added to your balance is now credited automatically when you open AI analysis
+• Clearer messages when a purchase or analysis cannot be completed
+• Type exact values into the DCF sandbox instead of only dragging sliders
+• Price alerts can follow a single watchlist
+• Readable error messages when restoring a backup

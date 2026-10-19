@@ -38,7 +38,9 @@ sealed interface AiUiState {
  * Every action here is reached from a button tap, never from [open] or
  * composition — doc 13 §7's lazy sign-in discipline, extended to purchase
  * and the free grant: opening the AI tab must stay free of any Google or
- * Play prompt until a person actually asks for one.
+ * Play prompt until a person actually asks for one. The exception is
+ * [settleUnredeemed], which prompts nothing: it re-redeems purchases that
+ * were paid for but never credited.
  */
 class AiViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -60,7 +62,28 @@ class AiViewModel(app: Application) : AndroidViewModel(app) {
             val user = handles.auth.currentUser()
             val credits = user?.let { runCatching { handles.relay.getBalance() }.getOrNull() }
             _state.value = AiUiState.Ready(ticker, summary, user, credits, busy = null, error = null)
+            if (user != null) settleUnredeemed()
         }
+    }
+
+    /**
+     * Redeems any credit purchase Play still holds as unsettled — one whose
+     * `redeemPurchase` call failed after the money was taken. Returns true if
+     * something was found, whether or not crediting it succeeded, so a caller
+     * about to buy again knows not to: Play refuses a second purchase of an
+     * unconsumed item.
+     */
+    private suspend fun settleUnredeemed(): Boolean {
+        val unsettled = runCatching { handles.billing.unsettledPurchases() }.getOrDefault(emptyList())
+        for (purchase in unsettled) {
+            try {
+                val result = handles.relay.redeemPurchase(purchase.productId, purchase.purchaseToken)
+                updateReady { it.copy(credits = result.credits) }
+            } catch (e: RelayFailure) {
+                updateReady { it.copy(error = UNCREDITED_PURCHASE) }
+            }
+        }
+        return unsettled.isNotEmpty()
     }
 
     private inline fun updateReady(transform: (AiUiState.Ready) -> AiUiState.Ready) {
@@ -94,6 +117,7 @@ class AiViewModel(app: Application) : AndroidViewModel(app) {
                 is SignInOutcome.Success -> {
                     val credits = runCatching { handles.relay.getBalance() }.getOrNull()
                     updateReady { it.copy(user = outcome.user, credits = credits, busy = null) }
+                    settleUnredeemed()
                     after()
                 }
                 SignInOutcome.Cancelled -> updateReady { it.copy(busy = null) }
@@ -140,13 +164,19 @@ class AiViewModel(app: Application) : AndroidViewModel(app) {
     private fun purchaseNow(activity: Activity) {
         updateReady { it.copy(busy = AiBusyKind.Purchasing, error = null) }
         viewModelScope.launch {
+            // An earlier purchase still unsettled would make Play refuse this
+            // one as "already owned" — credit that instead of buying again.
+            if (settleUnredeemed()) {
+                updateReady { it.copy(busy = null) }
+                return@launch
+            }
             when (val outcome = handles.billing.purchase(activity)) {
                 is PurchaseOutcome.Success -> {
                     try {
                         val result = handles.relay.redeemPurchase(outcome.productId, outcome.purchaseToken)
                         updateReady { it.copy(credits = result.credits, busy = null) }
                     } catch (e: RelayFailure) {
-                        updateReady { it.copy(busy = null, error = relayErrorMessage(e)) }
+                        updateReady { it.copy(busy = null, error = UNCREDITED_PURCHASE) }
                     }
                 }
                 PurchaseOutcome.Cancelled -> updateReady { it.copy(busy = null) }
@@ -156,8 +186,15 @@ class AiViewModel(app: Application) : AndroidViewModel(app) {
     }
 }
 
+/** The money is taken but the credits are not — say so plainly, not the relay's bare error code. */
+private const val UNCREDITED_PURCHASE =
+    "Your purchase went through but couldn't be credited yet. It will be retried the next time you open " +
+        "this tab; if it still fails within 3 days, Google Play refunds it automatically."
+
 private fun relayErrorMessage(e: RelayFailure): String = when (e.code) {
     "unauthenticated" -> "Sign in to continue."
     "resource-exhausted" -> "You're out of credits."
+    // An uncaught exception in a callable reaches the client as just "INTERNAL".
+    "internal" -> "Something went wrong on the server. Please try again later."
     else -> e.message.takeUnless { it.isNullOrBlank() } ?: "The relay could not complete that request."
 }

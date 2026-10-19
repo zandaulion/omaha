@@ -8,9 +8,9 @@ on a Samsung Fold4 and a physical Pixel Tablet on 28 September 2026.
 | Field | Value |
 | --- | --- |
 | Package | `com.zandaulion.omaha` |
-| Version name | `0.6` |
-| Version code | `6` |
-| Store status | Usability update release candidate |
+| Version name | `0.7` |
+| Version code | `7` |
+| Store status | Credits fix release candidate |
 | Brand mark | Review Radar |
 
 ## Copy

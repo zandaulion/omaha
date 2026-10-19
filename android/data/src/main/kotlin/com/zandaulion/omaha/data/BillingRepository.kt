@@ -8,8 +8,11 @@ import com.android.billingclient.api.BillingFlowParams
 import com.android.billingclient.api.BillingResult
 import com.android.billingclient.api.PendingPurchasesParams
 import com.android.billingclient.api.ProductDetails
+import com.android.billingclient.api.Purchase
 import com.android.billingclient.api.QueryProductDetailsParams
+import com.android.billingclient.api.QueryPurchasesParams
 import com.android.billingclient.api.queryProductDetails
+import com.android.billingclient.api.queryPurchasesAsync
 import kotlinx.coroutines.suspendCancellableCoroutine
 
 /** The one real Play product this app sells. `functions/src/products.js` defines the credit grant for it. */
@@ -38,7 +41,10 @@ sealed interface PurchaseOutcome {
  *
  * Called lazily, the same discipline [AuthRepository]'s header describes —
  * binding to Play's billing service is a cost paid only once the AI tab's
- * purchase button is actually reached, not from app startup.
+ * purchase button is actually reached, not from app startup. The one
+ * exception is [unsettledPurchases], which the AI tab also runs on open for
+ * a signed-in user: it shows no prompt, and without it a purchase whose
+ * redemption failed would sit paid-for but uncredited until Play refunds it.
  */
 class BillingRepository(context: Context) {
 
@@ -131,6 +137,29 @@ class BillingRepository(context: Context) {
                 )
             }
         }
+    }
+
+    /**
+     * Credit purchases Play still holds as owned: paid for, but never
+     * consumed or acknowledged by `redeemPurchase`. Each one is a redemption
+     * that failed or never ran — the relay errored, the network dropped, the
+     * app died between the purchase sheet and the call. Redeeming them again
+     * is safe: the server deduplicates by orderId. A consumed purchase no
+     * longer appears here, so a settled one is never offered twice.
+     *
+     * Pending purchases (slow payment methods) are left out; Play reports
+     * them again once they complete.
+     */
+    suspend fun unsettledPurchases(): List<PurchaseOutcome.Success> {
+        ensureConnected()
+        val params = QueryPurchasesParams.newBuilder()
+            .setProductType(BillingClient.ProductType.INAPP)
+            .build()
+        val result = client.queryPurchasesAsync(params)
+        if (result.billingResult.responseCode != BillingClient.BillingResponseCode.OK) return emptyList()
+        return result.purchasesList
+            .filter { it.purchaseState == Purchase.PurchaseState.PURCHASED && CREDIT_PRODUCT_ID in it.products }
+            .map { PurchaseOutcome.Success(CREDIT_PRODUCT_ID, it.purchaseToken) }
     }
 
     fun close() = client.endConnection()
