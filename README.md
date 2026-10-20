@@ -165,10 +165,35 @@ catching are the ones where that belief is wrong.
 ```bash
 cd omaha
 npm install
+umask 077
+printf 'ADMIN_TOKEN=%s\nPUBLIC_BASE_URL=http://127.0.0.1:3000\nPORT=3000\n' \
+  "$(openssl rand -hex 32)" > .env
+set -a
+. ./.env
+set +a
 npm start
 ```
 
-Open `http://localhost:3000` in your browser.
+Use Node.js 24 or newer, npm and `openssl`. Open `http://127.0.0.1:3000`.
+The activation gate is expected on a new browser. The commands above create a
+new ignored `.env`; do not overwrite an existing deployment’s configuration. In
+another terminal in the same checkout, load it and create your first invite:
+
+```bash
+set -a
+. ./.env
+set +a
+curl --fail http://127.0.0.1:3000/api/admin/invites \
+  -H "X-Admin-Token: $ADMIN_TOKEN" -H 'Content-Type: application/json' \
+  --data '{"label":"Demo device"}'
+```
+
+Open the returned invitation URL. The local trial’s secret stays in the
+ignored environment file; save production secrets outside Git. For persistent configuration,
+HTTPS, backups and Android setup, use the
+[operations guide](docs/23_CONFIGURATION_AND_OPERATIONS.md).
+The PWA and native Android client have separate runtime/deployment requirements.
+[Project overview](https://zandaulion.com/omaha.html).
 
 ### 2. Run in Development Mode with Auto-Reload
 
@@ -186,7 +211,7 @@ uses the private proxy's legacy `X-Admin: 1` marker; direct server calls must us
 
 ```bash
 # Create a new 7-day invite code
-./admin.sh invite "Wife's iPhone"
+./admin.sh invite "Demo device"
 
 # List active and redeemed invites
 ./admin.sh invites
@@ -273,3 +298,12 @@ pocket-omaha/
 ## 📄 License
 
 This project is open-source software licensed under the [GNU General Public License v3.0 (GPL-3.0)](LICENSE).
+
+
+## Support and contributions
+
+Use this repository’s Issues for reproducible bugs and focused feature requests. Include the version, relevant runtime/browser, expected behavior and a minimal synthetic example. Remove credentials, personal records, device identifiers and deployment-specific values before sharing logs or screenshots.
+
+Use [Contributing and testing](docs/24_CONTRIBUTING_AND_TESTING.md) for the complete validation workflow. Start with `npm test` for PWA/server changes.
+
+Keep changes focused and update the affected documentation. Security-sensitive reports should follow [SECURITY.md](SECURITY.md).
