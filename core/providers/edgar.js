@@ -46,36 +46,12 @@ const TICKER_MAP_URL = 'https://www.sec.gov/files/company_tickers.json';
 const COMPANYFACTS_BASE = 'https://data.sec.gov/api/xbrl/companyfacts/CIK';
 
 /**
- * EDGAR requires a User-Agent naming the project and a contact address, and
- * refuses requests without one.
- *
- * ## Do not put `github.com` in this string
- *
- * Measured 2026-08-24 against `www.sec.gov`, same second, same client:
- *
- * ```
- * 403  PocketOmaha/1.0 (https://github.com/zandaulion/omaha; …)
- * 403  PocketOmaha/1.0 (github.com/zandaulion/omaha; …)
- * 200  PocketOmaha/1.0 (zandaulion/omaha; …)
- * 200  PocketOmaha/1.0 (https://example.com; …)
- * ```
- *
- * It is not URLs in general and it is not the contact address — it is the
- * literal substring `github.com`, which `www.sec.gov` refuses outright. The
- * trap is that citing the project's repository is exactly what a well-behaved
- * client would do, so the most conscientious version of this header is the one
- * that fails, and it fails only against the live host: every fixture-backed
- * test would pass.
- *
- * `data.sec.gov`, which serves `companyfacts`, is more permissive. The ticker
- * map lives on `www.sec.gov`, so the strict host is on the critical path.
- *
- * The address is real, which is the point: the SEC uses it to reach an operator
- * whose client is misbehaving, and it is the one thing in this header another
- * party relies on being true.
+ * Identify the public project when requesting SEC data, without embedding a
+ * personal contact address. The public project website is reachable by users
+ * and operators. Both ticker and companyfacts endpoints were checked with
+ * this header. Requests remain subject to SEC fair-access limits.
  */
-export const EDGAR_USER_AGENT =
-  'PocketOmaha/1.0 (zandaulion/omaha; zandaulion@gmail.com)';
+export const EDGAR_USER_AGENT = 'PocketOmaha/0.7.1 (https://zandaulion.com/omaha.html)';
 
 /**
  * Which side of the statements a field comes from.

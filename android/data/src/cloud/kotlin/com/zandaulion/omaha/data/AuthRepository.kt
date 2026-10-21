@@ -39,17 +39,14 @@ class AuthRepository(private val context: Context) {
 
     private val auth: FirebaseAuth get() = FirebaseAuth.getInstance()
 
-    /**
-     * The Firebase project's **web** OAuth client, not the Android one.
-     * Credential Manager's Sign-in-with-Google flow authenticates the person
-     * to this client ID; Firebase then verifies the resulting ID token was
-     * issued for it. Not a secret — it is meant to travel inside every app
-     * binary that uses this Firebase project, the same way a Firebase project
-     * ID is public. From android/app/google-services.json's oauth_client
-     * entry of type 3.
-     */
-    private val webClientId =
-        "516880666355-c8la8i0vic5m18o61ln196eam9p1ra2v.apps.googleusercontent.com"
+    // Generated from the ignored Firebase configuration by Google Services.
+    // Resolve through the app context because :data does not own app resources.
+    private val webClientId: String
+        get() {
+            val id = context.resources.getIdentifier("default_web_client_id", "string", context.packageName)
+            check(id != 0) { "Google sign-in is not configured for this build." }
+            return context.getString(id)
+        }
 
     fun currentUser(): SignedInUser? = auth.currentUser?.let {
         SignedInUser(uid = it.uid, displayName = it.displayName, email = it.email)

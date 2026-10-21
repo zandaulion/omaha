@@ -4,6 +4,8 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
+val standalone = providers.gradleProperty("standalone").map(String::toBoolean).orElse(false).get()
+
 android {
     namespace = "com.zandaulion.omaha.data"
     compileSdk = 37
@@ -30,6 +32,9 @@ android {
 }
 
 kotlin {
+    sourceSets.getByName("main").kotlin.srcDir(
+        if (standalone) "src/standalone/kotlin" else "src/cloud/kotlin"
+    )
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
@@ -48,30 +53,17 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 
-    // Phase 6 (docs/16_ROADMAP.md). Repositories live here, matching every
-    // other repository in this module — not in :app, which only needs to
-    // compile against AuthRepository's/RelayRepository's/BillingRepository's
-    // own return types. The com.google.gms.google-services *plugin* stays in
-    // :app, since it processes google-services.json and that file lives
-    // there; Firebase's SDK is a singleton reachable from anywhere once :app
-    // has initialised it, the same way this module never had to know how
-    // Room was opened.
-    implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
-    implementation("com.google.firebase:firebase-auth")
-    implementation("com.google.firebase:firebase-functions")
-
-    // Sign in with Google, via Credential Manager rather than the deprecated
-    // GoogleSignInClient.
-    implementation("androidx.credentials:credentials:1.6.0")
-    implementation("androidx.credentials:credentials-play-services-auth:1.6.0")
-    implementation("com.google.android.libraries.identity.googleid:googleid:1.2.0")
-
-    implementation("com.android.billingclient:billing-ktx:9.1.0")
-
-    // Firebase Auth and the Billing Library both hand back a Task<T>, not a
-    // suspend function. This is the `.await()` extension on it — separate
-    // from kotlinx-coroutines-android, which does not include it.
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
+    // These SDKs and their implementations are absent from the standalone APK.
+    if (!standalone) {
+        implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
+        implementation("com.google.firebase:firebase-auth")
+        implementation("com.google.firebase:firebase-functions")
+        implementation("androidx.credentials:credentials:1.6.0")
+        implementation("androidx.credentials:credentials-play-services-auth:1.6.0")
+        implementation("com.google.android.libraries.identity.googleid:googleid:1.2.0")
+        implementation("com.android.billingclient:billing-ktx:9.1.0")
+        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
+    }
 
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")

@@ -75,27 +75,27 @@ class NumericLocaleTest {
     }
 
     @Test
-    fun `a decimal literal in source keeps its fraction`() = runTest {
+    fun aDecimalLiteralInSourceKeepsItsFraction() = runTest {
         assertNumeric("8.5", evaluate("8.5"), "The literal 8.5")
         // Two literals, so a failure here cannot be read as one unlucky value.
         assertNumeric("0.30000000000000004", evaluate("0.1 + 0.2"), "0.1 + 0.2")
     }
 
     @Test
-    fun `JSON parse keeps its fraction`() = runTest {
+    fun jsonParseKeepsItsFraction() = runTest {
         // The path every fixture, every cached record and every API response
         // takes into the engine.
         assertNumeric("8.5", evaluate("""JSON.parse('{"a":8.5}').a"""), "JSON.parse of 8.5")
     }
 
     @Test
-    fun `string to number conversions keep their fraction`() = runTest {
+    fun stringToNumberConversionsKeepTheirFraction() = runTest {
         assertNumeric("8.5", evaluate("parseFloat('8.5')"), "parseFloat('8.5')")
         assertNumeric("8.5", evaluate("Number('8.5')"), "Number('8.5')")
     }
 
     @Test
-    fun `toFixed emits a point and not a comma`() = runTest {
+    fun toFixedEmitsAPointAndNotAComma() = runTest {
         // The output half. core/format.js runs every displayed number through
         // toFixed, so a comma here reaches both the interface and the JSON
         // crossing the bridge — where it is a parse error rather than a typo.

@@ -385,10 +385,14 @@ private fun Spacer(height: Int) {
     Box(modifier = GlanceModifier.height(height.dp)) {}
 }
 
-private fun launchIntent(watchlistId: String?, ticker: String? = null) = Intent().apply {
-    setClassName("com.zandaulion.omaha", MAIN_ACTIVITY)
-    watchlistId?.let { putExtra(EXTRA_WATCHLIST_ID, it) }
-    ticker?.let { putExtra(EXTRA_TICKER, it) }
+@Composable
+private fun launchIntent(watchlistId: String?, ticker: String? = null): Intent {
+    val packageName = androidx.glance.LocalContext.current.packageName
+    return Intent().apply {
+        setClassName(packageName, MAIN_ACTIVITY)
+        watchlistId?.let { putExtra(EXTRA_WATCHLIST_ID, it) }
+        ticker?.let { putExtra(EXTRA_TICKER, it) }
+    }
 }
 
 internal fun attentionFirst(holdings: List<WidgetHoldingEntry>): List<WidgetHoldingEntry> =

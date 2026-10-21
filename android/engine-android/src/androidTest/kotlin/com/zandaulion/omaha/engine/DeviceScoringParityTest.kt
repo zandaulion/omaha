@@ -139,22 +139,20 @@ class DeviceScoringParityTest {
         })
         quickJs.evaluate<Any?>(TO_FIXED_PROBE_JS, "tofixed.js", true)
         quickJs.close()
-        // Asserted rather than printed: instrumented stdout does not reach the
-        // Gradle report, and a failure message does.
-        // Characterisation, not a demand. This asserts what Android's QuickJS
-        // *does*, which is round ties to even where Node and the JVM build
-        // round away from zero, as the spec requires. core/ no longer relies on
-        // toFixed for exactly this reason — see core/format.js.
-        //
-        // A failure here is good news: the platform was fixed, and core/format
-        // could in principle go back to the built-in.
-        assertEquals(
-            "4.25.toFixed(1)=4.2  0.125.toFixed(2)=0.12  2.5.toFixed(0)=2  " +
-                "1.005.toFixed(2)=1.00  8.75.toFixed(1)=8.8  3.375.toFixed(2)=3.38",
-            line,
-            "Android toFixed behaviour changed. abi=" +
+        // Runtime characterisation: the Motorola / Android 14 runtime follows
+        // ECMAScript's larger-magnitude tie rule; an earlier Android runtime
+        // rounded exact ties to even. Neither fingerprint changes core/'s
+        // deterministic formatter, which the scoring parity tests exercise.
+        val standard = "4.25.toFixed(1)=4.3  0.125.toFixed(2)=0.13  2.5.toFixed(0)=3  " +
+            "1.005.toFixed(2)=1.00  8.75.toFixed(1)=8.8  3.375.toFixed(2)=3.38"
+        val legacy = "4.25.toFixed(1)=4.2  0.125.toFixed(2)=0.12  2.5.toFixed(0)=2  " +
+            "1.005.toFixed(2)=1.00  8.75.toFixed(1)=8.8  3.375.toFixed(2)=3.38"
+        assertTrue(
+            line == standard || line == legacy,
+            "Unrecognised Android toFixed behaviour: $line. abi=" +
                 android.os.Build.SUPPORTED_ABIS.joinToString() +
                 " api=" + android.os.Build.VERSION.SDK_INT
         )
+        println("[device] built-in toFixed: $line")
     }
 }

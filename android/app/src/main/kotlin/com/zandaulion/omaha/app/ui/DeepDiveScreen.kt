@@ -38,6 +38,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.zandaulion.omaha.app.BuildConfig
 import com.zandaulion.omaha.data.Check
 import com.zandaulion.omaha.data.StockDetail
 import com.zandaulion.omaha.data.StockInsight
@@ -63,7 +64,12 @@ enum class DeepDiveTab(val label: String) {
     Checklist("12-point checklist"),
     Trends("Historical trends"),
     Dcf("DCF sandbox"),
-    Ai("AI analysis")
+    Ai("AI analysis");
+
+    companion object {
+        val available: List<DeepDiveTab>
+            get() = entries.filter { BuildConfig.CLOUD_AI_ENABLED || it != Ai }
+    }
 }
 
 @Composable
@@ -201,8 +207,8 @@ private fun Loaded(
     onSubtabChange: (DeepDiveTab) -> Unit,
     thesisState: SaveableStateHolder
 ) {
-    var tab by rememberSaveable(stock.ticker) { mutableStateOf(requestedTab) }
-    LaunchedEffect(stock.ticker, navigationRequest) { tab = requestedTab }
+    var tab by rememberSaveable(stock.ticker) { mutableStateOf(requestedTab.takeIf { it in DeepDiveTab.available } ?: DeepDiveTab.Overview) }
+    LaunchedEffect(stock.ticker, navigationRequest) { tab = requestedTab.takeIf { it in DeepDiveTab.available } ?: DeepDiveTab.Overview }
     val selectTab: (DeepDiveTab) -> Unit = { tab = it; onSubtabChange(it) }
     val isTablet = LocalConfiguration.current.smallestScreenWidthDp >= 600
 
@@ -430,7 +436,7 @@ private fun SubTabs(selected: DeepDiveTab, onSelect: (DeepDiveTab) -> Unit) {
             .horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        for (t in DeepDiveTab.entries) {
+        for (t in DeepDiveTab.available) {
             val active = t == selected
             Box(
                 Modifier
@@ -475,7 +481,7 @@ private fun ResearchSectionSelector(selected: DeepDiveTab, onSelect: (DeepDiveTa
             BasicText(if (expanded) "⌃" else "⌄", style = OmahaType.bodyMd.toTextStyle(color = Omaha.colors.brandCyan))
         }
         if (expanded) {
-            DeepDiveTab.entries.forEach { section ->
+            DeepDiveTab.available.forEach { section ->
                 val active = section == selected
                 BasicText(
                     (if (active) "✓  " else "   ") + section.label,

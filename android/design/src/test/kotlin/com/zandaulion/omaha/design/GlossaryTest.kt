@@ -18,7 +18,7 @@ class GlossaryTest {
     fun `a real key resolves`() {
         val entry = Glossary.explain("health-score")
         assertNotNull(entry)
-        assertEquals("Health score", entry.title)
+        assertEquals("Fundamental score", entry.title)
     }
 
     @Test

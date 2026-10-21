@@ -14,6 +14,7 @@ This directory documents the behavior of the current Pocket Omaha codebase. Pock
 | Contributor | [Contributing and testing](24_CONTRIBUTING_AND_TESTING.md) | Repository layout, sources of truth, generated files, tests, and safe change patterns |
 | Product reviewer | [PWA/Android feature matrix](25_FEATURE_MATRIX.md) | Shared behavior and intentional platform differences |
 | Developer or auditor | [Data model and backup format](26_DATA_MODEL_AND_BACKUPS.md) | SQLite, Room, Firestore, cache ownership, schema, and merge rules |
+| Android user or builder | [Standalone Android edition](27_STANDALONE_ANDROID.md) | GitHub APK installation, differences from Play, and source builds |
 
 The calculation details live in focused references:
 
@@ -25,7 +26,7 @@ The calculation details live in focused references:
 
 ## Document status
 
-Documents 19–26 are the maintained description of the running product. They were checked against the PWA server, web client, shared engine, Android client, Room schema, workers, widget, and Firebase Functions.
+Documents 19–27 are the maintained description of the running product. They were checked against the PWA server, web client, shared engine, Android client, Room schema, workers, widget, and Firebase Functions.
 
 Documents 01–18 preserve product decisions, design specifications, migration notes, audits, and the implementation history. They remain useful context, but some describe a planned state at the time they were written. When an older document conflicts with documents 19–26 or the code, the current code and the maintained documents take precedence.
 

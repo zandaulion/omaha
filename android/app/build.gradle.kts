@@ -6,18 +6,14 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
-    id("com.google.gms.google-services")
+    id("com.google.gms.google-services") apply false
 }
 
-/**
- * The actual Play Store upload keystore — `zandaulion`, at
- * C:\Users\danie\StudioProjects\zandaulion, outside this repo. Play Console
- * locks each app to the certificate its first upload was signed with; a
- * release built against any other key (this module briefly fell back to the
- * debug keystore) gets rejected at upload with a certificate-mismatch error,
- * not a build error, so this has to be correct before `bundleRelease` runs at
- * all. keystore.properties is gitignored — see keystore.properties.example.
- */
+// Standalone builds contain no cloud account, AI relay or purchase integration.
+val standalone = providers.gradleProperty("standalone").map(String::toBoolean).orElse(false).get()
+if (!standalone) apply(plugin = "com.google.gms.google-services")
+
+// Release signing is configured locally; never silently use a debug certificate.
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 require(keystorePropertiesFile.exists()) {
     "android/keystore.properties is missing. Copy android/keystore.properties.example " +
@@ -49,11 +45,13 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.zandaulion.omaha"
+        applicationId = if (standalone) "com.zandaulion.omaha.standalone" else "com.zandaulion.omaha"
         minSdk = 26
         targetSdk = 37
-        versionCode = 8
-        versionName = "0.7"
+        versionCode = 9
+        versionName = "0.7.1"
+        buildConfigField("boolean", "CLOUD_AI_ENABLED", (!standalone).toString())
+        resValue("string", "app_name", if (standalone) "Pocket Omaha Core" else "Pocket Omaha")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -69,6 +67,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     signingConfigs {
@@ -135,14 +134,6 @@ dependencies {
     // policy problem and a persistent notification nobody asked for.
     implementation("androidx.work:work-runtime-ktx:2.10.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
-
-    // AuthRepository, RelayRepository and BillingRepository — Firebase Auth,
-    // Cloud Functions, Credential Manager and Play Billing — all live in
-    // :data (see its build.gradle.kts). This module only needs the
-    // com.google.gms.google-services *plugin*, applied above, since
-    // google-services.json lives here; Firebase's SDK is a process-wide
-    // singleton once initialised, reachable from :data without either module
-    // repeating the other's dependency declarations.
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 

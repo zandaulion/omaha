@@ -37,7 +37,8 @@ test('the User-Agent never contains github.com', () => {
   // obvious thing to put here, which is exactly why this is pinned: the
   // mistake would pass every fixture-backed test and fail only in production.
   assert.ok(!EDGAR_USER_AGENT.includes('github.com'));
-  assert.match(EDGAR_USER_AGENT, /@/, 'EDGAR requires a contact address');
+  assert.match(EDGAR_USER_AGENT, /https:\/\/zandaulion\.com\/omaha\.html/, 'identify the public project');
+  assert.ok(!EDGAR_USER_AGENT.includes('@'), 'do not embed a personal contact address');
 });
 
 // ------------------------------------------------------------ taxonomy

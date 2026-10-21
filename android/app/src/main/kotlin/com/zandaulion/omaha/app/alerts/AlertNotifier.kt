@@ -108,7 +108,12 @@ class AlertNotifier(private val context: Context) {
         // One bubble per ticker per alert type, matching `server/alerts.js`'s
         // push tag. A second health change for the same company replaces the
         // first rather than stacking, because the newer one is the true state.
-        NotificationManagerCompat.from(context).notify(alert.tag(), NOTIFICATION_ID, notification)
+        try {
+            NotificationManagerCompat.from(context).notify(alert.tag(), NOTIFICATION_ID, notification)
+        } catch (_: SecurityException) {
+            // Permission can be revoked after permitted() was checked. Keep
+            // the recorded alert available in-app without crashing delivery.
+        }
     }
 
     private fun Alert.tag(): String =

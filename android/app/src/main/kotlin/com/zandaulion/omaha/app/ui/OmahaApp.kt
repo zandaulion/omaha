@@ -186,7 +186,7 @@ fun OmahaApp(
         requestedSubtab = if (review) DeepDiveTab.Thesis else DeepDiveTab.Overview
         navigationRequest++
         deepDive.open(ticker)
-        ai.open(ticker)
+        if (com.zandaulion.omaha.app.BuildConfig.CLOUD_AI_ENABLED) ai.open(ticker)
         navigateTo(OmahaTab.Scorecard)
     }
     val appContext = LocalContext.current
@@ -199,7 +199,7 @@ fun OmahaApp(
         requestedSubtab = DeepDiveTab.Thesis
         navigationRequest++
         deepDive.open(ticker)
-        ai.open(ticker)
+        if (com.zandaulion.omaha.app.BuildConfig.CLOUD_AI_ENABLED) ai.open(ticker)
         tab = OmahaTab.Scorecard
         reviews.load(activeListId)
         // Cleared so returning to the app later does not re-open the same

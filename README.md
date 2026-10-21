@@ -12,6 +12,15 @@ need watching, or have changed. Conditions are manually assessed; Omaha does
 not automatically evaluate your investment thesis. See
 [the review workflow](docs/18_REVIEW_WORKFLOW.md) for the implemented rules.
 
+## Android download
+
+[Download Pocket Omaha Core](https://github.com/zandaulion/omaha/releases/latest),
+the standalone Android edition (Android 8.0+). It includes the local research
+and review tools, without cloud AI, sign-in or credit purchases. It installs
+alongside the Play edition and uses separate local storage. See the
+[installation and build guide](docs/27_STANDALONE_ANDROID.md) for checksums,
+backups and source builds.
+
 ## Documentation
 
 The [documentation index](docs/README.md) separates current operating documentation from earlier design and migration records. Start with the [user guide](docs/19_USER_GUIDE.md), [runtime and architecture](docs/20_RUNTIME_AND_ARCHITECTURE.md), [data/privacy/security](docs/21_DATA_PRIVACY_AND_SECURITY.md), [API reference](docs/22_API_REFERENCE.md), [configuration and operations](docs/23_CONFIGURATION_AND_OPERATIONS.md), or [contributing and testing](docs/24_CONTRIBUTING_AND_TESTING.md).

@@ -1,5 +1,7 @@
 package com.zandaulion.omaha.app.ui
 
+import com.zandaulion.omaha.app.BuildConfig
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -64,12 +66,19 @@ fun SettingsScreen(
     ) {
         if (showTitle) BasicText("Settings", style = OmahaType.title1.toTextStyle(color = Omaha.colors.textPrimary))
 
+        if (!BuildConfig.CLOUD_AI_ENABLED) SettingsCard("Pocket Omaha Core") {
+            BasicText(
+                "Standalone edition. No account is needed. Cloud AI and credit purchases are not included.",
+                style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary)
+            )
+        }
+
         if (alerts != null) {
             AlertPreferencesCard(alerts, onAlertsChange, onRequestPermission, onTestNotification)
             AlertHistoryCard(alerts.history)
         }
 
-        SettingsCard("🔒 AI analysis & your notes") {
+        if (BuildConfig.CLOUD_AI_ENABLED) SettingsCard("🔒 AI analysis & your notes") {
             BasicText(
                 "Gemini always receives the company's filed financials, computed ratios " +
                     "and the 12-point checklist. It never receives your journal entries.",
@@ -174,9 +183,10 @@ fun SettingsScreen(
                 BasicText(
                     "This is not investment advice, and nothing in it is a recommendation to " +
                         "buy or sell. A DCF fair value is the output of assumptions you choose " +
-                        "— move a slider and the \"fair value\" moves with it. AI analysis is " +
-                        "generated text and can be wrong, confidently and in detail. Your " +
-                        "investment decisions remain yours.",
+                        "— move a slider and the \"fair value\" moves with it. " +
+                        (if (BuildConfig.CLOUD_AI_ENABLED)
+                            "AI analysis is generated text and can be wrong, confidently and in detail. "
+                        else "") + "Your investment decisions remain yours.",
                     style = OmahaType.caption.toTextStyle(color = Omaha.colors.textSecondary)
                 )
             }

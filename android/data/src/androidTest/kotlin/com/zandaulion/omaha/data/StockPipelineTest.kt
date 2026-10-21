@@ -63,7 +63,16 @@ class StockPipelineTest {
         for (ticker in listOf("NOK", "AAPL", "JPM")) {
             db.stockCache().clear()
 
-            val bridge = ReplayHttpBridge(asset("$ticker.http.json"))
+            // Node reuses the SEC ticker map loaded by its first fixture.
+            // Each QuickJS engine starts fresh, so replay that same recorded
+            // map explicitly when the per-company fixture omits it.
+            val responses = Json.parseToJsonElement(asset("$ticker.http.json")).jsonObject
+            val mapKey = "other:https://www.sec.gov/files/company_tickers.json"
+            val complete = if (mapKey in responses) responses else JsonObject(
+                responses + (mapKey to Json.parseToJsonElement(asset("NOK.http.json"))
+                    .jsonObject.getValue(mapKey))
+            )
+            val bridge = ReplayHttpBridge(complete.toString())
             val raw = engineFor(ticker, bridge).stock(ticker, forceRefresh = true)
             val result = Json.parseToJsonElement(raw).jsonObject
 
