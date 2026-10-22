@@ -3191,7 +3191,15 @@ button:disabled { cursor: wait; opacity: .6; }
   position: fixed;
   inset: 0;
   z-index: 120;
-  display: flex;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  border: 0;
+  color: inherit;
+  display: none;
   align-items: flex-end;
   justify-content: center;
   background: rgba(0, 0, 0, 0.55);
@@ -3200,7 +3208,8 @@ button:disabled { cursor: wait; opacity: .6; }
   transition: opacity 160ms ease;
 }
 
-.explain-sheet.open { opacity: 1; pointer-events: auto; }
+.explain-sheet[open] { display: flex; opacity: 1; pointer-events: auto; }
+.explain-sheet::backdrop { background: transparent; }
 
 .explain-card {
   width: min(560px, 100%);
@@ -3216,7 +3225,7 @@ button:disabled { cursor: wait; opacity: .6; }
   outline: none;
 }
 
-.explain-sheet.open .explain-card { transform: translateY(0); }
+.explain-sheet[open] .explain-card { transform: translateY(0); }
 
 .explain-head {
   display: flex;

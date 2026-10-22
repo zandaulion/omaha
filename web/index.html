@@ -1237,7 +1237,7 @@
   </script>
   <!-- Long-press (or tap) any figure carrying data-explain. Filled by
        web/explain.js from the glossary in core/. -->
-  <div class="explain-sheet" id="explainSheet" aria-hidden="true" role="dialog" aria-modal="true"
+  <dialog class="explain-sheet" id="explainSheet"
        aria-labelledby="explainTitle">
     <div class="explain-card" tabindex="-1">
       <div class="explain-head">
@@ -1257,7 +1257,7 @@
         <p data-part="computes"></p>
       </section>
     </div>
-  </div>
+  </dialog>
 
   <!-- Stamped by deploy.sh from a hash of web/. The hand-written 2.1.1 was
        the same URL across every deploy, so Cloudflare kept serving whatever

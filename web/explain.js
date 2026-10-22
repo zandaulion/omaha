@@ -29,8 +29,7 @@ function open(key) {
   el.querySelector('[data-part="matters"]').textContent = entry.matters;
   el.querySelector('[data-part="computes"]').textContent = entry.computes;
 
-  el.classList.add('open');
-  el.setAttribute('aria-hidden', 'false');
+  if (!el.open) el.showModal();
   // Focus the card rather than the close button: a screen reader should hear
   // the title before it hears "close".
   el.querySelector('.explain-card')?.focus();
@@ -38,9 +37,7 @@ function open(key) {
 
 export function close() {
   const el = sheet();
-  if (!el) return;
-  el.classList.remove('open');
-  el.setAttribute('aria-hidden', 'true');
+  if (el?.open) el.close();
 }
 
 function onClick(ev) {
