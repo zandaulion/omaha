@@ -1,7 +1,4 @@
-Version 0.7 fixes credit purchases and adds a few research conveniences.
+Version 0.7.1 is a small reliability update.
 
-• Fixed: a credit pack that was paid for but not added to your balance is now credited automatically when you open AI analysis
-• Clearer messages when a purchase or analysis cannot be completed
-• Type exact values into the DCF sandbox instead of only dragging sliders
-• Price alerts can follow a single watchlist
-• Readable error messages when restoring a backup
+• Fixed: background alerts could fail if notification permission was turned off while the app was running. They are now still recorded in the alert history in Settings
+• Updated how the app identifies itself when it downloads company filings from the SEC

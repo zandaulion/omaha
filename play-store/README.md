@@ -8,9 +8,9 @@ on a Samsung Fold4 and a physical Pixel Tablet on 28 September 2026.
 | Field | Value |
 | --- | --- |
 | Package | `com.zandaulion.omaha` |
-| Version name | `0.7` |
-| Version code | `8` |
-| Store status | Credits fix release candidate |
+| Version name | `0.7.1` |
+| Version code | `9` |
+| Store status | Reliability patch release candidate |
 | Brand mark | Review Radar |
 
 ## Copy
@@ -19,7 +19,7 @@ on a Samsung Fold4 and a physical Pixel Tablet on 28 September 2026.
 | --- | --- | ---: | ---: |
 | Short description | `en-US/short-description.txt` | 77 | 80 |
 | Full description | `en-US/full-description.txt` | 2,528 | 4,000 |
-| Release notes | `en-US/release-notes.txt` | 441 | 500 |
+| Release notes | `en-US/release-notes.txt` | 301 | 500 |
 
 The positioning is intentionally limited to research and ongoing review. It does
 not claim that a fundamental score proves a moat, predicts returns or provides a
