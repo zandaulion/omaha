@@ -13,6 +13,11 @@ on a Samsung Fold4 and a physical Pixel Tablet on 28 September 2026.
 | Store status | Reliability patch release candidate |
 | Brand mark | Review Radar |
 
+The 0.7.1 upload is `OmahaApp_20261022_090701_29fc338_master_release.aab`,
+built on 22 October 2026 at 09:07 from commit `29fc338` with `bundleRelease`
+and signed with the Play upload key. SHA-256:
+`6f345c38c5995b2c0a089c9d75f5221e05f701ed8a8f31d27074de811130e237`.
+
 ## Copy
 
 | Play Console field | File | Validated length | Limit |
