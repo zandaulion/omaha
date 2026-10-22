@@ -10,7 +10,7 @@ on a Samsung Fold4 and a physical Pixel Tablet on 28 September 2026.
 | Package | `com.zandaulion.omaha` |
 | Version name | `0.7.1` |
 | Version code | `9` |
-| Store status | Under review for production (submitted 22 October 2026) |
+| Store status | In production |
 | Brand mark | Review Radar |
 
 The 0.7.1 upload is `OmahaApp_20261022_090701_29fc338_master_release.aab`,
