@@ -1744,6 +1744,7 @@ button:disabled { cursor: wait; opacity: .6; }
 }
 
 .gate-hint[hidden] { display: none; }
+[data-theme="light"] .gate-subtitle { color: #0E7490; } /* brand cyan is too faint for text on white */
 .gate-hint strong { color: var(--text-secondary); }
 
 /* The code is the one thing on this screen worth reading character by
