@@ -127,20 +127,20 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.activity:activity-compose:1.10.1")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.1")
-    implementation("androidx.core:core-ktx:1.16.0")
+    implementation("androidx.core:core-ktx:1.19.1")
     // The alert sweep. Doc 13 §11 step 5 names WorkManager specifically: an
     // AlarmManager schedule does not survive a reboot without a receiver, and
     // a foreground service for a six-hourly network read would be both a Play
     // policy problem and a persistent notification nobody asked for.
-    implementation("androidx.work:work-runtime-ktx:2.10.1")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    implementation("androidx.work:work-runtime-ktx:2.12.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
-    androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
-    androidTestImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
+    androidTestImplementation("androidx.test.uiautomator:uiautomator:2.4.0")
+    androidTestImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
 }
 
 tasks.matching { it.name == "mergeDebugAndroidTestAssets" }.configureEach {

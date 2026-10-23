@@ -43,15 +43,15 @@ kotlin {
 dependencies {
     api(project(":engine-android"))
 
-    implementation("androidx.room:room-runtime:2.7.1")
-    implementation("androidx.room:room-ktx:2.7.1")
-    ksp("androidx.room:room-compiler:2.7.1")
+    implementation("androidx.room:room-runtime:2.8.5")
+    implementation("androidx.room:room-ktx:2.8.5")
+    ksp("androidx.room:room-compiler:2.8.5")
 
     // JsonElement only — no @Serializable classes, so no compiler plugin. The
     // interchange shape is defined by core/backup.js, not by a Kotlin type,
     // and mirroring it as data classes would be a second definition of it.
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
 
     // These SDKs and their implementations are absent from the standalone APK.
     if (!standalone) {
@@ -60,21 +60,21 @@ dependencies {
         implementation("com.google.firebase:firebase-functions")
         implementation("androidx.credentials:credentials:1.6.0")
         implementation("androidx.credentials:credentials-play-services-auth:1.6.0")
-        implementation("com.google.android.libraries.identity.googleid:googleid:1.2.0")
+        implementation("com.google.android.libraries.identity.googleid:googleid:1.2.1")
         implementation("com.android.billingclient:billing-ktx:9.1.0")
-        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
+        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.11.0")
     }
 
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
-    androidTestImplementation("androidx.room:room-testing:2.7.1")
-    androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
+    androidTestImplementation("androidx.room:room-testing:2.8.5")
+    androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
     androidTestImplementation(kotlin("test"))
 
     // JVM unit tests. DcfParityTest needs no device: it compares Kotlin
     // arithmetic against vectors recorded from the JS module.
     testImplementation(kotlin("test"))
-    testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
 }
 
 // The engine bundle has to exist before the instrumented tests can read it.
