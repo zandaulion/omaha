@@ -13,7 +13,7 @@ dependencies {
     // The real socket behind HttpBridge. OkHttp will set Cookie and
     // User-Agent, which a browser forbids — the asymmetry that lets this
     // client reach Yahoo directly while the PWA needs a proxy.
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:okhttp:5.5.0")
 
     testImplementation(kotlin("test"))
     // JsonElement only — no @Serializable classes, so the compiler plugin is
