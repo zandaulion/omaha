@@ -6,10 +6,10 @@ dependencies {
     // Keep the JVM and Android bindings on exactly the same release so parity
     // tests exercise the runtime generation shipped to devices.
     implementation("io.github.dokar3:quickjs-kt-jvm:1.0.15")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
     // JsonElement only, no @Serializable classes, so no compiler plugin. Used
     // by the HTTP bridge to move requests and responses across as JSON.
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
     // The real socket behind HttpBridge. OkHttp will set Cookie and
     // User-Agent, which a browser forbids — the asymmetry that lets this
     // client reach Yahoo directly while the PWA needs a proxy.
@@ -18,7 +18,7 @@ dependencies {
     testImplementation(kotlin("test"))
     // JsonElement only — no @Serializable classes, so the compiler plugin is
     // not needed. Used to compare scores as parsed values rather than as text.
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
 }
 
 // Shared with :engine-android's instrumented tests. The two parity suites must

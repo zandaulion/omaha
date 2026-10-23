@@ -80,7 +80,7 @@ dependencies {
     // about is the runtime underneath them all.
     implementation("io.github.dokar3:quickjs-kt-android:1.0.15")
 
-    implementation("androidx.room:room-runtime:2.7.1")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    implementation("androidx.room:room-runtime:2.8.5")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
 }
