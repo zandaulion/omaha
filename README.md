@@ -136,8 +136,13 @@ regenerate rather than committing a snapshot that will drift.
 ## Testing
 
 ```bash
+npm ci
+npm --prefix functions ci
 npm test
 ```
+
+The suite also exercises the actual Firebase callable wrappers with synthetic
+unauthenticated requests, covering account/credit guards after SDK upgrades.
 
 The scoring regression cases each correspond to a defect that shipped in an
 earlier build of the scoring engine, and they are the reason the
