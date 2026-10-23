@@ -51,5 +51,5 @@ dependencies {
     // For the manual-refresh tap only — enqueues :app's WidgetRefreshWorker
     // by class name (see RefreshWidgetAction) rather than a compile-time
     // dependency on :app, which would invert this module's whole point.
-    implementation("androidx.work:work-runtime-ktx:2.10.1")
+    implementation("androidx.work:work-runtime-ktx:2.12.0")
 }

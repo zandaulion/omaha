@@ -71,13 +71,13 @@ dependencies {
     // its dependencies have to mirror :engine's or the shared source stops
     // compiling on one target only — which is how it failed the first time.
     implementation("io.github.dokar3:quickjs-kt-android:1.0.15")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
-    androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
-    androidTestImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
+    androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
+    androidTestImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
     androidTestImplementation(kotlin("test"))
 }
