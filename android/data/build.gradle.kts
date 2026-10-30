@@ -55,7 +55,7 @@ dependencies {
 
     // These SDKs and their implementations are absent from the standalone APK.
     if (!standalone) {
-        implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
+        implementation(platform("com.google.firebase:firebase-bom:35.1.0"))
         implementation("com.google.firebase:firebase-auth")
         implementation("com.google.firebase:firebase-functions")
         implementation("androidx.credentials:credentials:1.6.0")
