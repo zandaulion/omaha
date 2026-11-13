@@ -70,7 +70,7 @@ dependencies {
     // This module compiles :engine's source against the Android artifacts, so
     // its dependencies have to mirror :engine's or the shared source stops
     // compiling on one target only — which is how it failed the first time.
-    implementation("io.github.dokar3:quickjs-kt-android:1.0.15")
+    implementation("io.github.dokar3:quickjs-kt-android:1.0.18")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
     implementation("com.squareup.okhttp3:okhttp:5.5.1")
