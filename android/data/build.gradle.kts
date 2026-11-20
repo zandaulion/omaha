@@ -50,12 +50,12 @@ dependencies {
     // JsonElement only — no @Serializable classes, so no compiler plugin. The
     // interchange shape is defined by core/backup.js, not by a Kotlin type,
     // and mirroring it as data classes would be a second definition of it.
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.13.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
 
     // These SDKs and their implementations are absent from the standalone APK.
     if (!standalone) {
-        implementation(platform("com.google.firebase:firebase-bom:35.1.0"))
+        implementation(platform("com.google.firebase:firebase-bom:35.2.0"))
         implementation("com.google.firebase:firebase-auth")
         implementation("com.google.firebase:firebase-functions")
         implementation("androidx.credentials:credentials:1.6.0")
@@ -74,7 +74,7 @@ dependencies {
     // JVM unit tests. DcfParityTest needs no device: it compares Kotlin
     // arithmetic against vectors recorded from the JS module.
     testImplementation(kotlin("test"))
-    testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.13.0")
 }
 
 // The engine bundle has to exist before the instrumented tests can read it.
