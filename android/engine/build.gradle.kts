@@ -5,7 +5,7 @@ plugins {
 dependencies {
     // Keep the JVM and Android bindings on exactly the same release so parity
     // tests exercise the runtime generation shipped to devices.
-    implementation("io.github.dokar3:quickjs-kt-jvm:1.0.15")
+    implementation("io.github.dokar3:quickjs-kt-jvm:1.0.18")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
     // JsonElement only, no @Serializable classes, so no compiler plugin. Used
     // by the HTTP bridge to move requests and responses across as JSON.
