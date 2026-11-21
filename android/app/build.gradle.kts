@@ -140,7 +140,7 @@ dependencies {
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.uiautomator:uiautomator:2.4.1")
-    androidTestImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
+    androidTestImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.13.0")
 }
 
 tasks.matching { it.name == "mergeDebugAndroidTestAssets" }.configureEach {
