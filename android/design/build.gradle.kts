@@ -89,7 +89,7 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
  * app comes from OmahaColors or it does not come at all.
  */
 dependencies {
-    implementation(platform("androidx.compose:compose-bom:2026.09.00"))
+    implementation(platform("androidx.compose:compose-bom:2026.11.01"))
     implementation("androidx.compose.runtime:runtime")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-text")

@@ -116,7 +116,7 @@ dependencies {
     // directly too, so this module needs the same coordinate declared again.
     implementation("androidx.glance:glance-appwidget:1.2.0")
 
-    implementation(platform("androidx.compose:compose-bom:2026.09.00"))
+    implementation(platform("androidx.compose:compose-bom:2026.11.01"))
     implementation("androidx.compose.foundation:foundation")
     // Material3 for exactly one component: the DCF sandbox's Slider. See
     // DcfSandbox.AssumptionSlider for why that exception is worth making —
